@@ -140,15 +140,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [user, lastActivity]);
 
   const login = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: 'https://hngames.vercel.app'
-      }
-    });
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: 'https://hngames.vercel.app'
+        }
+      });
 
-    if (error) {
-      console.error('Login error:', error);
+      if (error) {
+        console.error('Login error:', error);
+        alert('로그인 오류: ' + error.message);
+      }
+    } catch (err) {
+      console.error('Unexpected error:', err);
     }
   };
 
