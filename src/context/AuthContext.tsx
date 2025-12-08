@@ -32,20 +32,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Fetch current user
     const fetchUser = async () => {
-    const { data } = await supabase.auth.getUser();
+  const { data } = await supabase.auth.getUser();
 
-    if (data?.user) {
-      setUser({
+  if (data?.user) {
+    // users 테이블에 이미 있는지 확인
+    const { data: existing, error } = await supabase
+      .from("users")
+      .select("id")
+      .eq("id", data.user.id)
+      .maybeSingle();
+
+    // 없으면 한 줄 생성
+    if (!error && !existing) {
+      await supabase.from("users").insert({
         id: data.user.id,
         email: data.user.email || "",
-        role: "user",   // 필요하면 나중에 DB에서 가져오면 됩니다
+        // 필요시 name 컬럼 있으면 같이 넣으시면 됩니다
+        // name: data.user.user_metadata.full_name || null,
       });
-    } else {
-      setUser(null);
     }
 
-    setLoading(false);
-  };
+    setUser({
+      id: data.user.id,
+      email: data.user.email || "",
+      role: "user",
+    });
+  } else {
+    setUser(null);
+  }
+
+  setLoading(false);
+};
+
 
   useEffect(() => {
     fetchUser();
