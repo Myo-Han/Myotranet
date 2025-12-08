@@ -4,15 +4,10 @@
   "description": "Full-stack HR Management System with Google OAuth authentication",
   "type": "module",
   "scripts": {
-    "dev": "concurrently \"npm run server:dev\" \"npm run client:dev\"",
-    "server:dev": "tsx watch server/index.ts",
-    "client:dev": "vite",
-    "build": "npm run build:client && npm run build:server",
-    "build:client": "vite build",
-    "build:server": "tsc -p tsconfig.server.json",
-    "start": "node dist/server/index.js",
-    "db:migrate": "tsx server/database/migrate.ts"
-  },
+  "dev": "vite",
+  "build": "vite build",
+  "start": "vite preview"
+},
   "dependencies": {
     "@supabase/supabase-js": "^2.86.2",
     "axios": "^1.13.2",
