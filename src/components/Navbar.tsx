@@ -25,7 +25,7 @@ const Navbar: React.FC = () => {
           {/* Left side - Logo and nav links */}
           <div className="flex items-center">
             <Link to="/dashboard" className="flex-shrink-0">
-              <h1 className="text-white text-xl font-bold">HR Management</h1>
+              <h1 className="text-white text-xl font-bold">흠냐게임즈</h1>
             </Link>
             <div className="hidden md:block ml-10">
               <div className="flex items-baseline space-x-4">
