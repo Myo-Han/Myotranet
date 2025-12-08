@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { User } from '../types';
 import axios from 'axios';
-import { supabase } from "../supabase";
+import { supabase } from "../supabaseClient";
 
 const INACTIVITY_TIMEOUT = 15 * 60 * 1000; // 15 minutes
 const WARNING_TIME = 5 * 60 * 1000; // 5 minutes before logout
