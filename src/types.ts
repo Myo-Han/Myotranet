@@ -1,16 +1,17 @@
 // Frontend type definitions
 
 export interface User {
-  id: number;
+  id: string;
   email: string;
-  name: string;
-  profile_picture: string | null;
+  name?: string;
+  profile_picture?: string | null;
   role: 'Admin' | 'Manager' | 'User';
-  annual_leave_balance: number;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
+  annual_leave_balance?: number;
+  is_active?: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
+
 
 export interface Attendance {
   id: number;

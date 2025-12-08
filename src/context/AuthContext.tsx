@@ -31,38 +31,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [showWarning, setShowWarning] = useState(false);
 
   // Fetch current user
-    const fetchUser = async () => {
-  const { data } = await supabase.auth.getUser();
+  const fetchUser = async () => {
+    const { data } = await supabase.auth.getUser();
 
-  if (data?.user) {
-    // users 테이블에 이미 있는지 확인
-    const { data: existing, error } = await supabase
-      .from("users")
-      .select("id")
-      .eq("id", data.user.id)
-      .maybeSingle();
+    if (data?.user) {
+      // users 테이블에 이미 있는지 확인
+      const { data: existing, error } = await supabase
+        .from("users")
+        .select("id")
+        .eq("id", data.user.id)
+        .maybeSingle();
 
-    // 없으면 한 줄 생성
-    if (!error && !existing) {
-      await supabase.from("users").insert({
+      // 없으면 한 줄 생성
+      if (!error && !existing) {
+        await supabase.from("users").insert({
+          id: data.user.id,
+          email: data.user.email || "",
+          // 필요시 name 컬럼 있으면 같이 넣으시면 됩니다
+          // name: data.user.user_metadata.full_name || null,
+        });
+      }
+
+      setUser({
         id: data.user.id,
         email: data.user.email || "",
-        // 필요시 name 컬럼 있으면 같이 넣으시면 됩니다
-        // name: data.user.user_metadata.full_name || null,
+        role: "User",
       });
+
+    } else {
+      setUser(null);
     }
 
-    setUser({
-      id: data.user.id,
-      email: data.user.email || "",
-      role: "user",
-    });
-  } else {
-    setUser(null);
-  }
-
-  setLoading(false);
-};
+    setLoading(false);
+  };
 
 
   useEffect(() => {
@@ -85,7 +86,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!user) return;
 
     const events = ['mousedown', 'keydown', 'scroll', 'touchstart', 'click'];
-    
+
     events.forEach(event => {
       document.addEventListener(event, updateActivity);
     });
@@ -122,7 +123,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [user, lastActivity]);
 
   const login = async () => {
-    const { data, error } = await supabase.auth.signInWithOAuth({
+    const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
     });
 
@@ -130,9 +131,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = async () => {
-  await supabase.auth.signOut();
-  setUser(null);
-  window.location.href = '/login';
+    await supabase.auth.signOut();
+    setUser(null);
+    window.location.href = '/login';
   };
 
   const refreshUser = async () => {
