@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { User } from '../types';
 import axios from 'axios';
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "../supabase";
 
 const INACTIVITY_TIMEOUT = 15 * 60 * 1000; // 15 minutes
 const WARNING_TIME = 5 * 60 * 1000; // 5 minutes before logout
@@ -164,7 +164,3 @@ export const useAuth = () => {
   }
   return context;
 };
-
-const supabase = createClient("https://hqpgdsykmrtsnxobopbf.supabase.co", "sb_publishable_heS9UtYS5PZ8YuDYi6XbeQ_lY4X-cjd");
-
-export { supabase };
