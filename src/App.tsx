@@ -9,7 +9,7 @@ import Attendance from './pages/Attendance';
 import Leave from './pages/Leave';
 import Letters from './pages/Letters';
 import Search from './pages/Search';
-//import Admin from './pages/Admin';
+import Admin from './pages/Admin';
 
 function App() {
   return (
@@ -31,7 +31,6 @@ function App() {
             <Route path="leave" element={<Leave />} />
             <Route path="letters" element={<Letters />} />
             <Route path="search" element={<Search />} />
-            {/*
             <Route
               path="admin/*"
               element={
@@ -40,7 +39,6 @@ function App() {
                 </ProtectedRoute>
               }
             />
-            /> */}
           </Route>
         </Routes>
       </AuthProvider>

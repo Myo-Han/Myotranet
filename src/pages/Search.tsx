@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import axios from 'axios';
+import { supabase } from '../supabaseClient';
 import { User, UserProfile } from '../types';
 import Loading from '../components/Loading';
 import ErrorMessage from '../components/ErrorMessage';
@@ -28,25 +28,63 @@ const Search: React.FC = () => {
     setSearching(true);
     setError('');
     try {
-      const response = await axios.get('/api/users/search', {
-        params: { q: searchQuery },
-      });
-      setSearchResults(response.data);
+      const { data, error } = await supabase
+        .from('users')
+        .select('id, name, email, role, annual_leave_balance, profile_picture')
+        .or(
+          `name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%`
+        );
+
+      if (error) throw error;
+
+      setSearchResults(data || []);
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Search failed');
+      setError(err.message || 'Search failed');
     } finally {
       setSearching(false);
     }
   };
 
-  const fetchProfile = async (userId: number) => {
+  const fetchProfile = async (userId: string) => {
     setLoading(true);
     setError('');
     try {
-      const response = await axios.get(`/api/users/${userId}/profile`);
-      setSelectedProfile(response.data);
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (userError) throw userError;
+
+      const since = new Date();
+      since.setDate(since.getDate() - 7);
+      const sinceDate = since.toISOString().slice(0, 10);
+
+      const { data: attendanceData, error: attError } = await supabase
+        .from('attendance')
+        .select('id, date, check_in, check_out, status')
+        .eq('user_id', userId)
+        .gte('date', sinceDate)
+        .order('date', { ascending: false });
+
+      if (attError) throw attError;
+
+      const { data: pendingLeaves, error: leavesError } = await supabase
+        .from('leaves')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('status', 'pending');
+
+      if (leavesError) throw leavesError;
+
+      setSelectedProfile({
+        user: userData,
+        recentAttendance: attendanceData || [],
+        pendingLeaves: pendingLeaves || [],
+      });
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to load profile');
+      setError(err.message || 'Failed to load profile');
     } finally {
       setLoading(false);
     }

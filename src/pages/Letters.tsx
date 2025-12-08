@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import axios from 'axios';
+import { supabase } from '../supabaseClient';
 import { Letter } from '../types';
 import Loading from '../components/Loading';
 import ErrorMessage from '../components/ErrorMessage';
@@ -25,44 +25,66 @@ const Letters: React.FC = () => {
 
   const fetchLetters = async () => {
     setLoading(true);
+    setError('');
     try {
-      const response = await axios.get('/api/letters');
-      setLetters(response.data);
+      const { data, error } = await supabase
+        .from('letters')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      setLetters(data || []);
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to load letters');
+      setError(err.message || 'Failed to load letters');
     } finally {
       setLoading(false);
     }
   };
 
   const submitLetter = async () => {
-    if (!form.title || !form.content) {
+    if (!user || !form.title || !form.content) {
       setError('제목과 내용을 입력해주세요');
       return;
     }
 
     try {
-      await axios.post('/api/letters', form);
+      const { error } = await supabase.from('letters').insert({
+        from_user_id: user.id,
+        to_user_id: null,
+        title: form.title,
+        body: form.content,
+        is_anonymous: form.isAnonymous,
+      });
+
+      if (error) throw error;
+
       setSuccess('편지가 작성되었습니다');
       setShowModal(false);
       setForm({ title: '', content: '', isAnonymous: false });
       fetchLetters();
       setTimeout(() => setSuccess(''), 3000);
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to submit letter');
+      setError(err.message || 'Failed to submit letter');
     }
   };
 
-  const deleteLetter = async (letterId: number) => {
+  const deleteLetter = async (letterId: string) => {
     if (!confirm('정말 이 편지를 삭제하시겠습니까?')) return;
 
     try {
-      await axios.delete(`/api/letters/${letterId}`);
+      const { error } = await supabase
+        .from('letters')
+        .delete()
+        .eq('id', letterId);
+
+      if (error) throw error;
+
       setSuccess('편지가 삭제되었습니다');
       fetchLetters();
       setTimeout(() => setSuccess(''), 3000);
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to delete letter');
+      setError(err.message || 'Failed to delete letter');
     }
   };
 

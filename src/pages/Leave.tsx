@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import axios from 'axios';
+import { supabase } from '../supabaseClient';
 import { Leave as LeaveType } from '../types';
 import Loading from '../components/Loading';
 import ErrorMessage from '../components/ErrorMessage';
@@ -27,14 +27,22 @@ const Leave: React.FC = () => {
 
   const fetchLeaves = async () => {
     setLoading(true);
+    setError('');
     try {
       const isManagerOrAdmin = user?.role === 'Manager' || user?.role === 'Admin';
-      const response = await axios.get(
-        isManagerOrAdmin ? '/api/leaves/all-requests' : '/api/leaves/my-requests'
-      );
-      setLeaves(response.data);
+
+      let query = supabase.from('leaves').select('*').order('start_date', { ascending: false });
+
+      if (!isManagerOrAdmin && user) {
+        query = query.eq('user_id', user.id);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+
+      setLeaves(data || []);
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to load leaves');
+      setError(err.message || 'Failed to load leaves');
     } finally {
       setLoading(false);
     }
@@ -54,31 +62,59 @@ const Leave: React.FC = () => {
   }, [form.startDate, form.endDate, form.leaveType]);
 
   const submitLeaveRequest = async () => {
-    if (!form.startDate || !form.endDate || !form.reason) {
+    if (!user || !form.startDate || !form.endDate || !form.reason) {
       setError('모든 필드를 입력해주세요');
       return;
     }
 
     try {
-      await axios.post('/api/leaves/request', form);
+      const { error } = await supabase.from('leaves').insert({
+        user_id: user.id,
+        start_date: form.startDate,
+        end_date: form.endDate,
+        type: form.leaveType,
+        days_requested: form.daysRequested,
+        reason: form.reason,
+        status: 'pending',
+      });
+
+      if (error) throw error;
+
       setSuccess('휴가 신청이 제출되었습니다');
       setShowModal(false);
       fetchLeaves();
       refreshUser();
       setTimeout(() => setSuccess(''), 3000);
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to submit request');
+      setError(err.message || 'Failed to submit request');
     }
   };
 
-  const reviewLeaveRequest = async (leaveId: number, status: 'approved' | 'rejected', notes: string) => {
+  const reviewLeaveRequest = async (
+    leaveId: string,
+    status: 'approved' | 'rejected',
+    notes: string
+  ) => {
+    if (!user) return;
+
     try {
-      await axios.post(`/api/leaves/request/${leaveId}/review`, { status, reviewNotes: notes });
+      const { error } = await supabase
+        .from('leaves')
+        .update({
+          status,
+          review_notes: notes,
+          approved_at: new Date().toISOString(),
+          approver_id: user.id,
+        })
+        .eq('id', leaveId);
+
+      if (error) throw error;
+
       setSuccess(`휴가 신청이 ${status === 'approved' ? '승인' : '반려'}되었습니다`);
       fetchLeaves();
       setTimeout(() => setSuccess(''), 3000);
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to review request');
+      setError(err.message || 'Failed to review request');
     }
   };
 

@@ -16,11 +16,9 @@ const SessionTimer: React.FC = () => {
           isWarning ? 'text-red-600' : 'text-gray-600'
         }`}
       >
-        자동 로그아웃{' '}
         <span className="font-bold">
           {minutes}:{seconds.toString().padStart(2, '0')}
         </span>{' '}
-        남음
       </div>
       <button
         onClick={extendSession}

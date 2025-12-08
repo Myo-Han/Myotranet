@@ -12,10 +12,9 @@ export interface User {
   updated_at?: string;
 }
 
-
 export interface Attendance {
-  id: number;
-  user_id: number;
+  id: string;
+  user_id: string;
   date: string;
   check_in: string | null;
   check_out: string | null;
@@ -27,9 +26,9 @@ export interface Attendance {
 }
 
 export interface AttendanceRevisionRequest {
-  id: number;
-  user_id: number;
-  attendance_id: number;
+  id: string;
+  user_id: string;
+  attendance_id: string;
   requested_date: string;
   original_check_in: string | null;
   original_check_out: string | null;
@@ -37,7 +36,7 @@ export interface AttendanceRevisionRequest {
   requested_check_out: string | null;
   reason: string;
   status: 'pending' | 'approved' | 'rejected';
-  reviewed_by: number | null;
+  reviewed_by: string | null;
   review_notes: string | null;
   reviewed_at: string | null;
   created_at: string;
@@ -47,28 +46,26 @@ export interface AttendanceRevisionRequest {
 }
 
 export interface Leave {
-  id: number;
-  user_id: number;
+  id: string;
+  user_id: string;
   start_date: string;
   end_date: string;
   leave_type: 'annual' | 'half_day';
   days_requested: number;
   reason: string;
   status: 'pending' | 'approved' | 'rejected';
-  reviewed_by: number | null;
+  reviewed_by: string | null;
   review_notes: string | null;
   reviewed_at: string | null;
   created_at: string;
   updated_at: string;
   name?: string;
   email?: string;
-  role?: string;
-  annual_leave_balance?: number;
 }
 
 export interface Letter {
-  id: number;
-  user_id: number;
+  id: string;
+  user_id: string;
   is_anonymous: boolean;
   title: string;
   content: string;
@@ -79,10 +76,10 @@ export interface Letter {
 }
 
 export interface AuditLog {
-  id: number;
-  actor_id: number;
+  id: string;
+  actor_id: string;
   action_type: string;
-  target_user_id: number | null;
+  target_user_id: string | null;
   description: string;
   changes: any;
   ip_address: string | null;

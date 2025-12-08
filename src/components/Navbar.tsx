@@ -29,24 +29,18 @@ const Navbar: React.FC = () => {
             </Link>
             <div className="hidden md:block ml-10">
               <div className="flex items-baseline space-x-4">
-                <Link to="/dashboard" className={navLinkClass('/dashboard')}>
-                  Dashboard
-                </Link>
                 <Link to="/attendance" className={navLinkClass('/attendance')}>
-                  Attendance
+                  출퇴근관리
+                </Link>
+                <Link to="/works" className={navLinkClass('/works')}>
+                  업무
                 </Link>
                 <Link to="/leave" className={navLinkClass('/leave')}>
-                  Leave
-                </Link>
-                <Link to="/letters" className={navLinkClass('/letters')}>
-                  Letters
-                </Link>
-                <Link to="/search" className={navLinkClass('/search')}>
-                  Search
+                  휴가관리
                 </Link>
                 {user?.role === 'Admin' && (
                   <Link to="/admin" className={navLinkClass('/admin')}>
-                    Admin
+                    관리자
                   </Link>
                 )}
               </div>

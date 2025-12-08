@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import axios from 'axios';
+import { supabase } from '../supabaseClient';
 import { Attendance as AttendanceType, AttendanceRevisionRequest } from '../types';
 import Loading from '../components/Loading';
 import ErrorMessage from '../components/ErrorMessage';
@@ -27,53 +27,151 @@ const Attendance: React.FC = () => {
 
   const fetchData = async () => {
     setLoading(true);
+    setError('');
     try {
       const isManagerOrAdmin = user?.role === 'Manager' || user?.role === 'Admin';
-      
-      const [recordsRes, revisionsRes] = await Promise.all([
-        axios.get(isManagerOrAdmin ? '/api/attendance/all-records' : '/api/attendance/my-records'),
-        axios.get('/api/attendance/revision-requests'),
-      ]);
 
-      setRecords(recordsRes.data);
-      setRevisionRequests(revisionsRes.data);
+      let recordsQuery = supabase
+        .from('attendance')
+        .select('id, user_id, date, check_in, check_out, early_leave, status, notes')
+        .order('date', { ascending: false });
+
+      if (!isManagerOrAdmin && user) {
+        recordsQuery = recordsQuery.eq('user_id', user.id);
+      }
+
+      const { data: attendanceData, error: attendanceError } = await recordsQuery;
+      if (attendanceError) throw attendanceError;
+
+      setRecords(attendanceData || []);
+
+      const { data: revisionsData, error: revisionsError } = await supabase
+        .from('attendance_revision_requests')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (revisionsError) throw revisionsError;
+
+      setRevisionRequests(revisionsData || []);
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to load data');
+      setError(err.message || 'Failed to load data');
     } finally {
       setLoading(false);
     }
   };
 
   const handleCheckIn = async () => {
+    if (!user) return;
+
     try {
-      await axios.post('/api/attendance/check-in');
+      const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+
+      const { data: existing, error: selectError } = await supabase
+        .from('attendance')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('date', today)
+        .maybeSingle();
+
+      if (selectError && selectError.code !== 'PGRST116') throw selectError;
+
+      if (!existing) {
+        const { error: insertError } = await supabase.from('attendance').insert({
+          user_id: user.id,
+          date: today,
+          check_in: new Date().toISOString(),
+          status: 'present',
+        });
+        if (insertError) throw insertError;
+      } else {
+        const { error: updateError } = await supabase
+          .from('attendance')
+          .update({
+            check_in: new Date().toISOString(),
+            status: 'present',
+          })
+          .eq('id', existing.id);
+        if (updateError) throw updateError;
+      }
+
       setSuccess('출근 처리되었습니다');
       fetchData();
       setTimeout(() => setSuccess(''), 3000);
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Check-in failed');
+      setError(err.message || 'Check-in failed');
     }
   };
 
   const handleCheckOut = async () => {
+    if (!user) return;
+
     try {
-      await axios.post('/api/attendance/check-out');
+      const today = new Date().toISOString().slice(0, 10);
+
+      const { data: existing, error: selectError } = await supabase
+        .from('attendance')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('date', today)
+        .maybeSingle();
+
+      if (selectError) throw selectError;
+      if (!existing) {
+        setError('출근 기록이 없습니다');
+        return;
+      }
+
+      const { error: updateError } = await supabase
+        .from('attendance')
+        .update({
+          check_out: new Date().toISOString(),
+        })
+        .eq('id', existing.id);
+
+      if (updateError) throw updateError;
+
       setSuccess('퇴근 처리되었습니다');
       fetchData();
       setTimeout(() => setSuccess(''), 3000);
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Check-out failed');
+      setError(err.message || 'Check-out failed');
     }
   };
 
   const handleEarlyLeave = async () => {
+    if (!user) return;
+
     try {
-      await axios.post('/api/attendance/early-leave');
+      const today = new Date().toISOString().slice(0, 10);
+
+      const { data: existing, error: selectError } = await supabase
+        .from('attendance')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('date', today)
+        .maybeSingle();
+
+      if (selectError) throw selectError;
+      if (!existing) {
+        setError('출근 기록이 없습니다');
+        return;
+      }
+
+      const { error: updateError } = await supabase
+        .from('attendance')
+        .update({
+          early_leave: new Date().toISOString(),
+          status: 'early_leave',
+        })
+        .eq('id', existing.id);
+
+      if (updateError) throw updateError;
+
       setSuccess('조퇴 처리되었습니다');
       fetchData();
       setTimeout(() => setSuccess(''), 3000);
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Early leave failed');
+      setError(err.message || 'Early leave failed');
     }
   };
 
@@ -88,39 +186,58 @@ const Attendance: React.FC = () => {
   };
 
   const submitRevisionRequest = async () => {
-    if (!selectedRecord || !revisionForm.reason) {
+    if (!user || !selectedRecord || !revisionForm.reason) {
       setError('모든 필드를 입력해주세요');
       return;
     }
 
     try {
-      await axios.post('/api/attendance/revision-request', {
-        attendanceId: selectedRecord.id,
-        requestedDate: selectedRecord.date,
-        requestedCheckIn: revisionForm.requestedCheckIn || null,
-        requestedCheckOut: revisionForm.requestedCheckOut || null,
+      const { error } = await supabase.from('attendance_revision_requests').insert({
+        attendance_id: selectedRecord.id,
+        user_id: user.id,
+        requested_date: selectedRecord.date,
+        requested_check_in: revisionForm.requestedCheckIn || null,
+        requested_check_out: revisionForm.requestedCheckOut || null,
         reason: revisionForm.reason,
+        status: 'pending',
       });
+
+      if (error) throw error;
+
       setSuccess('수정 요청이 제출되었습니다');
       setShowRevisionModal(false);
       fetchData();
       setTimeout(() => setSuccess(''), 3000);
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to submit request');
+      setError(err.message || 'Failed to submit request');
     }
   };
 
-  const reviewRevisionRequest = async (requestId: number, status: 'approved' | 'rejected', notes: string) => {
+  const reviewRevisionRequest = async (
+    requestId: string,
+    status: 'approved' | 'rejected',
+    notes: string
+  ) => {
+    if (!user) return;
+
     try {
-      await axios.post(`/api/attendance/revision-request/${requestId}/review`, {
-        status,
-        reviewNotes: notes,
-      });
+      const { error } = await supabase
+        .from('attendance_revision_requests')
+        .update({
+          status,
+          review_notes: notes,
+          reviewed_at: new Date().toISOString(),
+          reviewer_id: user.id,
+        })
+        .eq('id', requestId);
+
+      if (error) throw error;
+
       setSuccess(`수정 요청이 ${status === 'approved' ? '승인' : '반려'}되었습니다`);
       fetchData();
       setTimeout(() => setSuccess(''), 3000);
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to review request');
+      setError(err.message || 'Failed to review request');
     }
   };
 
@@ -202,11 +319,10 @@ const Attendance: React.FC = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatTime(record.check_out)}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatTime(record.early_leave)}</td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 text-xs rounded-full ${
-                      record.status === 'present' ? 'bg-green-100 text-green-800' :
+                    <span className={`px-2 py-1 text-xs rounded-full ${record.status === 'present' ? 'bg-green-100 text-green-800' :
                       record.status === 'early_leave' ? 'bg-orange-100 text-orange-800' :
-                      'bg-red-100 text-red-800'
-                    }`}>
+                        'bg-red-100 text-red-800'
+                      }`}>
                       {record.status}
                     </span>
                   </td>
@@ -263,9 +379,8 @@ const Attendance: React.FC = () => {
                     </div>
                   )}
                   {request.status !== 'pending' && (
-                    <span className={`px-3 py-1 rounded-full text-sm ${
-                      request.status === 'approved' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                    }`}>
+                    <span className={`px-3 py-1 rounded-full text-sm ${request.status === 'approved' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                      }`}>
                       {request.status === 'approved' ? '승인됨' : '반려됨'}
                     </span>
                   )}

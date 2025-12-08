@@ -20,7 +20,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Configure axios defaults
-axios.defaults.baseURL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+axios.defaults.baseURL = import.meta.env.VITE_API_URL || 'http://localhost:5173';
 axios.defaults.withCredentials = true;
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -35,27 +35,45 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const { data } = await supabase.auth.getUser();
 
     if (data?.user) {
-      // users 테이블에 이미 있는지 확인
+      // users 테이블에서 내 프로필 가져오기 (role, is_active 포함)
       const { data: existing, error } = await supabase
         .from("users")
-        .select("id")
+        .select("id, name, profile_picture, role, is_active, created_at")
         .eq("id", data.user.id)
         .maybeSingle();
 
-      // 없으면 한 줄 생성
+      let profile = existing;
+
+      // 없으면 한 줄 생성 (처음 로그인은 is_active: false)
       if (!error && !existing) {
         await supabase.from("users").insert({
           id: data.user.id,
           email: data.user.email || "",
-          // 필요시 name 컬럼 있으면 같이 넣으시면 됩니다
-          // name: data.user.user_metadata.full_name || null,
+          name: (data.user.user_metadata as any)?.full_name || null,
+          profile_picture: (data.user.user_metadata as any)?.avatar_url || null,
+          role: "User",
+          is_active: false,
         });
       }
 
+      // 아직 승인 안 된 유저면 막기
+      if (!profile || !profile.is_active) {
+        alert("관리자에게 권한을 요청하세요.");
+        await supabase.auth.signOut();
+        setUser(null);
+        setLoading(false);
+        return;
+      }
+
+      // 승인된 유저만 앱에 입장
       setUser({
         id: data.user.id,
         email: data.user.email || "",
-        role: "User",
+        name: existing?.name || (data.user.user_metadata as any)?.full_name || "",
+        profile_picture: existing?.profile_picture || (data.user.user_metadata as any)?.avatar_url || null,
+        role: (existing?.role as "Admin" | "Manager" | "User") || "User",
+        is_active: existing?.is_active ?? false,
+        created_at: existing?.created_at || undefined,
       });
 
     } else {
@@ -64,7 +82,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     setLoading(false);
   };
-
 
   useEffect(() => {
     fetchUser();
