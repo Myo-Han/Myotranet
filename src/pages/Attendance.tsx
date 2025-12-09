@@ -21,6 +21,14 @@ const Attendance: React.FC = () => {
     reason: '',
   });
 
+  // 오늘 상태/휴가/업무중지 모달용 상태
+  const [todayStatus, setTodayStatus] = useState<string | null>(null);
+  const [isTodayOnLeave, setIsTodayOnLeave] = useState(false);
+  const [showPauseModal, setShowPauseModal] = useState(false);
+  const [pauseReason, setPauseReason] = useState<'휴게' | '외출' | '퇴근' | '기타' | ''>('');
+  const [pauseMemo, setPauseMemo] = useState('');
+
+
   useEffect(() => {
     fetchData();
   }, []);
@@ -29,18 +37,24 @@ const Attendance: React.FC = () => {
     setLoading(true);
     setError('');
     try {
-      const isManagerOrAdmin = user?.role === 'Manager' || user?.role === 'Admin';
-
-      let recordsQuery = supabase
+      const { data: attendanceData, error: attendanceError } = await supabase
         .from('attendance')
-        .select('id, user_id, date, check_in, check_out, early_leave, status, notes')
+        .select(`
+          id,
+          user_id,
+          date,
+          check_in,
+          check_out,
+          early_leave,
+          status,
+          total_work_seconds,
+          users (
+            name,
+            profile_picture
+          )
+        `)
         .order('date', { ascending: false });
 
-      if (!isManagerOrAdmin && user) {
-        recordsQuery = recordsQuery.eq('user_id', user.id);
-      }
-
-      const { data: attendanceData, error: attendanceError } = await recordsQuery;
       if (attendanceError) throw attendanceError;
 
       setRecords(attendanceData || []);
@@ -53,6 +67,39 @@ const Attendance: React.FC = () => {
       if (revisionsError) throw revisionsError;
 
       setRevisionRequests(revisionsData || []);
+
+      // 🔹 오늘 내 상태 + 휴가 여부 계산
+      const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+
+      if (user) {
+        const myTodayRecord =
+          (attendanceData || []).find(
+            (r: any) => r.user_id === user.id && r.date === today
+          ) || null;
+
+        setTodayStatus(myTodayRecord?.status || null);
+
+        const { data: leaveToday, error: leaveError } = await supabase
+          .from('leaves')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('status', 'approved')
+          .lte('start_date', today)
+          .gte('end_date', today)
+          .maybeSingle();
+
+        if (leaveError && leaveError.code !== 'PGRST116') throw leaveError;
+
+        const onLeave = !!leaveToday;
+        setIsTodayOnLeave(onLeave);
+
+        if (onLeave) {
+          setTodayStatus('VACATION');
+        }
+      } else {
+        setTodayStatus(null);
+        setIsTodayOnLeave(false);
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to load data');
     } finally {
@@ -60,7 +107,7 @@ const Attendance: React.FC = () => {
     }
   };
 
-  const handleCheckIn = async () => {
+    const handleCheckIn = async () => {
     if (!user) return;
 
     try {
@@ -92,20 +139,24 @@ const Attendance: React.FC = () => {
 
       if (selectError && selectError.code !== 'PGRST116') throw selectError;
 
+      const nowIso = new Date().toISOString();
+
       if (!existing) {
         const { error: insertError } = await supabase.from('attendance').insert({
           user_id: user.id,
           date: today,
-          check_in: new Date().toISOString(),
+          check_in: nowIso,
           status: 'present',
+          total_work_seconds: 0,
         });
         if (insertError) throw insertError;
       } else {
         const { error: updateError } = await supabase
           .from('attendance')
           .update({
-            check_in: new Date().toISOString(),
+            check_in: nowIso,
             status: 'present',
+            total_work_seconds: 0,
           })
           .eq('id', existing.id);
         if (updateError) throw updateError;
@@ -119,7 +170,7 @@ const Attendance: React.FC = () => {
     }
   };
 
-  const handleCheckOut = async () => {
+    const handleCheckOut = async () => {
     if (!user) return;
 
     try {
@@ -127,7 +178,7 @@ const Attendance: React.FC = () => {
 
       const { data: existing, error: selectError } = await supabase
         .from('attendance')
-        .select('id')
+        .select('id, check_in')
         .eq('user_id', user.id)
         .eq('date', today)
         .maybeSingle();
@@ -138,11 +189,22 @@ const Attendance: React.FC = () => {
         return;
       }
 
+      const nowIso = new Date().toISOString();
+      const updateData: any = {
+        check_out: nowIso,
+        status: 'off',
+      };
+
+      if (existing.check_in) {
+        const start = new Date(existing.check_in).getTime();
+        const end = new Date(nowIso).getTime();
+        const diffSec = Math.max(0, Math.floor((end - start) / 1000));
+        updateData.total_work_seconds = diffSec;
+      }
+
       const { error: updateError } = await supabase
         .from('attendance')
-        .update({
-          check_out: new Date().toISOString(),
-        })
+        .update(updateData)
         .eq('id', existing.id);
 
       if (updateError) throw updateError;
@@ -269,6 +331,212 @@ const Attendance: React.FC = () => {
     });
   };
 
+  const getStatusLabel = (status: string | null) => {
+    if (!status) return '미출근';
+
+    switch (status) {
+      case 'present':
+      case 'WORKING':
+        return '근무중';
+      case 'vacation':
+      case 'VACATION':
+        return '휴가';
+      case 'break':
+      case 'BREAK':
+        return '휴게';
+      case 'out':
+      case 'OUT':
+        return '외출';
+      case 'off':
+      case 'OFF':
+      case 'checked_out':
+      case 'CHECKED_OUT':
+        return '퇴근';
+      case 'early_leave':
+        return '조퇴';
+      case 'other':
+      case 'OTHER':
+        return '기타';
+      default:
+        return '기타';
+    }
+  };
+
+  const formatWorkTime = (seconds?: number | null) => {
+    if (!seconds || seconds <= 0) return '-';
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const hh = h.toString().padStart(2, '0');
+    const mm = m.toString().padStart(2, '0');
+    return `${hh}:${mm}`;
+  };
+
+  const getTodayButtonLabel = () => {
+    if (isTodayOnLeave) return '';
+
+    const label = getStatusLabel(todayStatus);
+
+    if (label === '휴가' || label === '퇴근') return '';
+    if (label === '근무중') return '업무중지';
+    if (label === '휴게' || label === '외출' || label === '기타') return '업무재개';
+    if (label === '미출근') return '출근';
+    if (!todayStatus) return '출근';
+
+    return '출근';
+  };
+
+  // 🔹 휴게/외출/기타 상태에서 "업무재개"
+  const handleResumeFromPause = async () => {
+    if (!user) return;
+
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+
+      const { data: existing, error: selectError } = await supabase
+        .from('attendance')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('date', today)
+        .maybeSingle();
+
+      if (selectError) throw selectError;
+      if (!existing) {
+        setError('출근 기록이 없습니다');
+        return;
+      }
+
+      const { error: updateError } = await supabase
+        .from('attendance')
+        .update({
+          status: 'present',
+        })
+        .eq('id', existing.id);
+
+      if (updateError) throw updateError;
+
+      setSuccess('업무가 재개되었습니다');
+      fetchData();
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err: any) {
+      setError(err.message || '업무 재개에 실패했습니다');
+    }
+  };
+
+  // 🔹 오늘 버튼 클릭 시 동작 (출근 / 업무중지 / 업무재개)
+  const handleTodayAction = async () => {
+    if (!user) return;
+
+    if (isTodayOnLeave) {
+      setError('오늘은 승인된 휴가일입니다. 출근을 찍을 수 없습니다.');
+      return;
+    }
+
+    const label = getStatusLabel(todayStatus);
+
+    if (!todayStatus || label === '미출근') {
+      await handleCheckIn();
+      return;
+    }
+
+    if (label === '근무중') {
+      setPauseReason('');
+      setPauseMemo('');
+      setShowPauseModal(true);
+      return;
+    }
+
+    if (label === '휴게' || label === '외출' || label === '기타') {
+      await handleResumeFromPause();
+      return;
+    }
+
+    // 퇴근 상태 등은 아무 동작 안 함
+  };
+
+  // 🔹 업무중지 모달에서 사유 선택 후 확정
+  const handlePauseConfirm = async () => {
+    if (!user) return;
+
+    if (!pauseReason) {
+      setError('사유를 선택해주세요');
+      return;
+    }
+
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+
+      const { data: existing, error: selectError } = await supabase
+        .from('attendance')
+        .select('id, check_in, total_work_seconds')
+        .eq('user_id', user.id)
+        .eq('date', today)
+        .maybeSingle();
+
+      if (selectError) throw selectError;
+      if (!existing) {
+        setError('출근 기록이 없습니다');
+        return;
+      }
+
+      if (pauseReason === '퇴근') {
+        // 퇴근 처리 + 누적시간 계산
+        const nowIso = new Date().toISOString();
+        const updateData: any = {
+          check_out: nowIso,
+          status: 'off',
+        };
+
+        if (existing.check_in) {
+          const start = new Date(existing.check_in).getTime();
+          const end = new Date(nowIso).getTime();
+          const diffSec = Math.max(0, Math.floor((end - start) / 1000));
+          updateData.total_work_seconds = diffSec;
+        }
+
+        if (pauseMemo) {
+          updateData.notes = `[퇴근] ${pauseMemo}`;
+        }
+
+        const { error: updateError } = await supabase
+          .from('attendance')
+          .update(updateData)
+          .eq('id', existing.id);
+
+        if (updateError) throw updateError;
+
+        setSuccess('퇴근 처리되었습니다');
+      } else {
+        // 휴게 / 외출 / 기타 → 상태만 변경
+        let statusValue = 'break';
+        if (pauseReason === '외출') statusValue = 'out';
+        if (pauseReason === '기타') statusValue = 'other';
+
+        const updateData: any = {
+          status: statusValue,
+        };
+
+        if (pauseMemo) {
+          updateData.notes = `[${pauseReason}] ${pauseMemo}`;
+        }
+
+        const { error: updateError } = await supabase
+          .from('attendance')
+          .update(updateData)
+          .eq('id', existing.id);
+
+        if (updateError) throw updateError;
+
+        setSuccess('업무가 일시중지되었습니다');
+      }
+
+      setShowPauseModal(false);
+      fetchData();
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err: any) {
+      setError(err.message || '상태 변경에 실패했습니다');
+    }
+  };
+
   if (loading) return <Loading />;
 
   return (
@@ -278,29 +546,29 @@ const Attendance: React.FC = () => {
       {error && <ErrorMessage message={error} />}
       {success && <SuccessMessage message={success} />}
 
-      {/* Check-in/out buttons */}
+      {/* Check-in/out button (토글) */}
       <div className="bg-white shadow rounded-lg p-6">
         <h2 className="text-xl font-semibold mb-4">오늘의 출퇴근</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <p className="text-sm text-gray-600 mb-4">
+          오늘 상태:{' '}
+          <span className="font-medium">
+            {getStatusLabel(isTodayOnLeave ? 'VACATION' : todayStatus)}
+          </span>
+        </p>
+        {getTodayButtonLabel() ? (
           <button
-            onClick={handleCheckIn}
+            onClick={handleTodayAction}
             className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition duration-200"
           >
-            출근
+            {getTodayButtonLabel()}
           </button>
-          <button
-            onClick={handleCheckOut}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-200"
-          >
-            퇴근
-          </button>
-          <button
-            onClick={handleEarlyLeave}
-            className="px-6 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition duration-200"
-          >
-            조퇴
-          </button>
-        </div>
+        ) : (
+          <p className="text-sm text-gray-500">
+            {isTodayOnLeave
+              ? '오늘은 휴가일입니다.'
+              : '변경 가능한 상태가 없습니다.'}
+          </p>
+        )}
       </div>
 
       {/* Attendance records */}
@@ -312,36 +580,67 @@ const Attendance: React.FC = () => {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                {(user?.role === 'Manager' || user?.role === 'Admin') && (
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">이름</th>
-                )}
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">직원</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">날짜</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">출근</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">퇴근</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">조퇴</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">상태</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">누적 근무시간</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">작업</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {records.map((record: any) => (
                 <tr key={record.id}>
-                  {(user?.role === 'Manager' || user?.role === 'Admin') && (
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{record.name}</td>
-                  )}
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <div className="flex items-center gap-2">
+                      <img
+                        src={record.users?.profile_picture ?? '/default-avatar.png'}
+                        className="h-8 w-8 rounded-full object-cover"
+                        alt="profile"
+                      />
+                      <span>{record.users?.name ?? '이름 없음'}</span>
+                    </div>
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {new Date(record.date).toLocaleDateString('ko-KR')}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatTime(record.check_in)}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatTime(record.check_out)}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatTime(record.early_leave)}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {formatTime(record.check_in)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {formatTime(record.check_out)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {formatTime(record.early_leave)}
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 text-xs rounded-full ${record.status === 'present' ? 'bg-green-100 text-green-800' :
-                      record.status === 'early_leave' ? 'bg-orange-100 text-orange-800' :
-                        'bg-red-100 text-red-800'
-                      }`}>
-                      {record.status}
-                    </span>
+                    {(() => {
+                      const label = getStatusLabel(record.status);
+                      let colorClass = 'bg-gray-100 text-gray-800';
+
+                      if (label === '근무중') {
+                        colorClass = 'bg-green-100 text-green-800';
+                      } else if (label === '휴가') {
+                        colorClass = 'bg-blue-100 text-blue-800';
+                      } else if (label === '미출근') {
+                        colorClass = 'bg-red-100 text-red-800';
+                      } else if (label === '퇴근') {
+                        colorClass = 'bg-gray-100 text-gray-800';
+                      } else {
+                        colorClass = 'bg-orange-100 text-orange-800';
+                      }
+
+                      return (
+                        <span className={`px-2 py-1 text-xs rounded-full ${colorClass}`}>
+                          {label}
+                        </span>
+                      );
+                    })()}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {formatWorkTime(record.total_work_seconds)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     {record.user_id === user?.id && (
@@ -404,6 +703,57 @@ const Attendance: React.FC = () => {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* 업무중지 사유 선택 모달 */}
+      {showPauseModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-xl font-semibold mb-4">업무 중지 사유 선택</h3>
+            <div className="space-y-4">
+              <div className="flex flex-wrap gap-2">
+                {['휴게', '외출', '퇴근', '기타'].map((reason) => (
+                  <button
+                    key={reason}
+                    type="button"
+                    onClick={() => setPauseReason(reason as '휴게' | '외출' | '퇴근' | '기타')}
+                    className={`px-3 py-1 rounded-full text-sm border ${pauseReason === reason
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-gray-100 text-gray-700 border-gray-300'
+                      }`}
+                  >
+                    {reason}
+                  </button>
+                ))}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  사유 메모 (선택)
+                </label>
+                <textarea
+                  value={pauseMemo}
+                  onChange={(e) => setPauseMemo(e.target.value)}
+                  rows={3}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2"
+                />
+              </div>
+            </div>
+            <div className="mt-6 flex space-x-2">
+              <button
+                onClick={handlePauseConfirm}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              >
+                확인
+              </button>
+              <button
+                onClick={() => setShowPauseModal(false)}
+                className="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+              >
+                취소
+              </button>
+            </div>
           </div>
         </div>
       )}
