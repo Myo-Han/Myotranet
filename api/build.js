@@ -39,8 +39,16 @@ export default async function handler(req, res) {
 
     if (!jenkinsUrl || !jenkinsUser || !jenkinsToken || !jobName || !jobToken) {
       res.statusCode = 500;
-      return res.json({ message: 'Jenkins 환경변수가 부족합니다.' });
+      return res.json({
+        message: 'Jenkins 환경변수가 부족합니다.',
+        hasUrl: !!jenkinsUrl,
+        hasUser: !!jenkinsUser,
+        hasToken: !!jenkinsToken,
+        hasJobName: !!jobName,
+        hasJobToken: !!jobToken,
+      });
     }
+
 
     const auth = Buffer.from(`${jenkinsUser}:${jenkinsToken}`).toString('base64');
     const url =
