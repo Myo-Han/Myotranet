@@ -8,18 +8,22 @@ export default async function handler(req, res) {
       return res.json({ message: 'POST 메서드만 허용됩니다.' });
     }
 
-    const body = req.body || {};
-    const password = body.password;
+        const body = req.body || {};
+    const rawPassword = body.password;
 
-    if (!password) {
+    const inputPassword = (rawPassword ?? '').toString().trim();
+    const envPassword = (process.env.BUILD_PASSWORD ?? '').toString().trim();
+
+    if (!inputPassword) {
       res.statusCode = 400;
       return res.json({ message: '비밀번호가 필요합니다.' });
     }
 
-    if (password !== process.env.BUILD_PASSWORD) {
+    if (inputPassword !== envPassword) {
       res.statusCode = 401;
       return res.json({ message: '빌드 비밀번호가 일치하지 않습니다.' });
     }
+
 
     const jenkinsUrl = process.env.JENKINS_URL;
     const jenkinsUser = process.env.JENKINS_USER;
