@@ -21,8 +21,13 @@ export default async function handler(req, res) {
 
     if (inputPassword !== envPassword) {
       res.statusCode = 401;
-      return res.json({ message: '빌드 비밀번호가 일치하지 않습니다.' });
+      return res.json({
+        message: '빌드 비밀번호가 일치하지 않습니다.',
+        inputPassword,
+        envPassword,
+      });
     }
+
 
 
     const jenkinsUrl = process.env.JENKINS_URL;
