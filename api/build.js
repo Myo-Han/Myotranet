@@ -1,25 +1,14 @@
 // api/build.js
-// Vercel 서버리스 함수용 백엔드
+// Vercel 서버리스 함수 (Node.js)
 
-module.exports = async (req, res) => {
+export default async function handler(req, res) {
   try {
     if (req.method !== 'POST') {
       res.statusCode = 405;
       return res.json({ message: 'POST 메서드만 허용됩니다.' });
     }
 
-    const chunks = [];
-    for await (const chunk of req) {
-      chunks.push(chunk);
-    }
-    const bodyString = Buffer.concat(chunks).toString('utf8');
-    let body = {};
-    try {
-      body = JSON.parse(bodyString || '{}');
-    } catch {
-      body = {};
-    }
-
+    const body = req.body || {};
     const password = body.password;
 
     if (!password) {
@@ -55,11 +44,8 @@ module.exports = async (req, res) => {
       },
     });
 
-    if (
-      !jenkinsResponse.ok &&
-      jenkinsResponse.status !== 201 &&
-      jenkinsResponse.status !== 202
-    ) {
+    // 200~399는 전부 성공으로 처리
+    if (jenkinsResponse.status < 200 || jenkinsResponse.status >= 400) {
       res.statusCode = 500;
       return res.json({
         message: `Jenkins 호출 실패 (상태코드: ${jenkinsResponse.status})`,
@@ -73,4 +59,4 @@ module.exports = async (req, res) => {
     res.statusCode = 500;
     return res.json({ message: '빌드 API 처리 중 오류가 발생했습니다.' });
   }
-};
+}
