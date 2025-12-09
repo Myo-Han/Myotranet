@@ -10,6 +10,7 @@ import Leave from './pages/Leave';
 import Letters from './pages/Letters';
 import Search from './pages/Search';
 import Admin from './pages/Admin';
+import Works from './pages/Works';
 
 function App() {
   return (
@@ -27,6 +28,7 @@ function App() {
           >
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
+            <Route path="works" element={<Works />} />
             <Route path="attendance" element={<Attendance />} />
             <Route path="leave" element={<Leave />} />
             <Route path="letters" element={<Letters />} />

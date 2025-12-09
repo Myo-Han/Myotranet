@@ -72,7 +72,7 @@ const Leave: React.FC = () => {
         user_id: user.id,
         start_date: form.startDate,
         end_date: form.endDate,
-        type: form.leaveType,
+        leave_type: form.leaveType,
         days_requested: form.daysRequested,
         reason: form.reason,
         status: 'pending',
@@ -103,8 +103,8 @@ const Leave: React.FC = () => {
         .update({
           status,
           review_notes: notes,
-          approved_at: new Date().toISOString(),
-          approver_id: user.id,
+          reviewed_at: new Date().toISOString(),
+          reviewed_by: user.id,
         })
         .eq('id', leaveId);
 
@@ -182,11 +182,10 @@ const Leave: React.FC = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{leave.days_requested}일</td>
                   <td className="px-6 py-4 text-sm text-gray-900">{leave.reason}</td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 text-xs rounded-full ${
-                      leave.status === 'approved' ? 'bg-green-100 text-green-800' :
+                    <span className={`px-2 py-1 text-xs rounded-full ${leave.status === 'approved' ? 'bg-green-100 text-green-800' :
                       leave.status === 'rejected' ? 'bg-red-100 text-red-800' :
-                      'bg-yellow-100 text-yellow-800'
-                    }`}>
+                        'bg-yellow-100 text-yellow-800'
+                      }`}>
                       {leave.status === 'approved' ? '승인' : leave.status === 'rejected' ? '반려' : '대기'}
                     </span>
                   </td>

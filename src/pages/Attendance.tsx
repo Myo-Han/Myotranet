@@ -66,6 +66,23 @@ const Attendance: React.FC = () => {
     try {
       const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
 
+      // ✅ 오늘 승인된 휴가가 있으면 출근 불가
+      const { data: leaveToday, error: leaveError } = await supabase
+        .from('leaves')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('status', 'approved')
+        .lte('start_date', today)
+        .gte('end_date', today)
+        .maybeSingle();
+
+      if (leaveError && leaveError.code !== 'PGRST116') throw leaveError;
+
+      if (leaveToday) {
+        setError('오늘은 승인된 휴가일입니다. 출근을 찍을 수 없습니다.');
+        return;
+      }
+
       const { data: existing, error: selectError } = await supabase
         .from('attendance')
         .select('id')
