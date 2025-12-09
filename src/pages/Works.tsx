@@ -21,7 +21,7 @@ const Work: React.FC = () => {
     setShowBuildModal(true);
   };
 
-    const handleBuild = async () => {
+      const handleBuild = async () => {
     if (!buildPassword) {
       setError('빌드 비밀번호를 입력해주세요.');
       return;
@@ -32,7 +32,7 @@ const Work: React.FC = () => {
     setSuccess('');
 
     try {
-      const res = await fetch('http://localhost:3001/api/build', {
+      const res = await fetch('/api/build', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ password: buildPassword }),
