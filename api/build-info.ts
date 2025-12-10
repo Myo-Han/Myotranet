@@ -1,10 +1,6 @@
 // api/build-info.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabase } from '../supabaseClient';
-import { exec } from 'child_process';
-import util from 'util';
-
-const execAsync = util.promisify(exec);
 
 type Data =
   | { message: string }
@@ -70,29 +66,8 @@ export default async function handler(
       project = inserted;
     }
 
-    const repoUrl = project.repo_url as string | null;
-    let branches: string[] = [];
-
-    // 3) repo_url 있으면 git에서 브랜치 목록 뽑기
-    if (repoUrl) {
-      try {
-        // git ls-remote --heads <repo_url>
-        const { stdout } = await execAsync(
-          `git ls-remote --heads ${repoUrl}`
-        );
-
-        branches = stdout
-          .split('\n')
-          .filter(Boolean)
-          .map((line) => line.split('\t')[1]) // refs/heads/xxx
-          .filter((ref) => ref.startsWith('refs/heads/'))
-          .map((ref) => ref.replace('refs/heads/', ''));
-      } catch (gitErr) {
-        console.error('git ls-remote error:', gitErr);
-        // git 실패해도 API까지 죽이지 말고 그냥 빈 배열로 응답
-        branches = [];
-      }
-    }
+    // 3) 브랜치는 일단 빈 배열(추후에 붙일 예정)
+    const branches: string[] = [];
 
     return res.status(200).json({
       projectKey: project.project_key,
