@@ -42,15 +42,11 @@ const AutoLogoutWarning: React.FC = () => {
           </p>
         </div>
 
-        <p className="text-sm text-gray-600 mb-4">
-          계속 작업하시려면 "연장하기" 버튼을 클릭해주세요.
-        </p>
-
         <button
           onClick={extendSession}
           className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200"
         >
-          연장하기 (Stay Signed In)
+          연장하기
         </button>
       </div>
     </div>
