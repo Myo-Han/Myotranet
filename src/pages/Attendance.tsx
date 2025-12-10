@@ -10,6 +10,10 @@ const Attendance: React.FC = () => {
   const { user } = useAuth();
   const [records, setRecords] = useState<AttendanceType[]>([]);
   const [revisionRequests, setRevisionRequests] = useState<AttendanceRevisionRequest[]>([]);
+  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().slice(0, 10));
+  const [allEmployees, setAllEmployees] = useState<any[]>([]);
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const [showCalendar, setShowCalendar] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -30,34 +34,51 @@ const Attendance: React.FC = () => {
 
 
   useEffect(() => {
-    fetchData();
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 60000);
+    return () => clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [selectedDate]);
 
   const fetchData = async () => {
     setLoading(true);
     setError('');
     try {
+      const { data: employeesData, error: employeesError } = await supabase
+        .from('users')
+        .select('id, name, profile_picture')
+        .order('name');
+
+      if (employeesError) throw employeesError;
+      setAllEmployees(employeesData || []);
+
       const { data: attendanceData, error: attendanceError } = await supabase
         .from('attendance')
-        .select(`
-          id,
-          user_id,
-          date,
-          check_in,
-          check_out,
-          early_leave,
-          status,
-          total_work_seconds,
-          users (
-            name,
-            profile_picture
-          )
-        `)
-        .order('date', { ascending: false });
+        .select('*')
+        .eq('date', selectedDate);
 
       if (attendanceError) throw attendanceError;
 
-      setRecords(attendanceData || []);
+      const matchedRecords = (employeesData || []).map((employee: any) => {
+        const record = attendanceData?.find((a: any) => a.user_id === employee.id);
+        return {
+          id: record?.id || `empty-${employee.id}`,
+          user_id: employee.id,
+          date: selectedDate,
+          check_in: record?.check_in || null,
+          check_out: record?.check_out || null,
+          status: record?.status || 'absent',
+          current_status: record?.current_status || null,
+          total_work_seconds: record?.total_work_seconds || 0,
+          users: { name: employee.name, profile_picture: employee.profile_picture }
+        };
+      });
+
+      setRecords(matchedRecords);
 
       const { data: revisionsData, error: revisionsError } = await supabase
         .from('attendance_revision_requests')
@@ -147,6 +168,7 @@ const Attendance: React.FC = () => {
           date: today,
           check_in: nowIso,
           status: 'present',
+          current_status: 'work',
           total_work_seconds: 0,
         });
         if (insertError) throw insertError;
@@ -193,6 +215,7 @@ const Attendance: React.FC = () => {
       const updateData: any = {
         check_out: nowIso,
         status: 'off',
+        current_status: null,
       };
 
       if (existing.check_in) {
@@ -322,44 +345,72 @@ const Attendance: React.FC = () => {
 
   const formatTime = (dateString: string | null) => {
     if (!dateString) return '-';
-    return new Date(dateString).toLocaleString('ko-KR', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    const date = new Date(dateString);
+    return date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
   };
 
-  const getStatusLabel = (status: string | null) => {
-    if (!status) return '미출근';
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const yy = String(date.getFullYear()).slice(2);
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const dd = String(date.getDate()).padStart(2, '0');
+    return `${yy}.${mm}.${dd}`;
+  };
 
-    switch (status) {
-      case 'present':
-      case 'WORKING':
-        return '근무중';
-      case 'vacation':
-      case 'VACATION':
-        return '휴가';
-      case 'break':
-      case 'BREAK':
-        return '휴게';
-      case 'out':
-      case 'OUT':
-        return '외출';
-      case 'off':
-      case 'OFF':
-      case 'checked_out':
-      case 'CHECKED_OUT':
-        return '퇴근';
-      case 'early_leave':
-        return '조퇴';
-      case 'other':
-      case 'OTHER':
-        return '기타';
-      default:
-        return '기타';
+  const isNextDay = (checkIn: string | null, checkOut: string | null) => {
+    if (!checkIn || !checkOut) return false;
+    const inDate = new Date(checkIn).toISOString().slice(0, 10);
+    const outDate = new Date(checkOut).toISOString().slice(0, 10);
+    return inDate !== outDate;
+  };
+
+  const calculateWorkHours = (checkIn: string | null, checkOut: string | null, workSeconds: number) => {
+    if (!checkIn) return '-';
+    const isToday = selectedDate === new Date().toISOString().slice(0, 10);
+    let totalSeconds: number;
+    if (checkOut) {
+      totalSeconds = workSeconds;
+    } else if (isToday) {
+      const start = new Date(checkIn).getTime();
+      const now = currentTime.getTime();
+      totalSeconds = Math.max(0, Math.floor((now - start) / 1000));
+    } else {
+      return '-';
     }
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    if (checkOut || !isToday) {
+      return `${hours}h`;
+    } else {
+      return `${hours}h ${minutes}m`;
+    }
+  };
+
+  const getStatusLabel = (status: string, currentStatus: string | null) => {
+    const isToday = selectedDate === new Date().toISOString().slice(0, 10);
+    if (status === 'absent') return '미출근';
+    if (status === 'off') return '퇴근';
+    if (status === 'present' && isToday) {
+      if (currentStatus === 'work') return '근무중';
+      if (currentStatus === 'break') return '휴게중';
+      if (currentStatus === 'out') return '외근중';
+      if (currentStatus === 'meeting') return '회의중';
+      return '근무중';
+    }
+    if (status === 'VACATION') return '휴가';
+    return '출근';
+  };
+
+  const getStatusColor = (status: string, currentStatus: string | null) => {
+    const label = getStatusLabel(status, currentStatus);
+    if (label === '근무중') return 'bg-green-100 text-green-800';
+    if (label === '휴게중') return 'bg-orange-100 text-orange-800';
+    if (label === '외근중') return 'bg-blue-100 text-blue-800';
+    if (label === '회의중') return 'bg-purple-100 text-purple-800';
+    if (label === '퇴근') return 'bg-gray-100 text-gray-800';
+    if (label === '미출근') return 'bg-red-100 text-red-800';
+    if (label === '휴가') return 'bg-blue-100 text-blue-800';
+    return 'bg-gray-100 text-gray-800';
   };
 
   const formatWorkTime = (seconds?: number | null) => {
@@ -545,7 +596,46 @@ const Attendance: React.FC = () => {
 
       {error && <ErrorMessage message={error} />}
       {success && <SuccessMessage message={success} />}
-
+{/* 날짜 필터 + 새로고침 */}
+      <div className="bg-white shadow rounded-lg p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center space-x-4">
+            <button onClick={() => {
+              const date = new Date(selectedDate);
+              date.setDate(date.getDate() - 1);
+              setSelectedDate(date.toISOString().slice(0, 10));
+            }} className="px-3 py-2 bg-gray-100 rounded hover:bg-gray-200">←</button>
+            
+            <div className="relative">
+              <button onClick={() => setShowCalendar(!showCalendar)}
+                className="px-4 py-2 bg-white border border-gray-300 rounded hover:bg-gray-50 min-w-[120px]">
+                📅 {formatDate(selectedDate)}
+              </button>
+              {showCalendar && (
+                <div className="absolute top-full mt-2 z-10 bg-white border border-gray-300 rounded shadow-lg">
+                  <input type="date" value={selectedDate}
+                    onChange={(e) => { setSelectedDate(e.target.value); setShowCalendar(false); }}
+                    className="px-3 py-2" />
+                </div>
+              )}
+            </div>
+            
+            <button onClick={() => {
+              const date = new Date(selectedDate);
+              date.setDate(date.getDate() + 1);
+              setSelectedDate(date.toISOString().slice(0, 10));
+            }} className="px-3 py-2 bg-gray-100 rounded hover:bg-gray-200">→</button>
+            
+            {selectedDate !== new Date().toISOString().slice(0, 10) && (
+              <button onClick={() => setSelectedDate(new Date().toISOString().slice(0, 10))}
+                className="px-4 py-2 bg-blue-100 text-blue-700 rounded hover:bg-blue-200">오늘</button>
+            )}
+          </div>
+          
+          <button onClick={fetchData} className="px-4 py-2 bg-gray-100 rounded hover:bg-gray-200">
+            🔄 새로고침
+          </button>
+        </div>
       {/* Check-in/out button (토글) */}
       <div className="bg-white shadow rounded-lg p-6">
         <h2 className="text-xl font-semibold mb-4">오늘의 출퇴근</h2>
@@ -581,12 +671,10 @@ const Attendance: React.FC = () => {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">직원</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">날짜</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">출근</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">퇴근</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">조퇴</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">상태</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">누적 근무시간</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">근무시간</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">작업</th>
               </tr>
             </thead>
@@ -604,43 +692,25 @@ const Attendance: React.FC = () => {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {new Date(record.date).toLocaleDateString('ko-KR')}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {formatTime(record.check_in)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {formatTime(record.check_out)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {formatTime(record.early_leave)}
+                    {record.check_out ? (
+                      <>
+                        {isNextDay(record.check_in, record.check_out) && (
+                          <span className="text-orange-600 font-medium">익일 </span>
+                        )}
+                        {formatTime(record.check_out)}
+                      </>
+                    ) : '-'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    {(() => {
-                      const label = getStatusLabel(record.status);
-                      let colorClass = 'bg-gray-100 text-gray-800';
-
-                      if (label === '근무중') {
-                        colorClass = 'bg-green-100 text-green-800';
-                      } else if (label === '휴가') {
-                        colorClass = 'bg-blue-100 text-blue-800';
-                      } else if (label === '미출근') {
-                        colorClass = 'bg-red-100 text-red-800';
-                      } else if (label === '퇴근') {
-                        colorClass = 'bg-gray-100 text-gray-800';
-                      } else {
-                        colorClass = 'bg-orange-100 text-orange-800';
-                      }
-
-                      return (
-                        <span className={`px-2 py-1 text-xs rounded-full ${colorClass}`}>
-                          {label}
-                        </span>
-                      );
-                    })()}
+                    <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(record.status, record.current_status)}`}>
+                      {getStatusLabel(record.status, record.current_status)}
+                    </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {formatWorkTime(record.total_work_seconds)}
+                    {calculateWorkHours(record.check_in, record.check_out, record.total_work_seconds)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     {record.user_id === user?.id && (
