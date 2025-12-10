@@ -486,19 +486,20 @@ const Attendance: React.FC = () => {
     }
   };
 
-  const getStatusLabel = (status: string, currentStatus: string | null) => {
+  const getStatusLabel = (status: string | null, currentStatus?: string | null) => {
     const isToday = selectedDate === getTodayDate();
     if (status === 'absent') return '미출근';
     if (status === 'off') return '퇴근';
     if (status === 'present' && isToday) {
       if (currentStatus === 'work') return '근무중';
+      if (currentStatus === 'pause') return '휴게중';
       if (currentStatus === 'break') return '휴게중';
       if (currentStatus === 'out') return '외근중';
       if (currentStatus === 'meeting') return '회의중';
       return '근무중';
     }
     if (status === 'VACATION') return '휴가';
-    return '출근';
+    return '미출근';
   };
 
   const getStatusColor = (status: string, currentStatus: string | null) => {
@@ -525,11 +526,15 @@ const Attendance: React.FC = () => {
   const getTodayButtonLabel = () => {
     if (isTodayOnLeave) return '';
 
-    const label = getStatusLabel(todayStatus);
+    // todayStatus와 user.current_status 확인
+    const myEmployee = allEmployees.find(e => e.id === user?.id);
+    const currentStatus = myEmployee?.current_status;
+
+    const label = getStatusLabel(todayStatus, currentStatus);
 
     if (label === '휴가' || label === '퇴근') return '';
     if (label === '근무중') return '업무중지';
-    if (label === '휴게' || label === '외출' || label === '기타') return '업무재개';
+    if (label === '휴게중') return '업무재개';
     if (label === '미출근') return '출근';
     if (!todayStatus) return '출근';
 
@@ -582,7 +587,10 @@ const Attendance: React.FC = () => {
       return;
     }
 
-    const label = getStatusLabel(todayStatus);
+    const myEmployee = allEmployees.find(e => e.id === user.id);
+    const currentStatus = myEmployee?.current_status;
+
+    const label = getStatusLabel(todayStatus, currentStatus);
 
     if (!todayStatus || label === '미출근') {
       await handleCheckIn();
@@ -596,8 +604,8 @@ const Attendance: React.FC = () => {
       return;
     }
 
-    if (label === '휴게' || label === '외출' || label === '기타') {
-      await handleResumeFromPause();
+    if (label === '휴게중') {
+      await handleResume();
       return;
     }
 
@@ -796,7 +804,12 @@ const Attendance: React.FC = () => {
         {getTodayButtonLabel() ? (
           <button
             onClick={handleTodayAction}
-            className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition duration-200"
+            className={`px-4 py-2 text-white rounded-lg ${getTodayButtonLabel() === '업무중지'
+                ? 'bg-orange-600 hover:bg-orange-700'
+                : getTodayButtonLabel() === '업무재개'
+                  ? 'bg-green-600 hover:bg-green-700'
+                  : 'bg-blue-600 hover:bg-blue-700'
+              }`}
           >
             {getTodayButtonLabel()}
           </button>
@@ -873,12 +886,16 @@ const Attendance: React.FC = () => {
                 <tr key={record.id}>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     <div className="flex items-center gap-2">
-                      {record.users?.profile_picture && (
+                      {record.users?.profile_picture ? (
                         <img
                           src={record.users.profile_picture}
                           className="h-8 w-8 rounded-full object-cover"
                           alt="profile"
                         />
+                      ) : (
+                        <div className="h-8 w-8 rounded-full bg-gray-300 flex items-center justify-center text-xs font-semibold text-gray-600">
+                          {record.users?.name?.charAt(0).toUpperCase() || '?'}
+                        </div>
                       )}
                       <span>{record.users?.name ?? '이름 없음'}</span>
                     </div>
