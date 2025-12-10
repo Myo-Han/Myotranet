@@ -69,8 +69,45 @@ export default async function handler(req, res) {
       project = inserted;
     }
 
-    // 3) 브랜치는 일단 빈 배열
-    const branches = [];
+    // 3) 브랜치 목록 (하드코딩 또는 Git API로 가져오기)
+    let branches = [];
+try {
+  const jenkinsUrl = process.env.JENKINS_URL;
+  const jenkinsUser = process.env.JENKINS_USER;
+  const jenkinsToken = process.env.JENKINS_API_TOKEN;
+  const jobName = process.env.JENKINS_JOB_NAME;
+
+  if (jenkinsUrl && jenkinsUser && jenkinsToken && jobName) {
+    const auth = Buffer.from(`${jenkinsUser}:${jenkinsToken}`).toString('base64');
+    const baseUrl = jenkinsUrl.replace(/\/$/, '');
+    const jobUrl = `${baseUrl}/job/${encodeURIComponent(jobName)}/api/json`;
+
+    const response = await fetch(jobUrl, {
+      headers: { Authorization: `Basic ${auth}` }
+    });
+
+    if (response.ok) {
+      const jobData = await response.json();
+      // SCM 설정에서 브랜치 추출
+      if (jobData.actions) {
+        for (const action of jobData.actions) {
+          if (action._class && action._class.includes('GitSCM') && action.branches) {
+            branches = action.branches.map(b => b.name);
+            break;
+          }
+        }
+      }
+    }
+  }
+  
+  // Jenkins에서 못 가져왔으면 기본값
+  if (branches.length === 0) {
+    branches = ['*/dev', '*/main'];
+  }
+} catch (err) {
+  console.error('Jenkins 브랜치 조회 실패:', err);
+  branches = ['*/dev', '*/main'];
+}
 
     console.log('✅ 성공:', project);
 
