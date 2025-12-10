@@ -137,9 +137,21 @@ const Attendance: React.FC = () => {
     if (!user) return;
 
     try {
+      const now = new Date();
       const today = getTodayDate();
 
-      // ✅ 오늘 승인된 휴가가 있으면 출근 불가
+      // 1. 미래 날짜 출근 방지
+      const todayDate = new Date(today);
+      todayDate.setHours(0, 0, 0, 0);
+      const currentDate = new Date();
+      currentDate.setHours(0, 0, 0, 0);
+
+      if (todayDate > currentDate) {
+        setError('미래 날짜에는 출근할 수 없습니다');
+        return;
+      }
+
+      // 2. 오늘 승인된 휴가 체크
       const { data: leaveToday, error: leaveError } = await supabase
         .from('leaves')
         .select('id')
@@ -156,40 +168,65 @@ const Attendance: React.FC = () => {
         return;
       }
 
-      const { data: existing, error: selectError } = await supabase
+      // 3. 미완료 레코드 체크 (전날 이전)
+      const { data: incompleteRecords, error: incompleteError } = await supabase
         .from('attendance')
-        .select('id')
+        .select('id, date, check_in, check_out')
+        .eq('user_id', user.id)
+        .is('check_out', null)
+        .lt('date', today);
+
+      if (incompleteError) throw incompleteError;
+
+      if (incompleteRecords && incompleteRecords.length > 0) {
+        // 야근 중인지 확인 (전날 출근 후 24시간 이내)
+        const lastIncomplete = incompleteRecords[0];
+        const checkInTime = new Date(lastIncomplete.check_in);
+        const hoursSinceCheckIn = (now.getTime() - checkInTime.getTime()) / (1000 * 60 * 60);
+
+        if (hoursSinceCheckIn > 24) {
+          setError(
+            `${lastIncomplete.date} 퇴근 기록이 없습니다. 관리자에게 수정 요청을 제출하세요.`
+          );
+          return;
+        }
+        // 24시간 이내면 야근 중으로 간주하고 진행
+      }
+
+      // 4. 당일 중복 출근 방지
+      const { data: todayRecord, error: todayError } = await supabase
+        .from('attendance')
+        .select('id, check_out')
         .eq('user_id', user.id)
         .eq('date', today)
         .maybeSingle();
 
-      if (selectError && selectError.code !== 'PGRST116') throw selectError;
+      if (todayError && todayError.code !== 'PGRST116') throw todayError;
 
-      const nowIso = new Date().toISOString();
-
-      if (!existing) {
-        const { error: insertError } = await supabase.from('attendance').insert({
-          user_id: user.id,
-          date: today,
-          check_in: nowIso,
-          status: 'present',
-          total_work_seconds: 0,
-        });
-        if (insertError) throw insertError;
-
-        await supabase.from('users').update({ current_status: 'work' }).eq('id', user.id);
-      } else {
-        const { error: updateError } = await supabase
-          .from('attendance')
-          .update({
-            check_in: nowIso,
-            status: 'present',
-            total_work_seconds: 0,
-          })
-          .eq('id', existing.id);
-        if (updateError) throw updateError;
-        await supabase.from('users').update({ current_status: 'work' }).eq('id', user.id);
+      if (todayRecord) {
+        if (!todayRecord.check_out) {
+          setError('이미 출근 중입니다');
+          return;
+        } else {
+          setError('오늘 이미 퇴근하셨습니다');
+          return;
+        }
       }
+
+      // 5. 출근 처리
+      const nowIso = now.toISOString();
+
+      const { error: insertError } = await supabase.from('attendance').insert({
+        user_id: user.id,
+        date: today,
+        check_in: nowIso,
+        status: 'present',
+        total_work_seconds: 0,
+      });
+
+      if (insertError) throw insertError;
+
+      await supabase.from('users').update({ current_status: 'work' }).eq('id', user.id);
 
       setSuccess('출근 처리되었습니다');
       fetchData();
@@ -203,38 +240,94 @@ const Attendance: React.FC = () => {
     if (!user) return;
 
     try {
+      // 출근한 날짜 찾기 (오늘 또는 어제)
       const today = getTodayDate();
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
 
-      const { data: existing, error: selectError } = await supabase
+      // 오늘 출근 레코드 확인
+      let { data: existing, error: selectError } = await supabase
         .from('attendance')
-        .select('id, check_in')
+        .select('id, date, check_in, user_id')
         .eq('user_id', user.id)
         .eq('date', today)
+        .is('check_out', null)
         .maybeSingle();
 
-      if (selectError) throw selectError;
+      if (selectError && selectError.code !== 'PGRST116') throw selectError;
+
+      // 오늘 없으면 어제 출근 레코드 확인 (야근 케이스)
+      if (!existing) {
+        const result = await supabase
+          .from('attendance')
+          .select('id, date, check_in, user_id')
+          .eq('user_id', user.id)
+          .eq('date', yesterdayStr)
+          .is('check_out', null)
+          .maybeSingle();
+
+        if (result.error && result.error.code !== 'PGRST116') throw result.error;
+        existing = result.data;
+      }
+
       if (!existing) {
         setError('출근 기록이 없습니다');
         return;
       }
 
       const nowIso = new Date().toISOString();
+
+      // attendance_events에서 pause 시간 계산
+      const { data: pauseEvents, error: pauseError } = await supabase
+        .from('attendance_events')
+        .select('event_type, occurred_at')
+        .eq('user_id', user.id)
+        .eq('attendance_id', existing.id)
+        .in('event_type', ['pause', 'resume'])
+        .order('occurred_at', { ascending: true });
+
+      if (pauseError) throw pauseError;
+
+      let totalPauseSeconds = 0;
+      let lastPauseTime: Date | null = null;
+
+      // pause와 resume 쌍을 찾아서 시간 계산
+      (pauseEvents || []).forEach((event: any) => {
+        if (event.event_type === 'pause') {
+          lastPauseTime = new Date(event.occurred_at);
+        } else if (event.event_type === 'resume' && lastPauseTime) {
+          const resumeTime = new Date(event.occurred_at);
+          const pauseDuration = (resumeTime.getTime() - lastPauseTime.getTime()) / 1000;
+          totalPauseSeconds += pauseDuration;
+          lastPauseTime = null;
+        }
+      });
+
+      // 아직 resume 안 한 pause가 있으면 현재까지 시간 계산
+      if (lastPauseTime) {
+        const now = new Date();
+        const pauseDuration = (now.getTime() - lastPauseTime.getTime()) / 1000;
+        totalPauseSeconds += pauseDuration;
+      }
+
+      // 총 근무시간 = (퇴근 - 출근) - pause 시간
+      const checkInTime = new Date(existing.check_in).getTime();
+      const checkOutTime = new Date(nowIso).getTime();
+      const totalSeconds = Math.floor((checkOutTime - checkInTime) / 1000);
+      const workSeconds = Math.max(0, totalSeconds - Math.floor(totalPauseSeconds));
+
       const updateData: any = {
         check_out: nowIso,
         status: 'off',
+        total_work_seconds: workSeconds,
       };
-
-      if (existing.check_in) {
-        const start = new Date(existing.check_in).getTime();
-        const end = new Date(nowIso).getTime();
-        const diffSec = Math.max(0, Math.floor((end - start) / 1000));
-        updateData.total_work_seconds = diffSec;
-      }
 
       const { error: updateError } = await supabase
         .from('attendance')
         .update(updateData)
         .eq('id', existing.id);
+
       if (updateError) throw updateError;
 
       await supabase.from('users').update({ current_status: null }).eq('id', user.id);
@@ -513,8 +606,6 @@ const Attendance: React.FC = () => {
 
   // 🔹 업무중지 모달에서 사유 선택 후 확정
   const handlePauseConfirm = async () => {
-    if (!user) return;
-
     if (!pauseReason) {
       setError('사유를 선택해주세요');
       return;
@@ -523,75 +614,162 @@ const Attendance: React.FC = () => {
     try {
       const today = getTodayDate();
 
-      const { data: existing, error: selectError } = await supabase
+      // 출근한 날짜 찾기 (오늘 또는 어제)
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
+
+      let { data: existing, error: selectError } = await supabase
         .from('attendance')
-        .select('id, check_in, total_work_seconds')
-        .eq('user_id', user.id)
+        .select('id, date, check_in')
+        .eq('user_id', user!.id)
         .eq('date', today)
+        .is('check_out', null)
         .maybeSingle();
 
-      if (selectError) throw selectError;
+      if (selectError && selectError.code !== 'PGRST116') throw selectError;
+
+      // 오늘 없으면 어제 확인 (야근)
+      if (!existing) {
+        const result = await supabase
+          .from('attendance')
+          .select('id, date, check_in')
+          .eq('user_id', user!.id)
+          .eq('date', yesterdayStr)
+          .is('check_out', null)
+          .maybeSingle();
+
+        if (result.error && result.error.code !== 'PGRST116') throw result.error;
+        existing = result.data;
+      }
+
       if (!existing) {
         setError('출근 기록이 없습니다');
         return;
       }
 
-      if (pauseReason === '퇴근') {
-        // 퇴근 처리 + 누적시간 계산
-        const nowIso = new Date().toISOString();
-        const updateData: any = {
-          check_out: nowIso,
-          status: 'off',
-        };
+      const nowIso = new Date().toISOString();
 
-        if (existing.check_in) {
-          const start = new Date(existing.check_in).getTime();
-          const end = new Date(nowIso).getTime();
-          const diffSec = Math.max(0, Math.floor((end - start) / 1000));
-          updateData.total_work_seconds = diffSec;
-        }
+      // attendance_events에 pause 기록
+      const { error: eventError } = await supabase.from('attendance_events').insert({
+        user_id: user!.id,
+        attendance_id: existing.id,
+        event_type: 'pause',
+        reason_category: pauseReason,
+        notes: pauseMemo || null,
+        occurred_at: nowIso,
+      });
 
-        if (pauseMemo) {
-          updateData.notes = `[퇴근] ${pauseMemo}`;
-        }
+      if (eventError) throw eventError;
 
-        const { error: updateError } = await supabase
-          .from('attendance')
-          .update(updateData)
-          .eq('id', existing.id);
+      await supabase.from('users').update({ current_status: 'pause' }).eq('id', user!.id);
 
-        if (updateError) throw updateError;
-        await supabase.from('users').update({ current_status: null }).eq('id', user.id);
-        setSuccess('퇴근 처리되었습니다');
-      } else {
-        // 휴게 / 외출 / 기타 → 상태만 변경
-        let statusValue = 'break';
-        if (pauseReason === '외출') statusValue = 'out';
-        if (pauseReason === '기타') statusValue = 'other';
-
-        const updateData: any = {
-          status: statusValue,
-        };
-
-        if (pauseMemo) {
-          updateData.notes = `[${pauseReason}] ${pauseMemo}`;
-        }
-
-        const { error: updateError } = await supabase
-          .from('attendance')
-          .update(updateData)
-          .eq('id', existing.id);
-
-        if (updateError) throw updateError;
-        await supabase.from('users').update({ current_status: null }).eq('id', user.id);
-        setSuccess('업무가 일시중지되었습니다');
-      }
-
+      setSuccess('업무중지 처리되었습니다');
       setShowPauseModal(false);
+      setPauseReason('');
+      setPauseMemo('');
       fetchData();
       setTimeout(() => setSuccess(''), 3000);
     } catch (err: any) {
-      setError(err.message || '상태 변경에 실패했습니다');
+      setError(err.message || '업무중지 실패');
+    }
+  };
+
+  const handleResume = async () => {
+    if (!user) return;
+
+    try {
+      const today = getTodayDate();
+
+      // 출근한 날짜 찾기 (오늘 또는 어제)
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
+
+      let { data: existing, error: selectError } = await supabase
+        .from('attendance')
+        .select('id, date, check_in')
+        .eq('user_id', user.id)
+        .eq('date', today)
+        .is('check_out', null)
+        .maybeSingle();
+
+      if (selectError && selectError.code !== 'PGRST116') throw selectError;
+
+      // 오늘 없으면 어제 확인 (야근)
+      if (!existing) {
+        const result = await supabase
+          .from('attendance')
+          .select('id, date, check_in')
+          .eq('user_id', user.id)
+          .eq('date', yesterdayStr)
+          .is('check_out', null)
+          .maybeSingle();
+
+        if (result.error && result.error.code !== 'PGRST116') throw result.error;
+        existing = result.data;
+      }
+
+      if (!existing) {
+        setError('출근 기록이 없습니다');
+        return;
+      }
+
+      const nowIso = new Date().toISOString();
+
+      // attendance_events에 resume 기록
+      const { error: eventError } = await supabase.from('attendance_events').insert({
+        user_id: user.id,
+        attendance_id: existing.id,
+        event_type: 'resume',
+        occurred_at: nowIso,
+      });
+
+      if (eventError) throw eventError;
+
+      // 현재까지 누적 근무시간 계산
+      const { data: pauseEvents, error: pauseError } = await supabase
+        .from('attendance_events')
+        .select('event_type, occurred_at')
+        .eq('user_id', user.id)
+        .eq('attendance_id', existing.id)
+        .in('event_type', ['pause', 'resume'])
+        .order('occurred_at', { ascending: true });
+
+      if (pauseError) throw pauseError;
+
+      let totalPauseSeconds = 0;
+      let lastPauseTime: Date | null = null;
+
+      (pauseEvents || []).forEach((event: any) => {
+        if (event.event_type === 'pause') {
+          lastPauseTime = new Date(event.occurred_at);
+        } else if (event.event_type === 'resume' && lastPauseTime) {
+          const resumeTime = new Date(event.occurred_at);
+          const pauseDuration = (resumeTime.getTime() - lastPauseTime.getTime()) / 1000;
+          totalPauseSeconds += pauseDuration;
+          lastPauseTime = null;
+        }
+      });
+
+      // 현재까지 총 근무시간 업데이트
+      const checkInTime = new Date(existing.check_in).getTime();
+      const now = new Date().getTime();
+      const totalSeconds = Math.floor((now - checkInTime) / 1000);
+      const workSeconds = Math.max(0, totalSeconds - Math.floor(totalPauseSeconds));
+
+      await supabase
+        .from('attendance')
+        .update({ total_work_seconds: workSeconds })
+        .eq('id', existing.id);
+
+      await supabase.from('users').update({ current_status: 'work' }).eq('id', user.id);
+
+      setSuccess('업무재개 처리되었습니다');
+      fetchData();
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err: any) {
+      setError(err.message || '업무재개 실패');
     }
   };
 
@@ -695,11 +873,13 @@ const Attendance: React.FC = () => {
                 <tr key={record.id}>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     <div className="flex items-center gap-2">
-                      <img
-                        src={record.users?.profile_picture ?? '/default-avatar.png'}
-                        className="h-8 w-8 rounded-full object-cover"
-                        alt="profile"
-                      />
+                      {record.users?.profile_picture && (
+                        <img
+                          src={record.users.profile_picture}
+                          className="h-8 w-8 rounded-full object-cover"
+                          alt="profile"
+                        />
+                      )}
                       <span>{record.users?.name ?? '이름 없음'}</span>
                     </div>
                   </td>

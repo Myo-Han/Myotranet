@@ -385,7 +385,6 @@ const Leave: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900">휴가 관리</h1>
         <button
           onClick={() => setShowModal(true)}
           className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
