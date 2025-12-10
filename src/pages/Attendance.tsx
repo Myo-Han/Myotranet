@@ -55,7 +55,7 @@ const Attendance: React.FC = () => {
     try {
       const { data: employeesData, error: employeesError } = await supabase
         .from('users')
-        .select('id, name, profile_picture')
+        .select('id, name, profile_picture, current_status')
         .order('name');
 
       if (employeesError) throw employeesError;
