@@ -26,7 +26,9 @@ const Work: React.FC = () => {
         setError('');
 
         // 브랜치 목록 + 현재 버전 가져오는 API (엔드포인트는 백엔드에서 맞추면 됨)
-        const res = await fetch('/api/build-info');
+        const PROJECT_KEY = 'LDProject';
+
+        const res = await fetch(`/api/build-info?projectKey=${PROJECT_KEY}`);
         if (!res.ok) throw new Error('빌드 정보를 불러오지 못했습니다.');
 
         const data = await res.json();
@@ -154,7 +156,7 @@ const Work: React.FC = () => {
         </div>
       )}
 
-            {showBuildModal && (
+      {showBuildModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40">
           <div className="bg-white rounded-lg p-6 max-w-sm w-full mx-4">
             <h2 className="text-xl font-semibold mb-4">빌드 정보 입력</h2>
