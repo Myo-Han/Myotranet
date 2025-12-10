@@ -1,10 +1,21 @@
-require('dotenv').config();
+// E:\Unreal\HNGAMES\server.cjs
+
+const path = require('path');
+const dotenvResult = require('dotenv').config({
+  path: path.join(__dirname, '.env'),
+});
+
+if (dotenvResult.error) {
+  console.log('dotenv 로드 에러:', dotenvResult.error);
+} else {
+  console.log('dotenv 로드 성공, 로드된 키:', Object.keys(dotenvResult.parsed || {}));
+}
+
 const express = require('express');
 const cors = require('cors');
 
 const app = express();
 
-// 필요한 경우 출처 제한해서 CORS 설정
 app.use(cors());
 app.use(express.json());
 
@@ -12,11 +23,14 @@ app.post('/api/build', async (req, res) => {
   try {
     const { password } = req.body;
 
-    if (!password) {
+    const inputPassword = (password ?? '').toString().trim();
+    const envPassword = (process.env.BUILD_PASSWORD ?? '').toString().trim();
+
+    if (!inputPassword) {
       return res.status(400).json({ message: '비밀번호가 필요합니다.' });
     }
 
-    if (password !== process.env.BUILD_PASSWORD) {
+    if (inputPassword !== envPassword) {
       return res.status(401).json({ message: '빌드 비밀번호가 일치하지 않습니다.' });
     }
 
@@ -26,8 +40,24 @@ app.post('/api/build', async (req, res) => {
     const jobName = process.env.JENKINS_JOB_NAME;
     const jobToken = process.env.JENKINS_JOB_TOKEN;
 
+    // 어떤 값이 비었는지 확인용
     if (!jenkinsUrl || !jenkinsUser || !jenkinsToken || !jobName || !jobToken) {
-      return res.status(500).json({ message: 'Jenkins 설정이 완전히 되어 있지 않습니다.' });
+      console.log('Jenkins env check:', {
+        jenkinsUrl,
+        jenkinsUser,
+        jenkinsTokenSet: !!jenkinsToken,
+        jobName,
+        jobTokenSet: !!jobToken,
+      });
+
+      return res.status(500).json({
+        message: 'Jenkins 설정이 완전히 되어 있지 않습니다.',
+        hasUrl: !!jenkinsUrl,
+        hasUser: !!jenkinsUser,
+        hasToken: !!jenkinsToken,
+        hasJobName: !!jobName,
+        hasJobToken: !!jobToken,
+      });
     }
 
     const auth = Buffer.from(`${jenkinsUser}:${jenkinsToken}`).toString('base64');
@@ -42,7 +72,7 @@ app.post('/api/build', async (req, res) => {
       },
     });
 
-    if (!jenkinsResponse.ok && jenkinsResponse.status !== 201 && jenkinsResponse.status !== 202) {
+    if (jenkinsResponse.status < 200 || jenkinsResponse.status >= 400) {
       return res
         .status(500)
         .json({ message: `Jenkins 호출 실패 (상태코드: ${jenkinsResponse.status})` });
