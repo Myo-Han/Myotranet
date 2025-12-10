@@ -7,6 +7,7 @@ export interface User {
   profile_picture?: string | null;
   role: 'Admin' | 'Manager' | 'User';
   annual_leave_balance?: number;
+  monthly_leave_balance?: number;
   is_active?: boolean;
   created_at?: string;
   updated_at?: string;
@@ -50,8 +51,10 @@ export interface Leave {
   user_id: string;
   start_date: string;
   end_date: string;
-  leave_type: 'annual' | 'half_day';
+  leave_type: 'annual' | 'half_day' | 'monthly_leave' | 'maternity_leave' | 'maternity_leave_multiple' | 'paternity_leave' | 'menstrual_leave' | 'family_care_leave' | 'event_leave_marriage_self' | 'event_leave_marriage_child' | 'event_leave_death_parent' | 'event_leave_death_grandparent';
   days_requested: number;
+  paid_days: number;
+  unpaid_days: number;
   reason: string;
   status: 'pending' | 'approved' | 'rejected';
   reviewed_by: string | null;
@@ -61,6 +64,18 @@ export interface Leave {
   updated_at: string;
   name?: string;
   email?: string;
+}
+
+export interface LeaveBalanceHistory {
+  id: string;
+  user_id: string;
+  policy_code: string;
+  change_type: 'accrual' | 'used' | 'expired' | 'manual_add' | 'manual_subtract';
+  change_amount: number;
+  balance_after: number;
+  reason: string | null;
+  related_leave_id: string | null;
+  created_at: string;
 }
 
 export interface Letter {
