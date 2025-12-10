@@ -1,20 +1,7 @@
-// api/build-info.ts
-import type { NextApiRequest, NextApiResponse } from 'next';
-import { supabase } from '../supabaseClient';
+// api/build-info.js
+import { createClient } from '@supabase/supabase-js';
 
-type Data =
-  | { message: string }
-  | {
-      projectKey: string;
-      projectName: string;
-      branches: string[];
-      currentVersion: string;
-    };
-
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse<Data>
-) {
+export default async function handler(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).json({ message: 'GET만 지원합니다.' });
   }
@@ -27,6 +14,19 @@ export default async function handler(
   }
 
   try {
+    // Supabase 클라이언트 생성
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+    if (!supabaseUrl || !supabaseKey) {
+      console.error('Supabase 환경 변수 없음');
+      return res.status(500).json({ message: 'Supabase 설정이 없습니다.' });
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    console.log('🔍 프로젝트 조회:', projectKey);
+
     // 1) 프로젝트 버전 정보 조회
     const { data: row, error } = await supabase
       .from('project_versions')
@@ -35,16 +35,18 @@ export default async function handler(
       .maybeSingle();
 
     if (error) {
-      console.error('select project_versions error:', error);
-      return res
-        .status(500)
-        .json({ message: '버전 정보를 조회하지 못했습니다.' });
+      console.error('❌ select error:', error);
+      return res.status(500).json({ 
+        message: '버전 정보를 조회하지 못했습니다.',
+        error: error.message 
+      });
     }
 
     let project = row;
 
     // 2) 없으면 0.0.1로 생성
     if (!project) {
+      console.log('📝 프로젝트 생성');
       const { data: inserted, error: insertError } = await supabase
         .from('project_versions')
         .insert({
@@ -57,17 +59,20 @@ export default async function handler(
         .single();
 
       if (insertError) {
-        console.error('insert project_versions error:', insertError);
-        return res
-          .status(500)
-          .json({ message: '버전 정보를 생성하지 못했습니다.' });
+        console.error('❌ insert error:', insertError);
+        return res.status(500).json({ 
+          message: '버전 정보를 생성하지 못했습니다.',
+          error: insertError.message 
+        });
       }
 
       project = inserted;
     }
 
-    // 3) 브랜치는 일단 빈 배열(추후에 붙일 예정)
-    const branches: string[] = [];
+    // 3) 브랜치는 일단 빈 배열
+    const branches = [];
+
+    console.log('✅ 성공:', project);
 
     return res.status(200).json({
       projectKey: project.project_key,
@@ -76,9 +81,10 @@ export default async function handler(
       currentVersion: project.current_version,
     });
   } catch (e) {
-    console.error('build-info handler error:', e);
-    return res
-      .status(500)
-      .json({ message: 'build-info 처리 중 오류가 발생했습니다.' });
+    console.error('❌ handler error:', e);
+    return res.status(500).json({ 
+      message: 'build-info 처리 중 오류가 발생했습니다.',
+      error: String(e)
+    });
   }
 }
