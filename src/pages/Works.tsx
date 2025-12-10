@@ -32,7 +32,7 @@ const Work: React.FC = () => {
     setSuccess('');
 
     try {
-      const res = await fetch('https://119.204.228.231:15565/api/build', {
+      const res = await fetch('/api/build', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ password: buildPassword }),
