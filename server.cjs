@@ -1,7 +1,10 @@
-// E:\Unreal\HNGAMES\server.cjs
-
 const path = require('path');
-const dotenvResult = require('dotenv').config({
+const dotenv = require('dotenv');
+const express = require('express');
+const cors = require('cors');
+
+// .env 강제 로드
+const dotenvResult = dotenv.config({
   path: path.join(__dirname, '.env'),
 });
 
@@ -11,19 +14,37 @@ if (dotenvResult.error) {
   console.log('dotenv 로드 성공, 로드된 키:', Object.keys(dotenvResult.parsed || {}));
 }
 
-const express = require('express');
-const cors = require('cors');
-
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
+// Jenkins Crumb 가져오기
+async function getJenkinsCrumb(jenkinsUrl, auth) {
+  const baseUrl = jenkinsUrl.replace(/\/$/, '');
+  const resp = await fetch(`${baseUrl}/crumbIssuer/api/json`, {
+    method: 'GET',
+    headers: {
+      Authorization: `Basic ${auth}`,
+    },
+  });
+
+  if (!resp.ok) {
+    console.log('crumb 요청 실패 상태코드:', resp.status);
+    return null;
+  }
+
+  const data = await resp.json();
+  return {
+    headerName: data.crumbRequestField,
+    crumb: data.crumb,
+  };
+}
+
 app.post('/api/build', async (req, res) => {
   try {
-    const { password } = req.body;
-
-    const inputPassword = (password ?? '').toString().trim();
+    const rawPassword = req.body?.password;
+    const inputPassword = (rawPassword ?? '').toString().trim();
     const envPassword = (process.env.BUILD_PASSWORD ?? '').toString().trim();
 
     if (!inputPassword) {
@@ -31,7 +52,9 @@ app.post('/api/build', async (req, res) => {
     }
 
     if (inputPassword !== envPassword) {
-      return res.status(401).json({ message: '빌드 비밀번호가 일치하지 않습니다.' });
+      return res
+        .status(401)
+        .json({ message: '빌드 비밀번호가 일치하지 않습니다.' });
     }
 
     const jenkinsUrl = process.env.JENKINS_URL;
@@ -40,7 +63,6 @@ app.post('/api/build', async (req, res) => {
     const jobName = process.env.JENKINS_JOB_NAME;
     const jobToken = process.env.JENKINS_JOB_TOKEN;
 
-    // 어떤 값이 비었는지 확인용
     if (!jenkinsUrl || !jenkinsUser || !jenkinsToken || !jobName || !jobToken) {
       console.log('Jenkins env check:', {
         jenkinsUrl,
@@ -61,15 +83,27 @@ app.post('/api/build', async (req, res) => {
     }
 
     const auth = Buffer.from(`${jenkinsUser}:${jenkinsToken}`).toString('base64');
+    const baseUrl = jenkinsUrl.replace(/\/$/, '');
+
+    // Crumb 먼저 가져오기
+    const crumbInfo = await getJenkinsCrumb(baseUrl, auth);
+
+    const headers = {
+      Authorization: `Basic ${auth}`,
+    };
+
+    // Crumb 있으면 헤더에 추가
+    if (crumbInfo && crumbInfo.headerName && crumbInfo.crumb) {
+      headers[crumbInfo.headerName] = crumbInfo.crumb;
+    }
+
     const url =
-      `${jenkinsUrl.replace(/\/$/, '')}` +
+      `${baseUrl}` +
       `/job/${encodeURIComponent(jobName)}/build?token=${encodeURIComponent(jobToken)}`;
 
     const jenkinsResponse = await fetch(url, {
       method: 'POST',
-      headers: {
-        Authorization: `Basic ${auth}`,
-      },
+      headers,
     });
 
     if (jenkinsResponse.status < 200 || jenkinsResponse.status >= 400) {
