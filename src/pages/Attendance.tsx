@@ -6,11 +6,16 @@ import Loading from '../components/Loading';
 import ErrorMessage from '../components/ErrorMessage';
 import SuccessMessage from '../components/SuccessMessage';
 
+const getTodayDate = () => {
+  const today = new Date();
+  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+};
+
 const Attendance: React.FC = () => {
   const { user } = useAuth();
   const [records, setRecords] = useState<AttendanceType[]>([]);
   const [revisionRequests, setRevisionRequests] = useState<AttendanceRevisionRequest[]>([]);
-  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().slice(0, 10));
+  const [selectedDate, setSelectedDate] = useState<string>(getTodayDate());
   const [allEmployees, setAllEmployees] = useState<any[]>([]);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showCalendar, setShowCalendar] = useState(false);
@@ -90,7 +95,7 @@ const Attendance: React.FC = () => {
       setRevisionRequests(revisionsData || []);
 
       // 🔹 오늘 내 상태 + 휴가 여부 계산
-      const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+      const today = getTodayDate();
 
       if (user) {
         const myTodayRecord =
@@ -132,7 +137,7 @@ const Attendance: React.FC = () => {
     if (!user) return;
 
     try {
-      const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+      const today = getTodayDate();
 
       // ✅ 오늘 승인된 휴가가 있으면 출근 불가
       const { data: leaveToday, error: leaveError } = await supabase
@@ -196,7 +201,7 @@ const Attendance: React.FC = () => {
     if (!user) return;
 
     try {
-      const today = new Date().toISOString().slice(0, 10);
+      const today = getTodayDate();
 
       const { data: existing, error: selectError } = await supabase
         .from('attendance')
@@ -366,7 +371,7 @@ const Attendance: React.FC = () => {
 
   const calculateWorkHours = (checkIn: string | null, checkOut: string | null, workSeconds: number) => {
     if (!checkIn) return '-';
-    const isToday = selectedDate === new Date().toISOString().slice(0, 10);
+    const isToday = selectedDate === getTodayDate();
     let totalSeconds: number;
     if (checkOut) {
       totalSeconds = workSeconds;
@@ -387,7 +392,7 @@ const Attendance: React.FC = () => {
   };
 
   const getStatusLabel = (status: string, currentStatus: string | null) => {
-    const isToday = selectedDate === new Date().toISOString().slice(0, 10);
+    const isToday = selectedDate === getTodayDate();
     if (status === 'absent') return '미출근';
     if (status === 'off') return '퇴근';
     if (status === 'present' && isToday) {
@@ -441,7 +446,7 @@ const Attendance: React.FC = () => {
     if (!user) return;
 
     try {
-      const today = new Date().toISOString().slice(0, 10);
+      const today = getTodayDate();
 
       const { data: existing, error: selectError } = await supabase
         .from('attendance')
@@ -514,7 +519,7 @@ const Attendance: React.FC = () => {
     }
 
     try {
-      const today = new Date().toISOString().slice(0, 10);
+      const today = getTodayDate();
 
       const { data: existing, error: selectError } = await supabase
         .from('attendance')
@@ -596,7 +601,7 @@ const Attendance: React.FC = () => {
 
       {error && <ErrorMessage message={error} />}
       {success && <SuccessMessage message={success} />}
-      
+
       {/* Check-in/out button (토글) */}
       <div className="bg-white shadow rounded-lg p-6">
         <h2 className="text-xl font-semibold mb-4">오늘의 출퇴근</h2>
@@ -652,8 +657,8 @@ const Attendance: React.FC = () => {
               setSelectedDate(date.toISOString().slice(0, 10));
             }} className="px-3 py-2 bg-gray-100 rounded hover:bg-gray-200">→</button>
 
-            {selectedDate !== new Date().toISOString().slice(0, 10) && (
-              <button onClick={() => setSelectedDate(new Date().toISOString().slice(0, 10))}
+            {selectedDate !== getTodayDate() && (
+              <button onClick={() => setSelectedDate(getTodayDate())}
                 className="px-4 py-2 bg-blue-100 text-blue-700 rounded hover:bg-blue-200">오늘</button>
             )}
           </div>
