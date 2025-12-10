@@ -69,47 +69,53 @@ export default async function handler(req, res) {
       project = inserted;
     }
 
-    // 3) 브랜치 목록 (하드코딩 또는 Git API로 가져오기)
+    // 3) Jenkins에서 브랜치 목록 가져오기
     let branches = [];
-try {
-  const jenkinsUrl = process.env.JENKINS_URL;
-  const jenkinsUser = process.env.JENKINS_USER;
-  const jenkinsToken = process.env.JENKINS_API_TOKEN;
-  const jobName = process.env.JENKINS_JOB_NAME;
+    try {
+      const jenkinsUrl = process.env.JENKINS_URL;
+      const jenkinsUser = process.env.JENKINS_USER;
+      const jenkinsToken = process.env.JENKINS_API_TOKEN;
+      const jobName = process.env.JENKINS_JOB_NAME;
 
-  if (jenkinsUrl && jenkinsUser && jenkinsToken && jobName) {
-    const auth = Buffer.from(`${jenkinsUser}:${jenkinsToken}`).toString('base64');
-    const baseUrl = jenkinsUrl.replace(/\/$/, '');
-    const jobUrl = `${baseUrl}/job/${encodeURIComponent(jobName)}/api/json`;
+      if (jenkinsUrl && jenkinsUser && jenkinsToken && jobName) {
+        const auth = Buffer.from(`${jenkinsUser}:${jenkinsToken}`).toString('base64');
+        const baseUrl = jenkinsUrl.replace(/\/$/, '');
+        const jobUrl = `${baseUrl}/job/${encodeURIComponent(jobName)}/api/json?tree=scm[branches[name]]`;
 
-    const response = await fetch(jobUrl, {
-      headers: { Authorization: `Basic ${auth}` }
-    });
+        console.log('🔗 Jenkins API 호출:', jobUrl);
 
-    if (response.ok) {
-      const jobData = await response.json();
-      // SCM 설정에서 브랜치 추출
-      if (jobData.actions) {
-        for (const action of jobData.actions) {
-          if (action._class && action._class.includes('GitSCM') && action.branches) {
-            branches = action.branches.map(b => b.name);
-            break;
+        const response = await fetch(jobUrl, {
+          headers: { Authorization: `Basic ${auth}` }
+        });
+
+        if (response.ok) {
+          const jobData = await response.json();
+          
+          console.log('📦 Jenkins 응답:', JSON.stringify(jobData, null, 2));
+          
+          // SCM에서 브랜치 추출
+          if (jobData.scm && jobData.scm.branches) {
+            branches = jobData.scm.branches.map(b => b.name);
+            console.log('✅ 브랜치 추출 성공:', branches);
           }
+        } else {
+          console.error('❌ Jenkins API 실패:', response.status, response.statusText);
         }
+      } else {
+        console.log('⚠️ Jenkins 환경 변수 부족');
       }
+      
+      // Jenkins에서 못 가져왔으면 기본값
+      if (branches.length === 0) {
+        branches = ['*/dev', '*/main'];
+        console.log('⚠️ 기본 브랜치 사용');
+      }
+    } catch (err) {
+      console.error('❌ Jenkins 브랜치 조회 실패:', err);
+      branches = ['*/dev', '*/main'];
     }
-  }
-  
-  // Jenkins에서 못 가져왔으면 기본값
-  if (branches.length === 0) {
-    branches = ['*/dev', '*/main'];
-  }
-} catch (err) {
-  console.error('Jenkins 브랜치 조회 실패:', err);
-  branches = ['*/dev', '*/main'];
-}
 
-    console.log('✅ 성공:', project);
+    console.log('✅ 최종 응답:', { project, branches });
 
     return res.status(200).json({
       projectKey: project.project_key,
