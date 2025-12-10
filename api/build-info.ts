@@ -1,6 +1,6 @@
 // pages/api/build-info.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { supabase } from '../../supabaseClient';
+import { supabase } from '../supabaseClient';
 import { exec } from 'child_process';
 import util from 'util';
 
