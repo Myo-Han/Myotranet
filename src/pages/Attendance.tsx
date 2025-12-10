@@ -596,6 +596,32 @@ const Attendance: React.FC = () => {
 
       {error && <ErrorMessage message={error} />}
       {success && <SuccessMessage message={success} />}
+      
+      {/* Check-in/out button (토글) */}
+      <div className="bg-white shadow rounded-lg p-6">
+        <h2 className="text-xl font-semibold mb-4">오늘의 출퇴근</h2>
+        <p className="text-sm text-gray-600 mb-4">
+          오늘 상태:{' '}
+          <span className="font-medium">
+            {getStatusLabel(isTodayOnLeave ? 'VACATION' : todayStatus)}
+          </span>
+        </p>
+        {getTodayButtonLabel() ? (
+          <button
+            onClick={handleTodayAction}
+            className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition duration-200"
+          >
+            {getTodayButtonLabel()}
+          </button>
+        ) : (
+          <p className="text-sm text-gray-500">
+            {isTodayOnLeave
+              ? '오늘은 휴가일입니다.'
+              : '변경 가능한 상태가 없습니다.'}
+          </p>
+        )}
+      </div>
+
       {/* 날짜 필터 + 새로고침 */}
       <div className="bg-white shadow rounded-lg p-6">
         <div className="flex items-center justify-between mb-4">
@@ -636,30 +662,6 @@ const Attendance: React.FC = () => {
             🔄 새로고침
           </button>
         </div>
-      </div>
-      {/* Check-in/out button (토글) */}
-      <div className="bg-white shadow rounded-lg p-6">
-        <h2 className="text-xl font-semibold mb-4">오늘의 출퇴근</h2>
-        <p className="text-sm text-gray-600 mb-4">
-          오늘 상태:{' '}
-          <span className="font-medium">
-            {getStatusLabel(isTodayOnLeave ? 'VACATION' : todayStatus)}
-          </span>
-        </p>
-        {getTodayButtonLabel() ? (
-          <button
-            onClick={handleTodayAction}
-            className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition duration-200"
-          >
-            {getTodayButtonLabel()}
-          </button>
-        ) : (
-          <p className="text-sm text-gray-500">
-            {isTodayOnLeave
-              ? '오늘은 휴가일입니다.'
-              : '변경 가능한 상태가 없습니다.'}
-          </p>
-        )}
       </div>
 
       {/* Attendance records */}
