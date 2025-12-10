@@ -216,7 +216,7 @@ const Leave: React.FC = () => {
         user_id: user.id,
         start_date: form.startDate,
         end_date: form.endDate,
-        leave_type: form.leaveType,
+        type: form.leaveType,
         days_requested: form.daysRequested,
         paid_days: paidDays,
         unpaid_days: unpaidDays,
@@ -293,13 +293,13 @@ const Leave: React.FC = () => {
 
       let balanceField = '';
       let currentBalance = 0;
-      let policyCode = leave.leave_type;
+      let policyCode = leave.type;
 
       // 정책에 따라 차감할 잔액 필드 결정
-      if (leave.leave_type === 'annual_leave' || leave.leave_type === 'half_day') {
+      if (leave.type === 'annual_leave' || leave.type === 'half_day') {
         balanceField = 'annual_leave_balance';
         currentBalance = userData.annual_leave_balance || 0;
-      } else if (leave.leave_type === 'monthly_leave') {
+      } else if (leave.type === 'monthly_leave') {
         balanceField = 'monthly_leave_balance';
         currentBalance = userData.monthly_leave_balance || 0;
       } else {
@@ -582,7 +582,7 @@ const Leave: React.FC = () => {
                     {new Date(leave.end_date).toLocaleDateString('ko-KR')}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {getPolicyName(leave.leave_type)}
+                    {getPolicyName(leave.type)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {leave.days_requested}일

@@ -51,7 +51,7 @@ export interface Leave {
   user_id: string;
   start_date: string;
   end_date: string;
-  leave_type: 'annual' | 'half_day' | 'monthly_leave' | 'maternity_leave' | 'maternity_leave_multiple' | 'paternity_leave' | 'menstrual_leave' | 'family_care_leave' | 'event_leave_marriage_self' | 'event_leave_marriage_child' | 'event_leave_death_parent' | 'event_leave_death_grandparent';
+  type: 'annual' | 'half_day' | 'monthly_leave' | 'maternity_leave' | 'maternity_leave_multiple' | 'paternity_leave' | 'menstrual_leave' | 'family_care_leave' | 'event_leave_marriage_self' | 'event_leave_marriage_child' | 'event_leave_death_parent' | 'event_leave_death_grandparent';
   days_requested: number;
   paid_days: number;
   unpaid_days: number;
