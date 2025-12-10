@@ -77,7 +77,7 @@ const Attendance: React.FC = () => {
           check_in: record?.check_in || null,
           check_out: record?.check_out || null,
           status: record?.status || 'absent',
-          current_status: record?.current_status || null,
+          current_status: employee.current_status,
           total_work_seconds: record?.total_work_seconds || 0,
           users: { name: employee.name, profile_picture: employee.profile_picture }
         };
@@ -173,10 +173,11 @@ const Attendance: React.FC = () => {
           date: today,
           check_in: nowIso,
           status: 'present',
-          current_status: 'work',
           total_work_seconds: 0,
         });
         if (insertError) throw insertError;
+
+        await supabase.from('users').update({ current_status: 'work' }).eq('id', user.id);
       } else {
         const { error: updateError } = await supabase
           .from('attendance')
@@ -187,6 +188,7 @@ const Attendance: React.FC = () => {
           })
           .eq('id', existing.id);
         if (updateError) throw updateError;
+        await supabase.from('users').update({ current_status: 'work' }).eq('id', user.id);
       }
 
       setSuccess('출근 처리되었습니다');
@@ -220,7 +222,6 @@ const Attendance: React.FC = () => {
       const updateData: any = {
         check_out: nowIso,
         status: 'off',
-        current_status: null,
       };
 
       if (existing.check_in) {
@@ -234,8 +235,9 @@ const Attendance: React.FC = () => {
         .from('attendance')
         .update(updateData)
         .eq('id', existing.id);
-
       if (updateError) throw updateError;
+
+      await supabase.from('users').update({ current_status: null }).eq('id', user.id);
 
       setSuccess('퇴근 처리되었습니다');
       fetchData();
@@ -249,7 +251,7 @@ const Attendance: React.FC = () => {
     if (!user) return;
 
     try {
-      const today = new Date().toISOString().slice(0, 10);
+      const today = getTodayDate();
 
       const { data: existing, error: selectError } = await supabase
         .from('attendance')
@@ -273,7 +275,7 @@ const Attendance: React.FC = () => {
         .eq('id', existing.id);
 
       if (updateError) throw updateError;
-
+      await supabase.from('users').update({ current_status: null }).eq('id', user.id);
       setSuccess('조퇴 처리되었습니다');
       fetchData();
       setTimeout(() => setSuccess(''), 3000);
@@ -469,7 +471,7 @@ const Attendance: React.FC = () => {
         .eq('id', existing.id);
 
       if (updateError) throw updateError;
-
+      await supabase.from('users').update({ current_status: null }).eq('id', user.id);
       setSuccess('업무가 재개되었습니다');
       fetchData();
       setTimeout(() => setSuccess(''), 3000);
@@ -559,7 +561,7 @@ const Attendance: React.FC = () => {
           .eq('id', existing.id);
 
         if (updateError) throw updateError;
-
+        await supabase.from('users').update({ current_status: null }).eq('id', user.id);
         setSuccess('퇴근 처리되었습니다');
       } else {
         // 휴게 / 외출 / 기타 → 상태만 변경
@@ -581,7 +583,7 @@ const Attendance: React.FC = () => {
           .eq('id', existing.id);
 
         if (updateError) throw updateError;
-
+        await supabase.from('users').update({ current_status: null }).eq('id', user.id);
         setSuccess('업무가 일시중지되었습니다');
       }
 
@@ -594,6 +596,8 @@ const Attendance: React.FC = () => {
   };
 
   if (loading) return <Loading />;
+
+  const isToday = selectedDate === getTodayDate();
 
   return (
     <div className="space-y-6">
