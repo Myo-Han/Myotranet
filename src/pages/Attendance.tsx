@@ -128,7 +128,7 @@ const Attendance: React.FC = () => {
     }
   };
 
-    const handleCheckIn = async () => {
+  const handleCheckIn = async () => {
     if (!user) return;
 
     try {
@@ -192,7 +192,7 @@ const Attendance: React.FC = () => {
     }
   };
 
-    const handleCheckOut = async () => {
+  const handleCheckOut = async () => {
     if (!user) return;
 
     try {
@@ -596,7 +596,7 @@ const Attendance: React.FC = () => {
 
       {error && <ErrorMessage message={error} />}
       {success && <SuccessMessage message={success} />}
-{/* 날짜 필터 + 새로고침 */}
+      {/* 날짜 필터 + 새로고침 */}
       <div className="bg-white shadow rounded-lg p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-4">
@@ -605,7 +605,7 @@ const Attendance: React.FC = () => {
               date.setDate(date.getDate() - 1);
               setSelectedDate(date.toISOString().slice(0, 10));
             }} className="px-3 py-2 bg-gray-100 rounded hover:bg-gray-200">←</button>
-            
+
             <div className="relative">
               <button onClick={() => setShowCalendar(!showCalendar)}
                 className="px-4 py-2 bg-white border border-gray-300 rounded hover:bg-gray-50 min-w-[120px]">
@@ -619,23 +619,24 @@ const Attendance: React.FC = () => {
                 </div>
               )}
             </div>
-            
+
             <button onClick={() => {
               const date = new Date(selectedDate);
               date.setDate(date.getDate() + 1);
               setSelectedDate(date.toISOString().slice(0, 10));
             }} className="px-3 py-2 bg-gray-100 rounded hover:bg-gray-200">→</button>
-            
+
             {selectedDate !== new Date().toISOString().slice(0, 10) && (
               <button onClick={() => setSelectedDate(new Date().toISOString().slice(0, 10))}
                 className="px-4 py-2 bg-blue-100 text-blue-700 rounded hover:bg-blue-200">오늘</button>
             )}
           </div>
-          
+
           <button onClick={fetchData} className="px-4 py-2 bg-gray-100 rounded hover:bg-gray-200">
             🔄 새로고침
           </button>
         </div>
+      </div>
       {/* Check-in/out button (토글) */}
       <div className="bg-white shadow rounded-lg p-6">
         <h2 className="text-xl font-semibold mb-4">오늘의 출퇴근</h2>
@@ -790,8 +791,8 @@ const Attendance: React.FC = () => {
                     type="button"
                     onClick={() => setPauseReason(reason as '휴게' | '외출' | '퇴근' | '기타')}
                     className={`px-3 py-1 rounded-full text-sm border ${pauseReason === reason
-                        ? 'bg-blue-600 text-white border-blue-600'
-                        : 'bg-gray-100 text-gray-700 border-gray-300'
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'bg-gray-100 text-gray-700 border-gray-300'
                       }`}
                   >
                     {reason}
