@@ -14,34 +14,34 @@ export interface LeavePolicy {
     accrual_period_unit?: 'days' | 'months' | 'years';
     minimum_tenure_value?: number; // 최소 근속 기간
     minimum_tenure_unit?: 'days' | 'months' | 'years';
-    
+
     // 부여 일수
     days_granted: number;
-    
+
     // 유급/무급
     is_paid: boolean;
     paid_days?: number;
     unpaid_days?: number;
-    
+
     // 갱신 주기
     renewal_type: 'monthly' | 'yearly' | 'one_time' | 'unlimited';
-    
+
     // 소멸 기간
     expiration_enabled: boolean;
     expiration_value?: number;
     expiration_unit?: 'days' | 'months' | 'years';
-    
+
     // 사용 제한
     min_usage_unit: number; // 0.5, 1
     max_consecutive_days?: number;
     allow_split?: boolean;
-    
+
     // 승인 권한
     approval_type: 'auto' | 'manager' | 'admin';
-    
+
     // 우선순위 (낮을수록 먼저 차감)
     deduction_priority: number;
-    
+
     // 추가 설정
     carries_over?: boolean; // 이월 가능 여부
     max_carryover_days?: number; // 최대 이월 일수
@@ -102,10 +102,16 @@ const LeavePolicyManager: React.FC<LeavePolicyManagerProps> = ({ canEdit = true 
       const { data, error } = await supabase
         .from('leave_policies')
         .select('*')
-        .order('deduction_priority', { ascending: true });
+        .order('created_at', { ascending: true });
 
       if (error) throw error;
-      setPolicies(data || []);
+
+      // 우선순위로 정렬
+      const sorted = (data || []).sort((a, b) =>
+        (a.config.deduction_priority || 999) - (b.config.deduction_priority || 999)
+      );
+
+      setPolicies(sorted);
     } catch (err: any) {
       setError(err.message || '정책 로딩 실패');
     } finally {
@@ -347,11 +353,10 @@ const LeavePolicyManager: React.FC<LeavePolicyManagerProps> = ({ canEdit = true 
                     <button
                       onClick={() => canEdit && handleToggleEnabled(policy.id, policy.enabled)}
                       disabled={!canEdit}
-                      className={`px-2 py-1 text-xs rounded-full ${
-                        policy.enabled
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-gray-100 text-gray-800'
-                      } ${canEdit ? 'cursor-pointer hover:opacity-80' : 'cursor-not-allowed'}`}
+                      className={`px-2 py-1 text-xs rounded-full ${policy.enabled
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-gray-100 text-gray-800'
+                        } ${canEdit ? 'cursor-pointer hover:opacity-80' : 'cursor-not-allowed'}`}
                     >
                       {policy.enabled ? '활성' : '비활성'}
                     </button>
