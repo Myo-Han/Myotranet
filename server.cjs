@@ -1,3 +1,4 @@
+// server.cjs
 const path = require('path');
 const dotenv = require('dotenv');
 const express = require('express');
@@ -22,6 +23,7 @@ app.use(express.json());
 // Jenkins Crumb 가져오기
 async function getJenkinsCrumb(jenkinsUrl, auth) {
   const baseUrl = jenkinsUrl.replace(/\/$/, '');
+
   const resp = await fetch(`${baseUrl}/crumbIssuer/api/json`, {
     method: 'GET',
     headers: {
@@ -31,7 +33,15 @@ async function getJenkinsCrumb(jenkinsUrl, auth) {
 
   if (!resp.ok) {
     console.log('crumb 요청 실패 상태코드:', resp.status);
-    return null;
+
+    // CSRF 보호가 꺼져 있으면(예: 404) Crumb 없이 진행
+    if (resp.status === 404) {
+      console.log('crumbIssuer 404: CSRF 비활성화로 추정, Crumb 없이 진행');
+      return null;
+    }
+
+    // 그 외에는 Crumb을 못 받아온 것이므로 에러로 처리
+    throw new Error(`Jenkins crumb 발급 실패 (상태코드: ${resp.status})`);
   }
 
   const data = await resp.json();
@@ -51,6 +61,10 @@ app.post('/api/build', async (req, res) => {
       return res.status(400).json({ message: '비밀번호가 필요합니다.' });
     }
 
+    if (!envPassword) {
+      return res.status(500).json({ message: '서버에 빌드 비밀번호가 설정되어 있지 않습니다.' });
+    }
+
     if (inputPassword !== envPassword) {
       return res
         .status(401)
@@ -64,7 +78,7 @@ app.post('/api/build', async (req, res) => {
     const jobToken = process.env.JENKINS_JOB_TOKEN;
 
     if (!jenkinsUrl || !jenkinsUser || !jenkinsToken || !jobName || !jobToken) {
-      console.log('Jenkins env check:', {
+      console.log('Jenkins 설정 누락:', {
         jenkinsUrl,
         jenkinsUser,
         jenkinsTokenSet: !!jenkinsToken,
@@ -82,8 +96,8 @@ app.post('/api/build', async (req, res) => {
       });
     }
 
-    const auth = Buffer.from(`${jenkinsUser}:${jenkinsToken}`).toString('base64');
     const baseUrl = jenkinsUrl.replace(/\/$/, '');
+    const auth = Buffer.from(`${jenkinsUser}:${jenkinsToken}`).toString('base64');
 
     // Crumb 먼저 가져오기
     const crumbInfo = await getJenkinsCrumb(baseUrl, auth);
@@ -107,6 +121,7 @@ app.post('/api/build', async (req, res) => {
     });
 
     if (jenkinsResponse.status < 200 || jenkinsResponse.status >= 400) {
+      console.log('Jenkins 빌드 호출 실패 상태코드:', jenkinsResponse.status);
       return res
         .status(500)
         .json({ message: `Jenkins 호출 실패 (상태코드: ${jenkinsResponse.status})` });
