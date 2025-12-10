@@ -384,15 +384,6 @@ const Leave: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <button
-          onClick={() => setShowModal(true)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-        >
-          휴가 신청
-        </button>
-      </div>
-
       {error && <ErrorMessage message={error} />}
       {success && <SuccessMessage message={success} />}
 
@@ -748,6 +739,14 @@ const Leave: React.FC = () => {
           </div>
         </div>
       )}
+      <div className="flex justify-between items-center">
+        <button
+          onClick={() => setShowModal(true)}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+        >
+          휴가 신청
+        </button>
+      </div>
     </div>
   );
 };
