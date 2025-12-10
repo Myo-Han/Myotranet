@@ -2,8 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabaseClient';
 import { User } from '../types';
+import LeavePolicyManager from '../components/LeavePolicyManager';
 
-type AdminTab = 'users' | 'notices' | 'layout';
+type AdminTab = 'users' | 'notices' | 'layout' | 'leave-policy';
 type PageKey = 'dashboard' | 'attendance' | 'leave' | 'letters' | 'search';
 
 interface ContainerConfig {
@@ -413,6 +414,17 @@ const Admin: React.FC = () => {
                         }`}
                     >
                         페이지 레이아웃
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setActiveTab('leave-policy')}
+                        className={`flex-1 px-4 py-2 text-sm font-medium ${
+                            activeTab === 'leave-policy'
+                                ? 'border-b-2 border-indigo-500 text-indigo-600'
+                                : 'text-gray-500 hover:text-gray-700'
+                        }`}
+                    >
+                        휴가 정책
                     </button>
                 </div>
 
@@ -931,6 +943,11 @@ const Admin: React.FC = () => {
                                 불러와서 렌더링하도록 연결하면 됩니다.
                             </p>
                         </div>
+                    )}
+
+                    {/* 휴가 정책 탭 */}
+                    {activeTab === 'leave-policy' && (
+                        <LeavePolicyManager canEdit={true} />
                     )}
                 </div>
             </div>
