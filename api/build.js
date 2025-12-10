@@ -114,6 +114,9 @@ export default async function handler(req, res) {
   } catch (err) {
     console.error('Vercel /api/build 에러:', err);
     res.statusCode = 500;
-    return res.json({ message: '빌드 API 중간 포워딩 오류' });
+    return res.json({
+      message: '빌드 API 중간 포워딩 오류',
+      error: String(err),
+    });
   }
 }
