@@ -289,8 +289,6 @@ const WorkMenuManager: React.FC = () => {
                   min="1"
                 />
               </div>
-
-              typescript// 수정 전
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">권한 설정</label>
                 <div className="space-y-2">
@@ -303,26 +301,11 @@ const WorkMenuManager: React.FC = () => {
                     />
                     <span className="text-sm font-medium">전체</span>
                   </label>
-                  <div className="border-t pt-2 space-y-2">
-                    <p className="text-xs text-gray-500 mb-1">직급별</p>
-typescript// 수정 후
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">권한 설정</label>
-                <div className="space-y-2">
-                  <label className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      checked={form.show_to.includes('all')}
-                      onChange={() => toggleRole('all')}
-                      className="rounded"
-                    />
-                    <span className="text-sm font-medium">전체</span>
-                  </label>
-                  
                   <details className="border rounded p-2">
                     <summary className="text-xs font-medium text-gray-700 cursor-pointer">직급별</summary>
                     <div className="mt-2 space-y-2 ml-2">
-                    <label className="flex items-center space-x-2">
+                              // 수정 후
+                      <label className="flex items-center space-x-2">
                         <input
                           type="checkbox"
                           checked={form.show_to.includes('CEO')}
@@ -364,12 +347,12 @@ typescript// 수정 후
                       </label>
                     </div>
                   </details>
-                  
+
                   <details className="border rounded p-2">
                     <summary className="text-xs font-medium text-gray-700 cursor-pointer">부서별</summary>
                     <div className="mt-2 space-y-2 ml-2">
                       <label className="flex items-center space-x-2">
-                      <input
+                        <input
                           type="checkbox"
                           checked={form.show_to.includes('HR')}
                           onChange={() => toggleRole('HR')}
@@ -400,12 +383,12 @@ typescript// 수정 후
                       </label>
                     </div>
                   </details>
-                  
+
                   <details className="border rounded p-2">
                     <summary className="text-xs font-medium text-gray-700 cursor-pointer">프로젝트별</summary>
                     <div className="mt-2 space-y-2 ml-2">
                       <label className="flex items-center space-x-2">
-                      <input
+                        <input
                           type="checkbox"
                           checked={form.show_to.includes('LDProject')}
                           onChange={() => toggleRole('LDProject')}
@@ -419,6 +402,7 @@ typescript// 수정 후
                 </div>
               </div>
             </div>
+
             <div className="mt-6 flex space-x-2">
               <button
                 onClick={handleSubmit}
