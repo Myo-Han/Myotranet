@@ -290,6 +290,7 @@ const WorkMenuManager: React.FC = () => {
                 />
               </div>
 
+              typescript// 수정 전
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">권한 설정</label>
                 <div className="space-y-2">
@@ -304,93 +305,117 @@ const WorkMenuManager: React.FC = () => {
                   </label>
                   <div className="border-t pt-2 space-y-2">
                     <p className="text-xs text-gray-500 mb-1">직급별</p>
-                    <label className="flex items-center space-x-2 ml-4">
+typescript// 수정 후
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">권한 설정</label>
+                <div className="space-y-2">
+                  <label className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      checked={form.show_to.includes('all')}
+                      onChange={() => toggleRole('all')}
+                      className="rounded"
+                    />
+                    <span className="text-sm font-medium">전체</span>
+                  </label>
+                  
+                  <details className="border rounded p-2">
+                    <summary className="text-xs font-medium text-gray-700 cursor-pointer">직급별</summary>
+                    <div className="mt-2 space-y-2 ml-2">
+                    <label className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          checked={form.show_to.includes('CEO')}
+                          onChange={() => toggleRole('CEO')}
+                          disabled={form.show_to.includes('all')}
+                          className="rounded"
+                        />
+                        <span className="text-sm">대표</span>
+                      </label>
+                      <label className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          checked={form.show_to.includes('Team_Lead')}
+                          onChange={() => toggleRole('Team_Lead')}
+                          disabled={form.show_to.includes('all')}
+                          className="rounded"
+                        />
+                        <span className="text-sm">팀장</span>
+                      </label>
+                      <label className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          checked={form.show_to.includes('Part_Lead')}
+                          onChange={() => toggleRole('Part_Lead')}
+                          disabled={form.show_to.includes('all')}
+                          className="rounded"
+                        />
+                        <span className="text-sm">파트장</span>
+                      </label>
+                      <label className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          checked={form.show_to.includes('Staff')}
+                          onChange={() => toggleRole('Staff')}
+                          disabled={form.show_to.includes('all')}
+                          className="rounded"
+                        />
+                        <span className="text-sm">사원</span>
+                      </label>
+                    </div>
+                  </details>
+                  
+                  <details className="border rounded p-2">
+                    <summary className="text-xs font-medium text-gray-700 cursor-pointer">부서별</summary>
+                    <div className="mt-2 space-y-2 ml-2">
+                      <label className="flex items-center space-x-2">
                       <input
-                        type="checkbox"
-                        checked={form.show_to.includes('CEO')}
-                        onChange={() => toggleRole('CEO')}
-                        disabled={form.show_to.includes('all')}
-                        className="rounded"
-                      />
-                      <span className="text-sm">대표</span>
-                    </label>
-                    <label className="flex items-center space-x-2 ml-4">
+                          type="checkbox"
+                          checked={form.show_to.includes('HR')}
+                          onChange={() => toggleRole('HR')}
+                          disabled={form.show_to.includes('all')}
+                          className="rounded"
+                        />
+                        <span className="text-sm">인사팀</span>
+                      </label>
+                      <label className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          checked={form.show_to.includes('Finance')}
+                          onChange={() => toggleRole('Finance')}
+                          disabled={form.show_to.includes('all')}
+                          className="rounded"
+                        />
+                        <span className="text-sm">재무팀</span>
+                      </label>
+                      <label className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          checked={form.show_to.includes('Development')}
+                          onChange={() => toggleRole('Development')}
+                          disabled={form.show_to.includes('all')}
+                          className="rounded"
+                        />
+                        <span className="text-sm">개발본부</span>
+                      </label>
+                    </div>
+                  </details>
+                  
+                  <details className="border rounded p-2">
+                    <summary className="text-xs font-medium text-gray-700 cursor-pointer">프로젝트별</summary>
+                    <div className="mt-2 space-y-2 ml-2">
+                      <label className="flex items-center space-x-2">
                       <input
-                        type="checkbox"
-                        checked={form.show_to.includes('Team_Lead')}
-                        onChange={() => toggleRole('Team_Lead')}
-                        disabled={form.show_to.includes('all')}
-                        className="rounded"
-                      />
-                      <span className="text-sm">팀장</span>
-                    </label>
-                    <label className="flex items-center space-x-2 ml-4">
-                      <input
-                        type="checkbox"
-                        checked={form.show_to.includes('Part_Lead')}
-                        onChange={() => toggleRole('Part_Lead')}
-                        disabled={form.show_to.includes('all')}
-                        className="rounded"
-                      />
-                      <span className="text-sm">파트장</span>
-                    </label>
-                    <label className="flex items-center space-x-2 ml-4">
-                      <input
-                        type="checkbox"
-                        checked={form.show_to.includes('Staff')}
-                        onChange={() => toggleRole('Staff')}
-                        disabled={form.show_to.includes('all')}
-                        className="rounded"
-                      />
-                      <span className="text-sm">사원</span>
-                    </label>
-                  </div>
-                  <div className="border-t pt-2 space-y-2">
-                    <p className="text-xs text-gray-500 mb-1">부서별</p>
-                    <label className="flex items-center space-x-2 ml-4">
-                      <input
-                        type="checkbox"
-                        checked={form.show_to.includes('HR')}
-                        onChange={() => toggleRole('HR')}
-                        disabled={form.show_to.includes('all')}
-                        className="rounded"
-                      />
-                      <span className="text-sm">인사팀</span>
-                    </label>
-                    <label className="flex items-center space-x-2 ml-4">
-                      <input
-                        type="checkbox"
-                        checked={form.show_to.includes('Finance')}
-                        onChange={() => toggleRole('Finance')}
-                        disabled={form.show_to.includes('all')}
-                        className="rounded"
-                      />
-                      <span className="text-sm">재무팀</span>
-                    </label>
-                    <label className="flex items-center space-x-2 ml-4">
-                      <input
-                        type="checkbox"
-                        checked={form.show_to.includes('Development')}
-                        onChange={() => toggleRole('Development')}
-                        disabled={form.show_to.includes('all')}
-                        className="rounded"
-                      />
-                      <span className="text-sm">개발본부</span>
-                    </label>
-                  </div>
-                  <div className="border-t pt-2 space-y-2">
-                    <p className="text-xs text-gray-500 mb-1">프로젝트별</p>
-                    <label className="flex items-center space-x-2 ml-4">
-                      <input
-                        type="checkbox"
-                        checked={form.show_to.includes('LDProject')}
-                        onChange={() => toggleRole('LDProject')}
-                        disabled={form.show_to.includes('all')}
-                        className="rounded"
-                      />
-                      <span className="text-sm">LDProject</span>
-                    </label>
-                  </div>
+                          type="checkbox"
+                          checked={form.show_to.includes('LDProject')}
+                          onChange={() => toggleRole('LDProject')}
+                          disabled={form.show_to.includes('all')}
+                          className="rounded"
+                        />
+                        <span className="text-sm">LDProject</span>
+                      </label>
+                    </div>
+                  </details>
                 </div>
               </div>
             </div>
