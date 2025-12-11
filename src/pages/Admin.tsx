@@ -642,6 +642,74 @@ const Admin: React.FC = () => {
                                                     활성 계정
                                                 </label>
                                             </div>
+
+                                            {/* 부서 */}
+                                            <div>
+                                                <label className="block text-xs font-medium text-gray-500 mb-1">
+                                                    부서
+                                                </label>
+                                                <select
+                                                    value={(selectedUser as any).department || ''}
+                                                    onChange={e => handleUserChange('department', e.target.value)}
+                                                    className="w-full rounded-md border-gray-300 text-sm"
+                                                >
+                                                    <option value="">미지정</option>
+                                                    <option value="HR">인사팀</option>
+                                                    <option value="Finance">재무팀</option>
+                                                    <option value="Development">개발본부</option>
+                                                </select>
+                                            </div>
+
+                                            {/* 직급 */}
+                                            <div>
+                                                <label className="block text-xs font-medium text-gray-500 mb-1">
+                                                    직급
+                                                </label>
+                                                <select
+                                                    value={(selectedUser as any).position || ''}
+                                                    onChange={e => handleUserChange('position', e.target.value)}
+                                                    className="w-full rounded-md border-gray-300 text-sm"
+                                                >
+                                                    <option value="">미지정</option>
+                                                    <option value="CEO">대표</option>
+                                                    <option value="Team_Lead">팀장</option>
+                                                    <option value="Part_Lead">파트장</option>
+                                                    <option value="Staff">사원</option>
+                                                </select>
+                                            </div>
+
+                                            {/* 프로젝트 */}
+                                            <div>
+                                                <label className="block text-xs font-medium text-gray-500 mb-1">
+                                                    프로젝트
+                                                </label>
+                                                <select
+                                                    value={(selectedUser as any).project || ''}
+                                                    onChange={e => handleUserChange('project', e.target.value)}
+                                                    className="w-full rounded-md border-gray-300 text-sm"
+                                                >
+                                                    <option value="">미지정</option>
+                                                    <option value="LDProject">LDProject</option>
+                                                </select>
+                                            </div>
+
+                                            {/* 파트 */}
+                                            <div>
+                                                <label className="block text-xs font-medium text-gray-500 mb-1">
+                                                    파트
+                                                </label>
+                                                <select
+                                                    value={(selectedUser as any).part || ''}
+                                                    onChange={e => handleUserChange('part', e.target.value)}
+                                                    className="w-full rounded-md border-gray-300 text-sm"
+                                                >
+                                                    <option value="">미지정</option>
+                                                    <option value="Dev">개발</option>
+                                                    <option value="Art">아트</option>
+                                                    <option value="Design">기획</option>
+                                                    <option value="QA">QA</option>
+                                                </select>
+                                            </div>
                                         </div>
 
                                         <div className="flex justify-between mt-4">
