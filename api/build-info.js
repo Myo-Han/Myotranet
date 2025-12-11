@@ -36,9 +36,9 @@ export default async function handler(req, res) {
 
     if (error) {
       console.error('❌ select error:', error);
-      return res.status(500).json({ 
+      return res.status(500).json({
         message: '버전 정보를 조회하지 못했습니다.',
-        error: error.message 
+        error: error.message
       });
     }
 
@@ -60,9 +60,9 @@ export default async function handler(req, res) {
 
       if (insertError) {
         console.error('❌ insert error:', insertError);
-        return res.status(500).json({ 
+        return res.status(500).json({
           message: '버전 정보를 생성하지 못했습니다.',
-          error: insertError.message 
+          error: insertError.message
         });
       }
 
@@ -90,9 +90,9 @@ export default async function handler(req, res) {
 
         if (response.ok) {
           const jobData = await response.json();
-          
+
           console.log('📦 Jenkins 응답:', JSON.stringify(jobData, null, 2));
-          
+
           // SCM에서 브랜치 추출
           if (jobData.scm && jobData.scm.branches) {
             branches = jobData.scm.branches.map(b => b.name);
@@ -104,12 +104,15 @@ export default async function handler(req, res) {
       } else {
         console.log('⚠️ Jenkins 환경 변수 부족');
       }
-      
+
       // Jenkins에서 못 가져왔으면 기본값
       if (branches.length === 0) {
-        branches = ['*/dev', '*/main'];
+        branches = ['dev', 'main'];
         console.log('⚠️ 기본 브랜치 사용');
       }
+
+      // Git에서 사용하는 형식으로 변환 (*/브랜치명 제거)
+      branches = branches.map(b => b.replace(/^\*\//, ''));
     } catch (err) {
       console.error('❌ Jenkins 브랜치 조회 실패:', err);
       branches = ['*/dev', '*/main'];
@@ -125,7 +128,7 @@ export default async function handler(req, res) {
     });
   } catch (e) {
     console.error('❌ handler error:', e);
-    return res.status(500).json({ 
+    return res.status(500).json({
       message: 'build-info 처리 중 오류가 발생했습니다.',
       error: String(e)
     });
