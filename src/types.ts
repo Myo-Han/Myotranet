@@ -6,6 +6,10 @@ export interface User {
   name?: string;
   profile_picture?: string | null;
   role: 'Admin' | 'Manager' | 'User';
+  department?: string | null;
+  position?: string | null;
+  project?: string | null;
+  part?: string | null;
   annual_leave_balance?: number;
   monthly_leave_balance?: number;
   is_active?: boolean;
