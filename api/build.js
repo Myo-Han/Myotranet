@@ -15,6 +15,10 @@ export default async function handler(req, res) {
         : (req.body || {});
 
     const password = (body.password ?? '').toString().trim();
+    const branch = (body.branch ?? '').toString().trim();
+    const version = (body.version ?? '').toString().trim();
+    const memo = (body.memo ?? '').toString().trim();
+    const executorName = (body.executorName ?? '알 수 없음').toString().trim();
     const envPassword = (process.env.BUILD_PASSWORD ?? '').toString().trim();
 
     if (!password) {
@@ -33,11 +37,11 @@ export default async function handler(req, res) {
     }
 
     // 3. Jenkins 환경 변수 읽기
-    const jenkinsUrl   = process.env.JENKINS_URL;
-    const jenkinsUser  = process.env.JENKINS_USER;
+    const jenkinsUrl = process.env.JENKINS_URL;
+    const jenkinsUser = process.env.JENKINS_USER;
     const jenkinsToken = process.env.JENKINS_API_TOKEN;
-    const jobName      = process.env.JENKINS_JOB_NAME;
-    const jobToken     = process.env.JENKINS_JOB_TOKEN;
+    const jobName = process.env.JENKINS_JOB_NAME;
+    const jobToken = process.env.JENKINS_JOB_TOKEN;
 
     if (!jenkinsUrl || !jenkinsUser || !jenkinsToken || !jobName || !jobToken) {
       res.statusCode = 500;
@@ -91,9 +95,16 @@ export default async function handler(req, res) {
     }
 
     // 5. Jenkins Job 빌드 트리거
+    const params = new URLSearchParams({
+      token: jobToken,
+      BRANCH: branch,
+      VERSION: version,
+      MEMO: memo,
+      EXECUTOR_NAME: executorName,
+    });
+
     const jenkinsBuildUrl =
-      `${baseUrl}/job/${encodeURIComponent(jobName)}` +
-      `/build?token=${encodeURIComponent(jobToken)}`;
+      `${baseUrl}/job/${encodeURIComponent(jobName)}/buildWithParameters?${params.toString()}`;
 
     const forwardRes = await fetch(jenkinsBuildUrl, {
       method: 'POST',

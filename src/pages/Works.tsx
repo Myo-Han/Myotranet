@@ -46,19 +46,19 @@ const Work: React.FC = () => {
         const menu = data.config.work_menu || [];
         const filtered = menu.filter((item: WorkMenuItem) => {
           if (item.show_to.includes('all')) return true;
-          
+
           // role 체크
           if (user?.role && item.show_to.includes(user.role)) return true;
-          
+
           // position 체크
           if (user?.position && item.show_to.includes(user.position)) return true;
-          
+
           // department 체크
           if (user?.department && item.show_to.includes(user.department)) return true;
-          
+
           // project 체크
           if (user?.project && item.show_to.includes(user.project)) return true;
-          
+
           return false;
         });
 
@@ -134,6 +134,7 @@ const Work: React.FC = () => {
           branch: selectedBranch,
           version,
           memo,
+          executorName: user?.name || user?.email || '알 수 없음',
         }),
       });
 
@@ -217,8 +218,8 @@ const Work: React.FC = () => {
               key={item.id}
               onClick={() => setSelectedMenu(item.path)}
               className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition ${selectedMenu === item.path
-                  ? 'bg-blue-50 text-blue-600 font-medium'
-                  : 'text-gray-700 hover:bg-gray-50'
+                ? 'bg-blue-50 text-blue-600 font-medium'
+                : 'text-gray-700 hover:bg-gray-50'
                 }`}
             >
               {getIcon(item.icon)}
