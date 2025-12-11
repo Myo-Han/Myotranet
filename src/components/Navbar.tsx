@@ -12,10 +12,9 @@ const Navbar: React.FC = () => {
   };
 
   const navLinkClass = (path: string) =>
-    `px-3 py-2 rounded-md text-sm font-medium transition duration-200 ${
-      isActive(path)
-        ? 'bg-blue-700 text-white'
-        : 'text-blue-100 hover:bg-blue-600 hover:text-white'
+    `px-3 py-2 rounded-md text-sm font-medium transition duration-200 ${isActive(path)
+      ? 'bg-blue-700 text-white'
+      : 'text-blue-100 hover:bg-blue-600 hover:text-white'
     }`;
 
   return (
@@ -24,7 +23,8 @@ const Navbar: React.FC = () => {
         <div className="flex items-center justify-between h-16">
           {/* Left side - Logo and nav links */}
           <div className="flex items-center">
-            <Link to="/dashboard" className="flex-shrink-0">
+            <Link to="/dashboard" className="flex-shrink-0 flex items-center space-x-2">
+              <img src="/logo.svg" alt="Logo" className="h-8 w-8" />
               <h1 className="text-white text-xl font-bold">묘한</h1>
             </Link>
             <div className="hidden md:block ml-10">
@@ -50,7 +50,7 @@ const Navbar: React.FC = () => {
           {/* Right side - Session timer and user profile */}
           <div className="flex items-center space-x-4">
             <SessionTimer />
-            
+
             <div className="flex items-center space-x-3">
               {user?.profile_picture && (
                 <img
