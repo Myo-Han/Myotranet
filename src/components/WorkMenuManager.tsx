@@ -159,7 +159,7 @@ const WorkMenuManager: React.FC = () => {
       }
       return;
     }
-    
+
     // 다른 권한 선택 시 'all' 제거
     const newRoles = form.show_to.filter((r) => r !== 'all');
     if (newRoles.includes(role)) {
@@ -393,7 +393,7 @@ const WorkMenuManager: React.FC = () => {
                   </div>
                 </div>
               </div>
-
+            </div>
             <div className="mt-6 flex space-x-2">
               <button
                 onClick={handleSubmit}
