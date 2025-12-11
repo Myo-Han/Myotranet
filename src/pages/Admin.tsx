@@ -3,8 +3,9 @@ import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabaseClient';
 import { User } from '../types';
 import LeavePolicyManager from '../components/LeavePolicyManager';
+import WorkMenuManager from '../components/WorkMenuManager';
 
-type AdminTab = 'users' | 'notices' | 'layout' | 'leave-policy';
+type AdminTab = 'users' | 'notices' | 'layout' | 'leave-policy' | 'work-menu';
 type PageKey = 'dashboard' | 'attendance' | 'leave' | 'letters' | 'search';
 
 interface ContainerConfig {
@@ -385,46 +386,50 @@ const Admin: React.FC = () => {
                     <button
                         type="button"
                         onClick={() => setActiveTab('users')}
-                        className={`flex-1 px-4 py-2 text-sm font-medium ${
-                            activeTab === 'users'
+                        className={`flex-1 px-4 py-2 text-sm font-medium ${activeTab === 'users'
                                 ? 'border-b-2 border-indigo-500 text-indigo-600'
                                 : 'text-gray-500 hover:text-gray-700'
-                        }`}
+                            }`}
                     >
                         직원 관리
                     </button>
                     <button
                         type="button"
                         onClick={() => setActiveTab('notices')}
-                        className={`flex-1 px-4 py-2 text-sm font-medium ${
-                            activeTab === 'notices'
+                        className={`flex-1 px-4 py-2 text-sm font-medium ${activeTab === 'notices'
                                 ? 'border-b-2 border-indigo-500 text-indigo-600'
                                 : 'text-gray-500 hover:text-gray-700'
-                        }`}
+                            }`}
                     >
                         공지 관리
                     </button>
                     <button
                         type="button"
                         onClick={() => setActiveTab('layout')}
-                        className={`flex-1 px-4 py-2 text-sm font-medium ${
-                            activeTab === 'layout'
+                        className={`flex-1 px-4 py-2 text-sm font-medium ${activeTab === 'layout'
                                 ? 'border-b-2 border-indigo-500 text-indigo-600'
                                 : 'text-gray-500 hover:text-gray-700'
-                        }`}
+                            }`}
                     >
                         페이지 레이아웃
                     </button>
                     <button
-                        type="button"
                         onClick={() => setActiveTab('leave-policy')}
-                        className={`flex-1 px-4 py-2 text-sm font-medium ${
-                            activeTab === 'leave-policy'
-                                ? 'border-b-2 border-indigo-500 text-indigo-600'
-                                : 'text-gray-500 hover:text-gray-700'
-                        }`}
+                        className={`px-3 py-1.5 rounded-md text-xs font-medium ${activeTab === 'leave-policy'
+                                ? 'bg-indigo-600 text-white'
+                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                            }`}
                     >
                         휴가 정책
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('work-menu')}
+                        className={`px-3 py-1.5 rounded-md text-xs font-medium ${activeTab === 'work-menu'
+                                ? 'bg-indigo-600 text-white'
+                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                            }`}
+                    >
+                        Work 메뉴
                     </button>
                 </div>
 
@@ -450,11 +455,10 @@ const Admin: React.FC = () => {
                                             key={u.id}
                                             type="button"
                                             onClick={() => setSelectedUser(u)}
-                                            className={`w-full text-left px-3 py-2 rounded-md text-sm ${
-                                                selectedUser?.id === u.id
+                                            className={`w-full text-left px-3 py-2 rounded-md text-sm ${selectedUser?.id === u.id
                                                     ? 'bg-indigo-50 text-indigo-700'
                                                     : 'hover:bg-gray-50 text-gray-700'
-                                            }`}
+                                                }`}
                                         >
                                             <div className="flex items-center space-x-3">
                                                 {u.profile_picture && (
@@ -875,11 +879,10 @@ const Admin: React.FC = () => {
                                                             onChange={e =>
                                                                 handleChangeContainerLabel(index, e.target.value)
                                                             }
-                                                            className={`text-xs font-medium bg-transparent border-none focus:ring-0 ${
-                                                                c.enabled
+                                                            className={`text-xs font-medium bg-transparent border-none focus:ring-0 ${c.enabled
                                                                     ? 'text-gray-800'
                                                                     : 'text-gray-400 line-through'
-                                                            }`}
+                                                                }`}
                                                         />
                                                     </div>
                                                     <div className="flex items-center space-x-1">
@@ -948,6 +951,11 @@ const Admin: React.FC = () => {
                     {/* 휴가 정책 탭 */}
                     {activeTab === 'leave-policy' && (
                         <LeavePolicyManager canEdit={true} />
+                    )}
+
+                    {/* Work 메뉴 탭 */}
+                    {activeTab === 'work-menu' && (
+                        <WorkMenuManager />
                     )}
                 </div>
             </div>
