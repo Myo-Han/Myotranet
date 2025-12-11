@@ -94,7 +94,7 @@ const Admin: React.FC = () => {
             const { data, error } = await supabase
                 .from<User>('users')
                 .select(
-                    'id, name, email, role, annual_leave_balance, profile_picture, is_active, gender, hire_date, current_status'
+                    'id, name, email, role, annual_leave_balance, profile_picture, is_active, gender, hire_date, current_status, department, position, project, part'
                 )
                 .order('name', { ascending: true });
 
