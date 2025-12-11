@@ -414,19 +414,21 @@ const Admin: React.FC = () => {
                         페이지 레이아웃
                     </button>
                     <button
+                        type="button"
                         onClick={() => setActiveTab('leave-policy')}
-                        className={`px-3 py-1.5 rounded-md text-xs font-medium ${activeTab === 'leave-policy'
-                                ? 'bg-indigo-600 text-white'
-                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        className={`flex-1 px-4 py-2 text-sm font-medium ${activeTab === 'leave-policy'
+                                ? 'border-b-2 border-indigo-500 text-indigo-600'
+                                : 'text-gray-500 hover:text-gray-700'
                             }`}
                     >
                         휴가 정책
                     </button>
                     <button
+                        type="button"
                         onClick={() => setActiveTab('work-menu')}
-                        className={`px-3 py-1.5 rounded-md text-xs font-medium ${activeTab === 'work-menu'
-                                ? 'bg-indigo-600 text-white'
-                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        className={`flex-1 px-4 py-2 text-sm font-medium ${activeTab === 'work-menu'
+                                ? 'border-b-2 border-indigo-500 text-indigo-600'
+                                : 'text-gray-500 hover:text-gray-700'
                             }`}
                     >
                         Work 메뉴
