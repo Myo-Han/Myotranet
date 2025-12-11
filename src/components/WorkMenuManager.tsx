@@ -81,7 +81,7 @@ const WorkMenuManager: React.FC = () => {
     try {
       const { data, error } = await supabase
         .from('org_settings')
-        .select('config')
+        .select('id, config')
         .single();
 
       if (error) throw error;
@@ -124,7 +124,7 @@ const WorkMenuManager: React.FC = () => {
     try {
       const { data, error } = await supabase
         .from('org_settings')
-        .select('config')
+        .select('id, config')
         .single();
 
       if (error) throw error;
