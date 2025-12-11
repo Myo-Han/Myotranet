@@ -304,7 +304,6 @@ const WorkMenuManager: React.FC = () => {
                   <details className="border rounded p-2">
                     <summary className="text-xs font-medium text-gray-700 cursor-pointer">직급별</summary>
                     <div className="mt-2 space-y-2 ml-2">
-                              // 수정 후
                       <label className="flex items-center space-x-2">
                         <input
                           type="checkbox"
