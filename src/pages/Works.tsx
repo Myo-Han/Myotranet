@@ -46,7 +46,19 @@ const Work: React.FC = () => {
         const menu = data.config.work_menu || [];
         const filtered = menu.filter((item: WorkMenuItem) => {
           if (item.show_to.includes('all')) return true;
+          
+          // role 체크
           if (user?.role && item.show_to.includes(user.role)) return true;
+          
+          // position 체크
+          if (user?.position && item.show_to.includes(user.position)) return true;
+          
+          // department 체크
+          if (user?.department && item.show_to.includes(user.department)) return true;
+          
+          // project 체크
+          if (user?.project && item.show_to.includes(user.project)) return true;
+          
           return false;
         });
 
