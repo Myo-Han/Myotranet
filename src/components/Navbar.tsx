@@ -24,7 +24,7 @@ const Navbar: React.FC = () => {
           {/* Left side - Logo and nav links */}
           <div className="flex items-center">
             <Link to="/dashboard" className="flex-shrink-0 flex items-center space-x-2">
-              <img src="/logo.png" alt="Logo" className="h-8 w-8" />
+              <img src="/logo.svg" alt="Logo" className="h-8 w-8" />
               <h1 className="text-white text-xl font-bold">묘한</h1>
             </Link>
             <div className="hidden md:block ml-10">
