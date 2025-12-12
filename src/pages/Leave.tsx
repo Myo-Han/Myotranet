@@ -545,18 +545,12 @@ const Leave: React.FC = () => {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                {(user?.role === 'Manager' || user?.role === 'Admin') && (
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">신청자</th>
-                )}
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">시작일</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">종료일</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">유형</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">일수</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">사유</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">상태</th>
-                {(user?.role === 'Manager' || user?.role === 'Admin') && (
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">작업</th>
-                )}
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
