@@ -17,17 +17,40 @@ export interface User {
   updated_at?: string;
 }
 
+export type AttendanceStatus = 'working' | 'paused' | 'off' | 'vacation';
+
 export interface Attendance {
   id: string;
   user_id: string;
   date: string;
   check_in: string | null;
   check_out: string | null;
-  early_leave: string | null;
-  status: 'present' | 'absent' | 'early_leave';
-  notes: string | null;
-  created_at: string;
-  updated_at: string;
+
+  // ✅ DB status
+  status: AttendanceStatus | null;
+
+  // ✅ 누적 근무시간(초)
+  total_work_seconds?: number | null;
+
+  created_at?: string;
+  updated_at?: string;
+
+  // ✅ 화면 조인용(Attendance.tsx에서 records에 넣는 값)
+  current_status?: string | null;
+  users?: { name?: string; profile_picture?: string | null } | null;
+}
+
+export type AttendanceEventType = 'pause' | 'resume' | 'check_out' | 'check_in';
+
+export interface AttendanceEvent {
+  id: string;
+  user_id: string;
+  attendance_id: string;
+  event_type: AttendanceEventType;
+  occurred_at: string;
+  reason_category?: string | null;
+  notes?: string | null;
+  created_at?: string;
 }
 
 export interface AttendanceRevisionRequest {
@@ -35,17 +58,27 @@ export interface AttendanceRevisionRequest {
   user_id: string;
   attendance_id: string;
   requested_date: string;
+
   original_check_in: string | null;
   original_check_out: string | null;
   requested_check_in: string | null;
   requested_check_out: string | null;
+
   reason: string;
   status: 'pending' | 'approved' | 'rejected';
-  reviewed_by: string | null;
+
+  // ✅ Attendance.tsx가 쓰는 컬럼명(reviewer_id)
+  reviewer_id: string | null;
+
+  // ✅ (기존/레거시가 남아있을 수 있어서 optional로 유지)
+  reviewed_by?: string | null;
+
   review_notes: string | null;
   reviewed_at: string | null;
+
   created_at: string;
   updated_at: string;
+
   user_name?: string;
   user_email?: string;
 }

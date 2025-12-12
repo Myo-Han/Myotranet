@@ -11,6 +11,13 @@ const getTodayDate = () => {
   return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 };
 
+const shiftDate = (yyyyMMdd: string, deltaDays: number) => {
+  const [y, m, d] = yyyyMMdd.split('-').map(Number);
+  const dt = new Date(y, m - 1, d);
+  dt.setDate(dt.getDate() + deltaDays);
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+};
+
 const Attendance: React.FC = () => {
   const { user } = useAuth();
   const [records, setRecords] = useState<AttendanceType[]>([]);
@@ -76,7 +83,7 @@ const Attendance: React.FC = () => {
           date: selectedDate,
           check_in: record?.check_in || null,
           check_out: record?.check_out || null,
-          status: record?.status || 'absent',
+          status: record?.status ?? null,
           current_status: employee.current_status,
           total_work_seconds: record?.total_work_seconds || 0,
           users: { name: employee.name, profile_picture: employee.profile_picture }
@@ -98,12 +105,17 @@ const Attendance: React.FC = () => {
       const today = getTodayDate();
 
       if (user) {
-        const myTodayRecord =
-          (attendanceData || []).find(
-            (r: any) => r.user_id === user.id && r.date === today
-          ) || null;
+        // ✅ selectedDate 조회 결과(attendanceData) 말고, "오늘"을 따로 조회해야 함
+        const { data: myTodayRecord, error: myTodayError } = await supabase
+          .from('attendance')
+          .select('status')
+          .eq('user_id', user.id)
+          .eq('date', today)
+          .maybeSingle();
 
-        setTodayStatus(myTodayRecord?.status || null);
+        if (myTodayError && myTodayError.code !== 'PGRST116') throw myTodayError;
+
+        setTodayStatus(myTodayRecord?.status ?? null);
 
         const { data: leaveToday, error: leaveError } = await supabase
           .from('leaves')
@@ -120,7 +132,7 @@ const Attendance: React.FC = () => {
         setIsTodayOnLeave(onLeave);
 
         if (onLeave) {
-          setTodayStatus('VACATION');
+          setTodayStatus('vacation');
         }
       } else {
         setTodayStatus(null);
@@ -220,7 +232,7 @@ const Attendance: React.FC = () => {
         user_id: user.id,
         date: today,
         check_in: nowIso,
-        status: 'present',
+        status: 'working',
         total_work_seconds: 0,
       });
 
@@ -236,7 +248,7 @@ const Attendance: React.FC = () => {
     }
   };
 
-  const handleCheckOut = async () => {
+  const handleCheckOut = async (reasonCategory: string = '퇴근', notes?: string) => {
     if (!user) return;
 
     try {
@@ -292,7 +304,6 @@ const Attendance: React.FC = () => {
       let totalPauseSeconds = 0;
       let lastPauseTime: Date | null = null;
 
-      // pause와 resume 쌍을 찾아서 시간 계산
       (pauseEvents || []).forEach((event: any) => {
         if (event.event_type === 'pause') {
           lastPauseTime = new Date(event.occurred_at);
@@ -317,6 +328,23 @@ const Attendance: React.FC = () => {
       const totalSeconds = Math.floor((checkOutTime - checkInTime) / 1000);
       const workSeconds = Math.max(0, totalSeconds - Math.floor(totalPauseSeconds));
 
+      // 1) 상세 로그(check_out) 먼저 남기고
+      const { data: insertedEvent, error: eventError } = await supabase
+        .from('attendance_events')
+        .insert({
+          user_id: user.id,
+          attendance_id: existing.id,
+          event_type: 'check_out',
+          reason_category: reasonCategory || '퇴근',
+          notes: notes || null,
+          occurred_at: nowIso,
+        })
+        .select('id')
+        .single();
+
+      if (eventError) throw eventError;
+
+      // 2) 출퇴근 테이블 업데이트
       const updateData: any = {
         check_out: nowIso,
         status: 'off',
@@ -328,7 +356,13 @@ const Attendance: React.FC = () => {
         .update(updateData)
         .eq('id', existing.id);
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        // 업데이트 실패하면 방금 넣은 로그는 롤백 시도
+        if (insertedEvent?.id) {
+          await supabase.from('attendance_events').delete().eq('id', insertedEvent.id);
+        }
+        throw updateError;
+      }
 
       await supabase.from('users').update({ current_status: null }).eq('id', user.id);
 
@@ -340,48 +374,11 @@ const Attendance: React.FC = () => {
     }
   };
 
-  const handleEarlyLeave = async () => {
-    if (!user) return;
-
-    try {
-      const today = getTodayDate();
-
-      const { data: existing, error: selectError } = await supabase
-        .from('attendance')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('date', today)
-        .maybeSingle();
-
-      if (selectError) throw selectError;
-      if (!existing) {
-        setError('출근 기록이 없습니다');
-        return;
-      }
-
-      const { error: updateError } = await supabase
-        .from('attendance')
-        .update({
-          early_leave: new Date().toISOString(),
-          status: 'early_leave',
-        })
-        .eq('id', existing.id);
-
-      if (updateError) throw updateError;
-      await supabase.from('users').update({ current_status: null }).eq('id', user.id);
-      setSuccess('조퇴 처리되었습니다');
-      fetchData();
-      setTimeout(() => setSuccess(''), 3000);
-    } catch (err: any) {
-      setError(err.message || 'Early leave failed');
-    }
-  };
-
   const openRevisionModal = (record: AttendanceType) => {
     setSelectedRecord(record);
     setRevisionForm({
-      requestedCheckIn: record.check_in ? new Date(record.check_in).toISOString().slice(0, 16) : '',
-      requestedCheckOut: record.check_out ? new Date(record.check_out).toISOString().slice(0, 16) : '',
+      requestedCheckIn: record.check_in ? toLocalDateTimeInputValue(record.check_in) : '',
+      requestedCheckOut: record.check_out ? toLocalDateTimeInputValue(record.check_out) : '',
       reason: '',
     });
     setShowRevisionModal(true);
@@ -449,6 +446,17 @@ const Attendance: React.FC = () => {
     return date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
   };
 
+  const toLocalDateTimeInputValue = (isoString: string) => {
+    const d = new Date(isoString);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mi = String(d.getMinutes()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}T${hh}:${mi}`;
+  };
+
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     const yy = String(date.getFullYear()).slice(2);
@@ -459,9 +467,11 @@ const Attendance: React.FC = () => {
 
   const isNextDay = (checkIn: string | null, checkOut: string | null) => {
     if (!checkIn || !checkOut) return false;
-    const inDate = new Date(checkIn).toISOString().slice(0, 10);
-    const outDate = new Date(checkOut).toISOString().slice(0, 10);
-    return inDate !== outDate;
+    const inD = new Date(checkIn);
+    const outD = new Date(checkOut);
+    const inKey = `${inD.getFullYear()}-${inD.getMonth() + 1}-${inD.getDate()}`;
+    const outKey = `${outD.getFullYear()}-${outD.getMonth() + 1}-${outD.getDate()}`;
+    return inKey !== outKey;
   };
 
   const calculateWorkHours = (checkIn: string | null, checkOut: string | null, workSeconds: number) => {
@@ -488,24 +498,18 @@ const Attendance: React.FC = () => {
 
   const getStatusLabel = (status: string | null, currentStatus?: string | null) => {
     const isToday = selectedDate === getTodayDate();
-    if (status === 'absent') return '미출근';
+    if (!status) return '미출근';
     if (status === 'off') return '퇴근';
-    if (status === 'present' && isToday) {
-      if (currentStatus === 'work') return '근무중';
-      if (currentStatus === 'pause') return '휴게중';
-      if (currentStatus === 'break') return '휴게중';
-      if (currentStatus === 'out') return '외근중';
-      if (currentStatus === 'meeting') return '회의중';
-      return '근무중';
-    }
-    if (status === 'VACATION') return '휴가';
+    if (status === 'vacation') return '휴가';
+    if (status === 'paused') return '근무중단';
+    if (status === 'working') return '근무중';
     return '미출근';
   };
 
-  const getStatusColor = (status: string, currentStatus: string | null) => {
+  const getStatusColor = (status: string | null, currentStatus: string | null) => {
     const label = getStatusLabel(status, currentStatus);
     if (label === '근무중') return 'bg-green-100 text-green-800';
-    if (label === '휴게중') return 'bg-orange-100 text-orange-800';
+    if (label === '근무중단') return 'bg-orange-100 text-orange-800';
     if (label === '외근중') return 'bg-blue-100 text-blue-800';
     if (label === '회의중') return 'bg-purple-100 text-purple-800';
     if (label === '퇴근') return 'bg-gray-100 text-gray-800';
@@ -513,6 +517,7 @@ const Attendance: React.FC = () => {
     if (label === '휴가') return 'bg-blue-100 text-blue-800';
     return 'bg-gray-100 text-gray-800';
   };
+
 
   const formatWorkTime = (seconds?: number | null) => {
     if (!seconds || seconds <= 0) return '-';
@@ -534,7 +539,7 @@ const Attendance: React.FC = () => {
 
     if (label === '휴가' || label === '퇴근') return '';
     if (label === '근무중') return '업무중지';
-    if (label === '휴게중') return '업무재개';
+    if (label === '근무중단') return '업무재개';
     if (label === '미출근') return '출근';
     if (!todayStatus) return '출근';
 
@@ -564,7 +569,7 @@ const Attendance: React.FC = () => {
       const { error: updateError } = await supabase
         .from('attendance')
         .update({
-          status: 'present',
+          status: 'working',
         })
         .eq('id', existing.id);
 
@@ -604,7 +609,7 @@ const Attendance: React.FC = () => {
       return;
     }
 
-    if (label === '휴게중') {
+    if (label === '근무중단') {
       await handleResume();
       return;
     }
@@ -616,6 +621,15 @@ const Attendance: React.FC = () => {
   const handlePauseConfirm = async () => {
     if (!pauseReason) {
       setError('사유를 선택해주세요');
+      return;
+    }
+
+    // ✅ "퇴근"이면 pause 저장하지 말고, 진짜 퇴근 로직으로 보냄
+    if (pauseReason === '퇴근') {
+      await handleCheckOut('퇴근', pauseMemo);
+      setShowPauseModal(false);
+      setPauseReason('');
+      setPauseMemo('');
       return;
     }
 
@@ -658,17 +672,34 @@ const Attendance: React.FC = () => {
 
       const nowIso = new Date().toISOString();
 
-      // attendance_events에 pause 기록
-      const { error: eventError } = await supabase.from('attendance_events').insert({
-        user_id: user!.id,
-        attendance_id: existing.id,
-        event_type: 'pause',
-        reason_category: pauseReason,
-        notes: pauseMemo || null,
-        occurred_at: nowIso,
-      });
+      // 1) attendance_events에 pause 기록 (롤백 대비 id 받기)
+      const { data: insertedEvent, error: eventError } = await supabase
+        .from('attendance_events')
+        .insert({
+          user_id: user!.id,
+          attendance_id: existing.id,
+          event_type: 'pause',
+          reason_category: pauseReason,
+          notes: pauseMemo || null,
+          occurred_at: nowIso,
+        })
+        .select('id')
+        .single();
 
       if (eventError) throw eventError;
+
+      // 2) attendance.status를 paused로 업데이트
+      const { error: updateError } = await supabase
+        .from('attendance')
+        .update({ status: 'paused' })
+        .eq('id', existing.id);
+
+      if (updateError) {
+        if (insertedEvent?.id) {
+          await supabase.from('attendance_events').delete().eq('id', insertedEvent.id);
+        }
+        throw updateError;
+      }
 
       await supabase.from('users').update({ current_status: 'pause' }).eq('id', user!.id);
 
@@ -768,7 +799,7 @@ const Attendance: React.FC = () => {
 
       await supabase
         .from('attendance')
-        .update({ total_work_seconds: workSeconds })
+        .update({ total_work_seconds: workSeconds, status: 'working' })
         .eq('id', existing.id);
 
       await supabase.from('users').update({ current_status: 'work' }).eq('id', user.id);
@@ -798,17 +829,17 @@ const Attendance: React.FC = () => {
         <p className="text-sm text-gray-600 mb-4">
           오늘 상태:{' '}
           <span className="font-medium">
-            {getStatusLabel(isTodayOnLeave ? 'VACATION' : todayStatus)}
+            {getStatusLabel(isTodayOnLeave ? 'vacation' : todayStatus)}
           </span>
         </p>
         {getTodayButtonLabel() ? (
           <button
             onClick={handleTodayAction}
             className={`px-4 py-2 text-white rounded-lg ${getTodayButtonLabel() === '업무중지'
-                ? 'bg-orange-600 hover:bg-orange-700'
-                : getTodayButtonLabel() === '업무재개'
-                  ? 'bg-green-600 hover:bg-green-700'
-                  : 'bg-blue-600 hover:bg-blue-700'
+              ? 'bg-orange-600 hover:bg-orange-700'
+              : getTodayButtonLabel() === '업무재개'
+                ? 'bg-green-600 hover:bg-green-700'
+                : 'bg-blue-600 hover:bg-blue-700'
               }`}
           >
             {getTodayButtonLabel()}
@@ -827,9 +858,7 @@ const Attendance: React.FC = () => {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-4">
             <button onClick={() => {
-              const date = new Date(selectedDate);
-              date.setDate(date.getDate() - 1);
-              setSelectedDate(date.toISOString().slice(0, 10));
+              setSelectedDate(shiftDate(selectedDate, -1));
             }} className="px-3 py-2 bg-gray-100 rounded hover:bg-gray-200">←</button>
 
             <div className="relative">
@@ -847,9 +876,7 @@ const Attendance: React.FC = () => {
             </div>
 
             <button onClick={() => {
-              const date = new Date(selectedDate);
-              date.setDate(date.getDate() + 1);
-              setSelectedDate(date.toISOString().slice(0, 10));
+              setSelectedDate(shiftDate(selectedDate, 1));
             }} className="px-3 py-2 bg-gray-100 rounded hover:bg-gray-200">→</button>
 
             {selectedDate !== getTodayDate() && (
