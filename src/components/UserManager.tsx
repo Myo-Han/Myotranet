@@ -198,9 +198,10 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
           <div className="space-y-4">
             <h2 className="text-sm font-semibold text-gray-700 mb-2">선택된 직원 설정</h2>
 
-            {/* 프로필 사진 + URL */}
-            <div className="flex items-center space-x-4">
-              <div className="h-16 w-16 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center">
+            // 수정 후
+            {/* 프로필 사진 */}
+            <div className="flex justify-center mb-4">
+              <div className="h-24 w-24 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center">
                 {selectedUser.profile_picture ? (
                   <img
                     src={selectedUser.profile_picture}
@@ -210,17 +211,6 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
                 ) : (
                   <span className="text-xs text-gray-400">No Image</span>
                 )}
-              </div>
-              <div className="flex-1">
-                <label className="block text-xs font-medium text-gray-500 mb-1">
-                  프로필 이미지 URL
-                </label>
-                <input
-                  type="text"
-                  value={selectedUser.profile_picture || ''}
-                  onChange={e => handleUserChange('profile_picture', e.target.value)}
-                  className="w-full rounded-md border-gray-300 text-sm"
-                />
               </div>
             </div>
 
@@ -267,24 +257,6 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
                 </select>
               </div>
 
-              {/* 남은 연차 */}
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">
-                  남은 연차
-                </label>
-                <input
-                  type="number"
-                  value={(selectedUser as any).annual_leave_balance ?? 0}
-                  onChange={e =>
-                    handleUserChange(
-                      'annual_leave_balance',
-                      Number(e.target.value),
-                    )
-                  }
-                  className="w-full rounded-md border-gray-300 text-sm"
-                />
-              </div>
-
               {/* 성별 */}
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">
@@ -313,24 +285,6 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
                   onChange={e => handleUserChange('hire_date', e.target.value)}
                   className="w-full rounded-md border-gray-300 text-sm"
                 />
-              </div>
-
-              {/* 현재 상태 */}
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">
-                  현재 상태
-                </label>
-                <select
-                  value={(selectedUser as any).current_status || ''}
-                  onChange={e => handleUserChange('current_status', e.target.value)}
-                  className="w-full rounded-md border-gray-300 text-sm"
-                >
-                  <option value="">미지정</option>
-                  <option value="working">업무중</option>
-                  <option value="vacation">휴가중</option>
-                  <option value="off">퇴근</option>
-                  <option value="leave">휴직</option>
-                </select>
               </div>
 
               {/* 활성 계정 */}
