@@ -12,6 +12,19 @@ type Notice = {
   created_at: string;
 };
 
+type OrgItem = {
+  id: string;
+  name: string;
+  code: string;
+};
+
+type OrgConfig = {
+  departments: OrgItem[];
+  projects: OrgItem[];
+  parts: OrgItem[];
+  positions: OrgItem[];
+};
+
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -21,6 +34,16 @@ const Dashboard: React.FC = () => {
   const [notices, setNotices] = useState<Notice[]>([]);
   const [selectedNotice, setSelectedNotice] = useState<Notice | null>(null);
   const [isNoticeModalOpen, setIsNoticeModalOpen] = useState(false);
+
+  const [orgConfig, setOrgConfig] = useState<OrgConfig | null>(null);
+  const [userExtra, setUserExtra] = useState<{
+    department: string | null;
+    project: string | null;
+    part: string | null;
+    annual_leave_balance: number | null;
+    monthly_leave_balance: number | null;
+    current_status: string | null;
+  } | null>(null);
 
   useEffect(() => {
     const fetchNotices = async () => {
@@ -42,14 +65,21 @@ const Dashboard: React.FC = () => {
     fetchNotices();
   }, []);
 
-  const [userExtra, setUserExtra] = useState<{
-    department: string | null;
-    project: string | null;
-    part: string | null;
-    annual_leave_balance: number | null;
-    monthly_leave_balance: number | null;
-    current_status: string | null;
-  } | null>(null);
+  useEffect(() => {
+    const fetchOrgConfig = async () => {
+      const { data, error } = await supabase.from('org_settings').select('config').single();
+      if (error) return;
+
+      setOrgConfig({
+        departments: data.config?.departments || [],
+        projects: data.config?.projects || [],
+        parts: data.config?.parts || [],
+        positions: data.config?.positions || [],
+      });
+    };
+
+    fetchOrgConfig();
+  }, []);
 
   useEffect(() => {
     const fetchMe = async () => {
@@ -154,12 +184,21 @@ const Dashboard: React.FC = () => {
     }
   })();
 
-  const dept = String((userExtra?.department ?? (user as any)?.department ?? '')).trim();
-  const proj = String((userExtra?.project ?? (user as any)?.project ?? '')).trim();
-  const part = String((userExtra?.part ?? (user as any)?.part ?? '')).trim();
-  const affiliationParts = [dept, proj, part].filter(Boolean);
-  const affiliationText = affiliationParts.join(' / ');
-  const showAffiliation = affiliationParts.length > 0;
+  const getOrgName = (list: OrgItem[] | undefined, code: string) => {
+    if (!code) return '';
+    return list?.find((x) => x.code === code)?.name || code;
+  };
+
+  const deptCode = String((userExtra?.department ?? (user as any)?.department ?? '')).trim();
+  const projCode = String((userExtra?.project ?? (user as any)?.project ?? '')).trim();
+  const partCode = String((userExtra?.part ?? (user as any)?.part ?? '')).trim();
+
+  const deptName = getOrgName(orgConfig?.departments, deptCode);
+  const projName = getOrgName(orgConfig?.projects, projCode);
+  const partName = getOrgName(orgConfig?.parts, partCode);
+
+  const affiliationParts = [deptName, projName, partName].filter(Boolean);
+  const affiliationText = affiliationParts.length ? affiliationParts.join(' / ') : '전사(공통)';
 
   // ✅ 남은 휴가(0도 무조건 표시되게)
   const annual = Number(userExtra?.annual_leave_balance ?? (user as any)?.annual_leave_balance ?? 0);
@@ -213,26 +252,25 @@ const Dashboard: React.FC = () => {
                   </div>
                 </div>
 
-                {/* ✅ 소속(값 없으면 카드 자체 숨김) */}
-                {showAffiliation && (
-                  <div className="bg-purple-50 rounded-lg p-4 border border-purple-200">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-purple-600">소속</p>
-                        <p className="text-lg font-semibold text-purple-700 mt-1">{affiliationText}</p>
-                      </div>
-                      <div className="text-purple-500">
-                        <svg className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6"
-                          />
-                        </svg>
-                      </div>
+                {/* ✅ 소속(항상 표시, 없으면 전사(공통)) */}
+                <div className="bg-purple-50 rounded-lg p-4 border border-purple-200">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-purple-600">소속</p>
+                      <p className="text-lg font-semibold text-purple-700 mt-1">{affiliationText}</p>
+                    </div>
+                    <div className="text-purple-500">
+                      <svg className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6"
+                        />
+                      </svg>
                     </div>
                   </div>
+                </div>
                 )}
 
                 {/* ✅ 남은 휴가 */}
