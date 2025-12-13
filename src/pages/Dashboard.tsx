@@ -271,7 +271,6 @@ const Dashboard: React.FC = () => {
                     </div>
                   </div>
                 </div>
-                )}
 
                 {/* ✅ 남은 휴가 */}
                 <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
