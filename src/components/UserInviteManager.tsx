@@ -48,8 +48,10 @@ const UserInviteManager: React.FC = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const { data: { users }, error: authError } = await supabase.auth.admin.listUsers();
-      if (authError) throw authError;
+      // API 호출로 변경
+      const response = await fetch('/api/auth-users');
+      if (!response.ok) throw new Error('API 호출 실패');
+      const { users } = await response.json();
 
       const { data: dbUsers, error: dbError } = await supabase
         .from('users')
@@ -135,8 +137,13 @@ const UserInviteManager: React.FC = () => {
     if (!confirm('정말 이 사용자를 삭제하시겠습니까?')) return;
 
     try {
-      const { error } = await supabase.auth.admin.deleteUser(userId);
-      if (error) throw error;
+      const response = await fetch('/api/delete-auth-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId }),
+      });
+
+      if (!response.ok) throw new Error('삭제 실패');
 
       setSuccess('사용자가 삭제되었습니다');
       fetchData();
