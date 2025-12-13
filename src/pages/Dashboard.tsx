@@ -72,7 +72,7 @@ const Dashboard: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* User Profile Card */}
-                  {/* Profile + Notice Row */}
+      {/* Profile + Notice Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* User Profile Card */}
         <div className="bg-white shadow rounded-lg overflow-hidden">
@@ -104,9 +104,9 @@ const Dashboard: React.FC = () => {
                 <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-blue-600">남은 연차</p>
+                      <p className="text-sm font-medium text-blue-600">남은 휴가</p>
                       <p className="text-lg font-semibold text-blue-700 mt-1">
-                        {user?.annual_leave_balance}일
+                        {(user?.annual_leave_balance ?? 0) + (user?.monthly_leave_balance ?? 0)}일
                       </p>
                     </div>
                     <div className="text-blue-500">
@@ -151,8 +151,8 @@ const Dashboard: React.FC = () => {
                         {user?.role === 'Admin'
                           ? '전체 관리자'
                           : user?.role === 'Manager'
-                          ? '매니저'
-                          : '일반 사용자'}
+                            ? '매니저'
+                            : '일반 사용자'}
                       </p>
                     </div>
                     <div className="text-purple-500">
