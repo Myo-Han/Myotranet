@@ -4,6 +4,7 @@ import { supabase } from '../supabaseClient';
 import Loading from '../components/Loading';
 import ErrorMessage from '../components/ErrorMessage';
 import SuccessMessage from '../components/SuccessMessage';
+import LeaveWorkQueue from '../components/LeaveWorkQueue';
 
 type WorkMenuItem = {
   id: string;
@@ -271,6 +272,10 @@ const Work: React.FC = () => {
               <h2 className="text-xl font-bold mb-2">내 업무</h2>
               <p className="text-sm text-gray-500">내 업무 대시보드 (개발 예정)</p>
             </div>
+          )}
+
+          {selectedMenu === 'leave-approval' && (
+            <LeaveWorkQueue />
           )}
 
           {submitting && (

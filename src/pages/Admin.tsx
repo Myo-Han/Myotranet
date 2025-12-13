@@ -324,7 +324,7 @@ const Admin: React.FC = () => {
                             : 'text-gray-500 hover:text-gray-700'
                             }`}
                     >
-                        Work 메뉴
+                        업무 메뉴
                     </button>
                     <button
                         type="button"
