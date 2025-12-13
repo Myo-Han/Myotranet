@@ -42,6 +42,31 @@ const Dashboard: React.FC = () => {
     fetchNotices();
   }, []);
 
+  const [userExtra, setUserExtra] = useState<{
+    department: string | null;
+    project: string | null;
+    part: string | null;
+    annual_leave_balance: number | null;
+    monthly_leave_balance: number | null;
+    current_status: string | null;
+  } | null>(null);
+
+  useEffect(() => {
+    const fetchMe = async () => {
+      if (!user?.id) return;
+
+      const { data, error } = await supabase
+        .from('users')
+        .select('department, project, part, annual_leave_balance, monthly_leave_balance, current_status')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      if (!error && data) setUserExtra(data as any);
+    };
+
+    fetchMe();
+  }, [user?.id]);
+
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!searchQuery.trim()) return;
@@ -70,7 +95,7 @@ const Dashboard: React.FC = () => {
   };
 
   // ✅ 상태/소속 표시용(값 없으면 소속 카드 숨김)
-  const rawStatus = String((user as any)?.current_status || '').trim();
+  const rawStatus = String((userExtra?.current_status ?? (user as any)?.current_status ?? '')).trim();
 
   // Attendance.tsx 기준: working / paused / off / vacation (+ null)
   const normalizedStatus = rawStatus || 'none';
@@ -129,12 +154,17 @@ const Dashboard: React.FC = () => {
     }
   })();
 
-  const dept = String((user as any)?.department || '').trim();
-  const proj = String((user as any)?.project || '').trim();
-  const part = String((user as any)?.part || '').trim();
+  const dept = String((userExtra?.department ?? (user as any)?.department ?? '')).trim();
+  const proj = String((userExtra?.project ?? (user as any)?.project ?? '')).trim();
+  const part = String((userExtra?.part ?? (user as any)?.part ?? '')).trim();
   const affiliationParts = [dept, proj, part].filter(Boolean);
   const affiliationText = affiliationParts.join(' / ');
   const showAffiliation = affiliationParts.length > 0;
+
+  // ✅ 남은 휴가(0도 무조건 표시되게)
+  const annual = Number(userExtra?.annual_leave_balance ?? (user as any)?.annual_leave_balance ?? 0);
+  const monthly = Number(userExtra?.monthly_leave_balance ?? (user as any)?.monthly_leave_balance ?? 0);
+  const remainingLeave = annual + monthly;
 
   return (
     <div className="space-y-6">
@@ -211,7 +241,7 @@ const Dashboard: React.FC = () => {
                     <div>
                       <p className="text-sm font-medium text-blue-600">남은 휴가</p>
                       <p className="text-lg font-semibold text-blue-700 mt-1">
-                        {user?.annual_leave_balance}일
+                        {remainingLeave}일
                       </p>
                     </div>
                     <div className="text-blue-500">
