@@ -25,7 +25,7 @@ const Navbar: React.FC = () => {
           <div className="flex items-center">
             <Link to="/dashboard" className="flex-shrink-0 flex items-center space-x-2">
               <img src="/logo.svg" alt="Logo" className="h-8 w-8" />
-              <h1 className="text-white text-xl font-bold">묘한</h1>
+              <h1 className="text-black text-xl font-bold">묘한</h1>
             </Link>
             <div className="hidden md:block ml-10">
               <div className="flex items-baseline space-x-4">
@@ -60,12 +60,12 @@ const Navbar: React.FC = () => {
                 />
               )}
               <div className="hidden md:block text-right">
-                <div className="text-sm font-medium text-white">{user?.name}</div>
-                <div className="text-xs text-blue-200">{user?.role}</div>
+                <div className="text-sm font-medium text-gray-800">{user?.name}</div>
               </div>
               <button
                 onClick={() => logout()}
-                className="ml-3 px-3 py-2 rounded-md text-sm font-medium text-white bg-red-600 hover:bg-red-700 transition duration-200"
+                className="ml-3 px-3 py-2 rounded-md text-sm font-medium text-white hover:opacity-80 transition duration-200"
+                style={{ backgroundColor: '#4b4d51' }}
               >
                 Logout
               </button>
