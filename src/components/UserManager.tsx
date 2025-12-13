@@ -48,25 +48,6 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
     setSelectedUser({ ...(selectedUser as any), [field]: value });
   };
 
-  const handleNewUser = () => {
-    setSelectedUser({
-      id: '',
-      name: '',
-      email: '',
-      role: 'User',
-      annual_leave_balance: 0,
-      profile_picture: null,
-      is_active: true,
-      gender: '',
-      hire_date: '',
-      current_status: 'working',
-      department: '',
-      position: '',
-      project: '',
-      part: '',
-    } as any);
-  };
-
   const handleDeleteUser = async () => {
     if (!selectedUser?.id) return;
     if (!window.confirm('해당 직원을 삭제하시겠습니까?')) return;
@@ -78,66 +59,33 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
   };
 
   const handleSaveUser = async () => {
-    if (!selectedUser) return;
+    if (!selectedUser || !selectedUser.id) return;
     setSavingUser(true);
     try {
-      // 기존 직원 수정
-      if (selectedUser.id) {
-        const { data, error } = await supabase
-          .from('users')
-          .update({
-            name: selectedUser.name,
-            email: selectedUser.email,
-            role: selectedUser.role,
-            annual_leave_balance: (selectedUser as any).annual_leave_balance ?? 0,
-            is_active: (selectedUser as any).is_active ?? true,
-            profile_picture: selectedUser.profile_picture || null,
-            gender: (selectedUser as any).gender || null,
-            hire_date: (selectedUser as any).hire_date || null,
-            current_status: (selectedUser as any).current_status || null,
-            department: (selectedUser as any).department || null,
-            position: (selectedUser as any).position || null,
-            project: (selectedUser as any).project || null,
-            part: (selectedUser as any).part || null,
-          })
-          .eq('id', selectedUser.id)
-          .select(
-            'id, name, email, role, annual_leave_balance, profile_picture, is_active, gender, hire_date, current_status, department, position, project, part',
-          )
-          .single();
+      const { data, error } = await supabase
+        .from('users')
+        .update({
+          name: selectedUser.name,
+          email: selectedUser.email,
+          role: selectedUser.role,
+          is_active: (selectedUser as any).is_active ?? true,
+          profile_picture: selectedUser.profile_picture || null,
+          gender: (selectedUser as any).gender || null,
+          hire_date: (selectedUser as any).hire_date || null,
+          department: (selectedUser as any).department || null,
+          position: (selectedUser as any).position || null,
+          project: (selectedUser as any).project || null,
+          part: (selectedUser as any).part || null,
+        })
+        .eq('id', selectedUser.id)
+        .select(
+          'id, name, email, role, annual_leave_balance, profile_picture, is_active, gender, hire_date, current_status, department, position, project, part',
+        )
+        .single();
 
-        if (!error && data) {
-          setUsers(prev => prev.map(u => (u.id === data.id ? (data as any) : u)));
-          setSelectedUser(data as any);
-        }
-      } else {
-        // 새 직원 추가
-        const { data, error } = await supabase
-          .from('users')
-          .insert({
-            name: selectedUser.name,
-            email: selectedUser.email,
-            role: selectedUser.role || 'User',
-            annual_leave_balance: (selectedUser as any).annual_leave_balance ?? 0,
-            is_active: (selectedUser as any).is_active ?? true,
-            profile_picture: selectedUser.profile_picture || null,
-            gender: (selectedUser as any).gender || null,
-            hire_date: (selectedUser as any).hire_date || null,
-            current_status: (selectedUser as any).current_status || null,
-            department: (selectedUser as any).department || null,
-            position: (selectedUser as any).position || null,
-            project: (selectedUser as any).project || null,
-            part: (selectedUser as any).part || null,
-          })
-          .select(
-            'id, name, email, role, annual_leave_balance, profile_picture, is_active, gender, hire_date, current_status, department, position, project, part',
-          )
-          .single();
-
-        if (!error && data) {
-          setUsers(prev => [...prev, data as any]);
-          setSelectedUser(data as any);
-        }
+      if (!error && data) {
+        setUsers(prev => prev.map(u => (u.id === data.id ? (data as any) : u)));
+        setSelectedUser(data as any);
       }
     } finally {
       setSavingUser(false);
@@ -149,13 +97,6 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
       <div className="lg:col-span-1 border-r border-gray-100 pr-4">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-sm font-semibold text-gray-700">직원 목록</h2>
-          <button
-            type="button"
-            onClick={handleNewUser}
-            className="px-2 py-1 text-xs rounded-md bg-indigo-600 text-white hover:bg-indigo-700"
-          >
-            + 추가
-          </button>
         </div>
         <div className="space-y-1 max-h-[420px] overflow-auto">
           {users.map(u => (
@@ -387,7 +328,7 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
                 disabled={savingUser}
                 className="px-4 py-2 text-xs font-semibold rounded-md bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
               >
-                {savingUser ? '저장 중...' : selectedUser.id ? '수정' : '추가'}
+                {savingUser ? '저장 중...' : '수정'}
               </button>
             </div>
           </div>
