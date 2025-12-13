@@ -41,9 +41,17 @@ type ApprovalLineStep = {
   id: string;
   approval_line_id: string;
   step_order: number;
+
+  // 담당자
   assignee_user_id: string | null;
   assignee_role: string | null;
   assignee_position: string | null;
+
+  // ✅ 단계별 승인 범위(프로젝트/파트/부서)
+  assignee_project_code: string | null;
+  assignee_part_code: string | null;
+  assignee_department_code: string | null;
+
   required: boolean;
   created_at: string;
 };
@@ -52,12 +60,19 @@ type StepForm = {
   _key: string;
   step_order: number;
   _assigneeType: StepAssigneeType;
+
+  // 담당자
   assignee_user_id: string | null;
   assignee_role: string | null;
   assignee_position: string | null;
+
+  // ✅ 단계별 승인 범위(프로젝트/파트/부서)
+  assignee_project_code: string;    // ''이면 전체
+  assignee_part_code: string;       // ''이면 전체
+  assignee_department_code: string; // ''이면 전체
+
   required: boolean;
 };
-
 
 const requestTypeLabel: Record<string, string> = {
   leave: '휴가',
@@ -183,10 +198,17 @@ const ApprovalLineManager: React.FC = () => {
         assignee_user_id: s.assignee_user_id,
         assignee_role: s.assignee_role,
         assignee_position: s.assignee_position,
+
+        // ✅ 단계별 승인 범위
+        assignee_project_code: s.assignee_project_code || '',
+        assignee_part_code: s.assignee_part_code || '',
+        assignee_department_code: s.assignee_department_code || '',
+
         required: s.required,
       } as StepForm;
     });
 
+    // ✅ 이 2줄 추가
     setSteps(list.length ? toForm : getDefaultSteps());
   };
 
@@ -198,6 +220,12 @@ const ApprovalLineManager: React.FC = () => {
       assignee_user_id: null,
       assignee_role: null,
       assignee_position: '',
+
+      // ✅ 단계별 승인 범위(기본: 전체)
+      assignee_project_code: '',
+      assignee_part_code: '',
+      assignee_department_code: '',
+
       required: true,
     },
     {
@@ -207,6 +235,12 @@ const ApprovalLineManager: React.FC = () => {
       assignee_user_id: null,
       assignee_role: '',
       assignee_position: null,
+
+      // ✅ 단계별 승인 범위(기본: 전체)
+      assignee_project_code: '',
+      assignee_part_code: '',
+      assignee_department_code: '',
+
       required: true,
     },
   ];
@@ -269,6 +303,12 @@ const ApprovalLineManager: React.FC = () => {
           assignee_user_id: null,
           assignee_role: '',
           assignee_position: null,
+
+          // ✅ 단계별 승인 범위(기본: 전체)
+          assignee_project_code: '',
+          assignee_part_code: '',
+          assignee_department_code: '',
+
           required: true,
         },
       ];
@@ -367,6 +407,11 @@ const ApprovalLineManager: React.FC = () => {
           approval_line_id: lineId!,
           step_order: s.step_order,
           required: !!s.required,
+
+          // ✅ 단계별 승인 범위
+          assignee_project_code: normalizeScope(s.assignee_project_code) as any,
+          assignee_part_code: normalizeScope(s.assignee_part_code) as any,
+          assignee_department_code: normalizeScope(s.assignee_department_code) as any,
         };
 
         if (s._assigneeType === 'user') {
@@ -590,6 +635,7 @@ const ApprovalLineManager: React.FC = () => {
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">순서</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">담당 타입</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">담당자</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">단계 범위</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">필수</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">작업</th>
                   </tr>
@@ -681,6 +727,50 @@ const ApprovalLineManager: React.FC = () => {
                         )}
                       </td>
 
+                      {/* ✅ 단계 범위 셀 추가 */}
+                      <td className="px-4 py-3 text-sm">
+                        <div className="grid grid-cols-1 gap-2">
+                          <select
+                            value={s.assignee_project_code || ''}
+                            onChange={(e) => setStepField(s._key, { assignee_project_code: e.target.value })}
+                            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                          >
+                            <option value="">프로젝트: 전체</option>
+                            {orgConfig.projects.map((p) => (
+                              <option key={p.id} value={p.code}>
+                                {p.name} ({p.code})
+                              </option>
+                            ))}
+                          </select>
+
+                          <select
+                            value={s.assignee_part_code || ''}
+                            onChange={(e) => setStepField(s._key, { assignee_part_code: e.target.value })}
+                            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                          >
+                            <option value="">파트: 전체</option>
+                            {orgConfig.parts.map((p) => (
+                              <option key={p.id} value={p.code}>
+                                {p.name} ({p.code})
+                              </option>
+                            ))}
+                          </select>
+
+                          <select
+                            value={s.assignee_department_code || ''}
+                            onChange={(e) => setStepField(s._key, { assignee_department_code: e.target.value })}
+                            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                          >
+                            <option value="">부서: 전체</option>
+                            {orgConfig.departments.map((d) => (
+                              <option key={d.id} value={d.code}>
+                                {d.name} ({d.code})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </td>
+
                       <td className="px-4 py-3 text-sm">
                         <label className="inline-flex items-center space-x-2">
                           <input
@@ -715,7 +805,7 @@ const ApprovalLineManager: React.FC = () => {
 
                   {steps.length === 0 && (
                     <tr>
-                      <td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-500">
+                      <td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">
                         단계가 없습니다. “단계 추가”로 추가해주세요.
                       </td>
                     </tr>
