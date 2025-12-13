@@ -17,6 +17,50 @@ const Leave: React.FC = () => {
   const [success, setSuccess] = useState('');
   const [showModal, setShowModal] = useState(false);
 
+  // ✅ 결재 진행 상세 모달
+  type LeaveApprovalRow = {
+    id: string;
+    leave_id: string;
+    approval_line_id: string;
+    status: string;
+    current_step_order: number | null;
+    created_at?: string;
+  };
+
+  type ApprovalLineStepRow = {
+    id: string;
+    approval_line_id: string;
+    step_order: number;
+    required: boolean;
+
+    assignee_user_id: string | null;
+    assignee_role: string | null;
+    assignee_position: string | null;
+
+    assignee_project_code: string | null;
+    assignee_part_code: string | null;
+    assignee_department_code: string | null;
+  };
+
+  type LeaveApprovalActionRow = {
+    id: string;
+    leave_approval_id: string;
+    step_order: number;
+    actor_user_id: string | null;
+    action: string; // 'approved' | 'rejected' | ...
+    notes: string | null;
+    created_at: string;
+  };
+
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailLeave, setDetailLeave] = useState<LeaveType | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState('');
+  const [detailApproval, setDetailApproval] = useState<LeaveApprovalRow | null>(null);
+  const [detailSteps, setDetailSteps] = useState<ApprovalLineStepRow[]>([]);
+  const [detailActions, setDetailActions] = useState<LeaveApprovalActionRow[]>([]);
+  const [detailUsersById, setDetailUsersById] = useState<Record<string, string>>({});
+
   // 필터 상태
   const [historyFilter, setHistoryFilter] = useState({
     period: '1month',
@@ -221,6 +265,11 @@ const Leave: React.FC = () => {
         unpaid_days: unpaidDays,
         reason: form.reason,
         status: 'pending',
+
+        // ✅ 신청 당시 소속 스냅샷 저장 (결재 매칭/목록 표시용)
+        requester_project: (user as any).project ?? null,
+        requester_part: (user as any).part ?? null,
+        requester_department: (user as any).department ?? null,
       });
 
       if (error) throw error;
@@ -278,6 +327,91 @@ const Leave: React.FC = () => {
       .reduce((sum, h) => sum + Math.abs(h.change_amount), 0);
 
     return { totalAccrual, totalUsed, totalExpired };
+  };
+
+  const openApprovalDetail = async (leave: LeaveType) => {
+    setDetailLeave(leave);
+    setDetailOpen(true);
+    setDetailLoading(true);
+    setDetailError('');
+    setDetailApproval(null);
+    setDetailSteps([]);
+    setDetailActions([]);
+    setDetailUsersById({});
+
+    try {
+      const { data: approval, error: approvalErr } = await supabase
+        .from('leave_approvals')
+        .select('*')
+        .eq('leave_id', leave.id)
+        .maybeSingle();
+
+      if (approvalErr) throw approvalErr;
+
+      if (!approval) {
+        // 결재 인스턴스가 아직 없으면 모달에서 안내만
+        setDetailApproval(null);
+        return;
+      }
+
+      setDetailApproval(approval as any);
+
+      const { data: steps, error: stepsErr } = await supabase
+        .from('approval_line_steps')
+        .select('*')
+        .eq('approval_line_id', (approval as any).approval_line_id)
+        .order('step_order', { ascending: true });
+
+      if (stepsErr) throw stepsErr;
+      setDetailSteps((steps || []) as any);
+
+      const { data: actions, error: actionsErr } = await supabase
+        .from('leave_approval_actions')
+        .select('*')
+        .eq('leave_approval_id', (approval as any).id)
+        .order('created_at', { ascending: true });
+
+      if (actionsErr) throw actionsErr;
+      const actionList = (actions || []) as any as LeaveApprovalActionRow[];
+      setDetailActions(actionList);
+
+      const actorIds = Array.from(
+        new Set(actionList.map(a => a.actor_user_id).filter(Boolean) as string[])
+      );
+
+      if (actorIds.length) {
+        const { data: userRows, error: usersErr } = await supabase
+          .from('users')
+          .select('id, name')
+          .in('id', actorIds);
+
+        if (usersErr) throw usersErr;
+
+        const map: Record<string, string> = {};
+        (userRows || []).forEach((u: any) => {
+          map[u.id] = u.name || u.id;
+        });
+        setDetailUsersById(map);
+      }
+    } catch (e: any) {
+      setDetailError(e.message || '결재 진행 조회 실패');
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
+  const renderAssignee = (s: ApprovalLineStepRow) => {
+    if (s.assignee_user_id) return `사용자: ${s.assignee_user_id}`;
+    if (s.assignee_role) return `권한: ${s.assignee_role}`;
+    if (s.assignee_position) return `직급: ${s.assignee_position}`;
+    return '담당자: (미지정)';
+  };
+
+  const renderScope = (s: ApprovalLineStepRow) => {
+    const p = s.assignee_project_code ? `프로젝트:${s.assignee_project_code}` : '프로젝트:전체';
+    const t = s.assignee_part_code ? `파트:${s.assignee_part_code}` : '파트:전체';
+    const d = s.assignee_department_code ? `부서:${s.assignee_department_code}` : '부서:전체';
+    return `${p} / ${t} / ${d}`;
   };
 
   const stats = getYearStats();
@@ -456,7 +590,11 @@ const Leave: React.FC = () => {
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {leaves.map((leave) => (
-                <tr key={leave.id}>
+                <tr
+                  key={leave.id}
+                  onClick={() => openApprovalDetail(leave)}
+                  className="cursor-pointer hover:bg-gray-50"
+                >
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {new Date(((leave as any).created_at || leave.start_date) as string).toLocaleDateString('ko-KR')}
                   </td>
@@ -479,10 +617,10 @@ const Leave: React.FC = () => {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span
                       className={`px-2 py-1 text-xs rounded-full ${leave.status === 'approved'
-                          ? 'bg-green-100 text-green-800'
-                          : leave.status === 'rejected'
-                            ? 'bg-red-100 text-red-800'
-                            : 'bg-yellow-100 text-yellow-800'
+                        ? 'bg-green-100 text-green-800'
+                        : leave.status === 'rejected'
+                          ? 'bg-red-100 text-red-800'
+                          : 'bg-yellow-100 text-yellow-800'
                         }`}
                     >
                       {leave.status === 'approved' ? '승인' : leave.status === 'rejected' ? '반려' : '대기'}
@@ -501,6 +639,173 @@ const Leave: React.FC = () => {
           </table>
         </div>
       </div>
+      {/* ✅ 결재 진행 현황 모달 */}
+      {detailOpen && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+          onClick={() => setDetailOpen(false)}
+        >
+          <div
+            className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-semibold">결재 진행 현황</h3>
+              <button
+                onClick={() => setDetailOpen(false)}
+                className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300"
+              >
+                닫기
+              </button>
+            </div>
+
+            {detailLeave && (
+              <div className="mb-4 text-sm text-gray-700 space-y-1">
+                <div><span className="font-semibold">기간:</span> {detailLeave.start_date} ~ {detailLeave.end_date}</div>
+                <div><span className="font-semibold">유형:</span> {getPolicyName(detailLeave.type)}</div>
+                <div><span className="font-semibold">일수:</span> {detailLeave.days_requested}일</div>
+                <div><span className="font-semibold">사유:</span> {detailLeave.reason}</div>
+              </div>
+            )}
+
+            {detailLoading && (
+              <div className="py-6 text-center text-gray-600">로딩중...</div>
+            )}
+
+            {!detailLoading && detailError && (
+              <div className="py-3 text-red-600 text-sm">{detailError}</div>
+            )}
+
+            {!detailLoading && !detailError && !detailApproval && (
+              <div className="py-6 text-center text-gray-600">
+                결재 인스턴스가 없습니다. (결재라인 매칭/트리거 확인 필요)
+              </div>
+            )}
+
+            {!detailLoading && !detailError && detailApproval && (
+              <>
+                {(() => {
+                  const lastRejected = [...detailActions].reverse().find(a => a.action === 'rejected');
+                  const rejectedStep = lastRejected?.step_order ?? null;
+                  const current = detailApproval.current_step_order ?? null;
+
+                  const remainingCount =
+                    current === null
+                      ? detailSteps.length
+                      : detailSteps.filter(s => s.step_order >= current).length;
+
+                  return (
+                    <>
+                      <div className="mb-3 text-sm text-gray-700">
+                        <span className="font-semibold">상태:</span> {detailApproval.status}
+                        <span className="ml-4 font-semibold">남은 단계:</span> {remainingCount}개
+                      </div>
+
+                      {detailApproval.status === 'rejected' && lastRejected?.notes && (
+                        <div className="mb-4 p-3 rounded bg-red-50 text-sm text-red-700">
+                          <div className="font-semibold">반려 사유</div>
+                          <div className="mt-1">{lastRejected.notes}</div>
+                        </div>
+                      )}
+
+                      <div className="border rounded overflow-hidden mb-4">
+                        <div className="bg-gray-50 px-4 py-2 text-sm font-semibold">단계</div>
+                        <div className="divide-y">
+                          {detailSteps.map((s) => {
+                            const stepActions = detailActions.filter(a => a.step_order === s.step_order);
+                            const last = stepActions.length ? stepActions[stepActions.length - 1] : null;
+
+                            let stateLabel = '대기';
+                            if (detailApproval.status === 'rejected' && rejectedStep === s.step_order) {
+                              stateLabel = '반려';
+                            } else if (last?.action === 'approved') {
+                              stateLabel = '완료';
+                            } else if ((detailApproval.status === 'in_progress' || detailApproval.status === 'pending') && current === s.step_order) {
+                              stateLabel = '진행중';
+                            } else if (current !== null && s.step_order < current) {
+                              stateLabel = '완료';
+                            }
+
+                            const actorName =
+                              last?.actor_user_id ? (detailUsersById[last.actor_user_id] || last.actor_user_id) : '-';
+
+                            return (
+                              <div key={s.id} className="px-4 py-3 flex items-start justify-between gap-4">
+                                <div className="text-sm text-gray-800">
+                                  <div className="font-semibold">{s.step_order}단계</div>
+                                  <div className="text-gray-600">{renderAssignee(s)}</div>
+                                  <div className="text-gray-500">{renderScope(s)}</div>
+                                  {last && (
+                                    <div className="text-gray-500 mt-1">
+                                      최근 처리: {actorName} / {last.action} / {new Date(last.created_at).toLocaleString('ko-KR')}
+                                    </div>
+                                  )}
+                                </div>
+
+                                <span
+                                  className={`px-2 py-1 text-xs rounded-full ${stateLabel === '완료'
+                                    ? 'bg-green-100 text-green-800'
+                                    : stateLabel === '반려'
+                                      ? 'bg-red-100 text-red-800'
+                                      : stateLabel === '진행중'
+                                        ? 'bg-blue-100 text-blue-800'
+                                        : 'bg-gray-100 text-gray-700'
+                                    }`}
+                                >
+                                  {stateLabel}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      <div className="border rounded overflow-hidden">
+                        <div className="bg-gray-50 px-4 py-2 text-sm font-semibold">처리 이력</div>
+                        <div className="overflow-x-auto">
+                          <table className="min-w-full divide-y divide-gray-200">
+                            <thead className="bg-white">
+                              <tr>
+                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">일시</th>
+                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">단계</th>
+                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">처리자</th>
+                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">결과</th>
+                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">메모</th>
+                              </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                              {detailActions.map((a) => (
+                                <tr key={a.id}>
+                                  <td className="px-4 py-2 text-sm text-gray-700">
+                                    {new Date(a.created_at).toLocaleString('ko-KR')}
+                                  </td>
+                                  <td className="px-4 py-2 text-sm text-gray-700">{a.step_order}단계</td>
+                                  <td className="px-4 py-2 text-sm text-gray-700">
+                                    {a.actor_user_id ? (detailUsersById[a.actor_user_id] || a.actor_user_id) : '-'}
+                                  </td>
+                                  <td className="px-4 py-2 text-sm text-gray-700">{a.action}</td>
+                                  <td className="px-4 py-2 text-sm text-gray-700">{a.notes || '-'}</td>
+                                </tr>
+                              ))}
+                              {detailActions.length === 0 && (
+                                <tr>
+                                  <td colSpan={5} className="px-4 py-6 text-center text-sm text-gray-500">
+                                    처리 이력이 없습니다
+                                  </td>
+                                </tr>
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* 휴가 신청 모달 */}
       {showModal && (
