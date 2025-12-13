@@ -197,8 +197,6 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
         {selectedUser ? (
           <div className="space-y-4">
             <h2 className="text-sm font-semibold text-gray-700 mb-2">선택된 직원 설정</h2>
-
-            // 수정 후
             {/* 프로필 사진 */}
             <div className="flex justify-center mb-4">
               <div className="h-24 w-24 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center">
