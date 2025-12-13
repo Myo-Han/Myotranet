@@ -69,6 +69,73 @@ const Dashboard: React.FC = () => {
     navigate(`/search?userId=${userId}`);
   };
 
+  // ✅ 상태/소속 표시용(값 없으면 소속 카드 숨김)
+  onst rawStatus = String((user as any)?.current_status || '').trim();
+
+  // Attendance.tsx 기준: working / paused / off / vacation (+ null)
+  const normalizedStatus = rawStatus || 'none';
+
+  const statusMeta = (() => {
+    switch (normalizedStatus) {
+      case 'working':
+        return {
+          label: '근무중',
+          wrap: 'bg-green-50 border-green-200',
+          title: 'text-green-600',
+          value: 'text-green-700',
+          icon: 'text-green-500',
+          iconPath: 'M5 13l4 4L19 7',
+        };
+
+      case 'paused':
+        return {
+          label: '업무중단',
+          wrap: 'bg-yellow-50 border-yellow-200',
+          title: 'text-yellow-600',
+          value: 'text-yellow-700',
+          icon: 'text-yellow-500',
+          iconPath: 'M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
+        };
+
+      case 'off':
+        return {
+          label: '퇴근',
+          wrap: 'bg-indigo-50 border-indigo-200',
+          title: 'text-indigo-600',
+          value: 'text-indigo-700',
+          icon: 'text-indigo-500',
+          iconPath: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',
+        };
+
+      case 'vacation':
+        return {
+          label: '휴가',
+          wrap: 'bg-pink-50 border-pink-200',
+          title: 'text-pink-600',
+          value: 'text-pink-700',
+          icon: 'text-pink-500',
+          iconPath: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z',
+        };
+
+      default:
+        return {
+          label: '미출근',
+          wrap: 'bg-gray-50 border-gray-200',
+          title: 'text-gray-600',
+          value: 'text-gray-700',
+          icon: 'text-gray-500',
+          iconPath: 'M12 8v4m0 4h.01M12 2a10 10 0 100 20 10 10 0 000-20z',
+        };
+    }
+  })();
+
+  const dept = String((user as any)?.department || '').trim();
+  const proj = String((user as any)?.project || '').trim();
+  const part = String((user as any)?.part || '').trim();
+  const affiliationParts = [dept, proj, part].filter(Boolean);
+  const affiliationText = affiliationParts.join(' / ');
+  const showAffiliation = affiliationParts.length > 0;
+
   return (
     <div className="space-y-6">
       {/* User Profile Card */}
@@ -101,12 +168,50 @@ const Dashboard: React.FC = () => {
 
             <div className="mt-6 pt-6 border-t border-gray-200">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* ✅ 상태 */}
+                <div className={`rounded-lg p-4 border ${statusMeta.wrap}`}>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className={`text-sm font-medium ${statusMeta.title}`}>상태</p>
+                      <p className={`text-lg font-semibold mt-1 ${statusMeta.value}`}>{statusMeta.label}</p>
+                    </div>
+                    <div className={statusMeta.icon}>
+                      <svg className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={statusMeta.iconPath} />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ✅ 소속(값 없으면 카드 자체 숨김) */}
+                {showAffiliation && (
+                  <div className="bg-purple-50 rounded-lg p-4 border border-purple-200">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-purple-600">소속</p>
+                        <p className="text-lg font-semibold text-purple-700 mt-1">{affiliationText}</p>
+                      </div>
+                      <div className="text-purple-500">
+                        <svg className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6"
+                          />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* ✅ 남은 휴가 */}
                 <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-blue-600">남은 휴가</p>
                       <p className="text-lg font-semibold text-blue-700 mt-1">
-                        {(user?.annual_leave_balance ?? 0) + (user?.monthly_leave_balance ?? 0)}일
+                        {user?.annual_leave_balance}일
                       </p>
                     </div>
                     <div className="text-blue-500">
@@ -115,53 +220,7 @@ const Dashboard: React.FC = () => {
                           strokeLinecap="round"
                           strokeLinejoin="round"
                           strokeWidth={2}
-                          d="M12 8v4m0 4h.01M4.5 19.5l15-15"
-                        />
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-green-50 rounded-lg p-4 border border-green-200">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-green-600">계정 상태</p>
-                      <p className="text-lg font-semibold text-green-700 mt-1">
-                        {user?.is_active ? '활성' : '비활성'}
-                      </p>
-                    </div>
-                    <div className="text-green-500">
-                      <svg className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M5 13l4 4L19 7"
-                        />
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-purple-50 rounded-lg p-4 border border-purple-200">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-purple-600">권한 레벨</p>
-                      <p className="text-lg font-semibold text-purple-700 mt-1">
-                        {user?.role === 'Admin'
-                          ? '전체 관리자'
-                          : user?.role === 'Manager'
-                            ? '매니저'
-                            : '일반 사용자'}
-                      </p>
-                    </div>
-                    <div className="text-purple-500">
-                      <svg className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M12 12a5 5 0 100-10 5 5 0 000 10zm-7 9a7 7 0 0114 0H5z"
+                          d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
                         />
                       </svg>
                     </div>
