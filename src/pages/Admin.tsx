@@ -6,8 +6,9 @@ import LeavePolicyManager from '../components/LeavePolicyManager';
 import WorkMenuManager from '../components/WorkMenuManager';
 import OrganizationManager from '../components/OrganizationManager';
 import UserManager from '../components/UserManager';
+import UserInviteManager from '../components/UserInviteManager';
 
-type AdminTab = 'users' | 'notices' | 'layout' | 'leave-policy' | 'work-menu' | 'organization';
+type AdminTab = 'users' | 'user-invite' | 'notices' | 'layout' | 'leave-policy' | 'work-menu' | 'organization';
 type PageKey = 'dashboard' | 'attendance' | 'leave' | 'letters' | 'search';
 
 interface ContainerConfig {
@@ -267,6 +268,16 @@ const Admin: React.FC = () => {
                 <div className="border-b border-gray-200 flex">
                     <button
                         type="button"
+                        onClick={() => setActiveTab('user-invite')}
+                        className={`flex-1 px-4 py-2 text-sm font-medium ${activeTab === 'user-invite'
+                            ? 'border-b-2 border-indigo-500 text-indigo-600'
+                            : 'text-gray-500 hover:text-gray-700'
+                            }`}
+                    >
+                        직원 초대
+                    </button>
+                    <button
+                        type="button"
                         onClick={() => setActiveTab('users')}
                         className={`flex-1 px-4 py-2 text-sm font-medium ${activeTab === 'users'
                             ? 'border-b-2 border-indigo-500 text-indigo-600'
@@ -329,6 +340,11 @@ const Admin: React.FC = () => {
 
                 {/* 탭 내용 */}
                 <div className="p-6">
+                    {/* 직원 추가 탭 */}
+                    {activeTab === 'user-invite' && (
+                        <UserInviteManager />
+                    )}
+
                     {/* 직원 관리 탭 */}
                     {activeTab === 'users' && (
                         <UserManager currentUserId={user?.id} />
