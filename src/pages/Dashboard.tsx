@@ -40,6 +40,7 @@ const Dashboard: React.FC = () => {
     department: string | null;
     project: string | null;
     part: string | null;
+    position: string | null;
     annual_leave_balance: number | null;
     monthly_leave_balance: number | null;
     current_status: string | null;
@@ -87,7 +88,7 @@ const Dashboard: React.FC = () => {
 
       const { data, error } = await supabase
         .from('users')
-        .select('department, project, part, annual_leave_balance, monthly_leave_balance, current_status')
+        .select('department, project, part, position, annual_leave_balance, monthly_leave_balance, current_status')
         .eq('id', user.id)
         .maybeSingle();
 
@@ -192,13 +193,17 @@ const Dashboard: React.FC = () => {
   const deptCode = String((userExtra?.department ?? (user as any)?.department ?? '')).trim();
   const projCode = String((userExtra?.project ?? (user as any)?.project ?? '')).trim();
   const partCode = String((userExtra?.part ?? (user as any)?.part ?? '')).trim();
+  const posCode = String((userExtra?.position ?? (user as any)?.position ?? '')).trim();
 
   const deptName = getOrgName(orgConfig?.departments, deptCode);
   const projName = getOrgName(orgConfig?.projects, projCode);
   const partName = getOrgName(orgConfig?.parts, partCode);
+  const posName = getOrgName(orgConfig?.positions, posCode);
 
   const affiliationParts = [deptName, projName, partName].filter(Boolean);
-  const affiliationText = affiliationParts.length ? affiliationParts.join(' / ') : '전사(공통)';
+  const affiliationText =
+    affiliationParts.length ? affiliationParts.join(' / ')
+      : (posName || '전사(공통)');
 
   // ✅ 남은 휴가(0도 무조건 표시되게)
   const annual = Number(userExtra?.annual_leave_balance ?? (user as any)?.annual_leave_balance ?? 0);
