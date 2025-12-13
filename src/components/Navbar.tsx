@@ -12,9 +12,9 @@ const Navbar: React.FC = () => {
   };
 
   const navLinkClass = (path: string) =>
-    `px-3 py-2 rounded-md text-sm font-medium transition duration-200 ${isActive(path)
-      ? 'bg-blue-600 text-white'
-      : 'text-gray-700 hover:bg-gray-100'
+    `px-3 py-2 text-sm font-medium transition-all duration-300 border-b-2 ${isActive(path)
+      ? 'border-blue-600 text-blue-600'
+      : 'border-transparent text-gray-700 hover:border-gray-400 hover:text-gray-900'
     }`;
 
   return (
@@ -23,7 +23,7 @@ const Navbar: React.FC = () => {
         <div className="flex items-center justify-between h-16">
           {/* Left side - Logo and nav links */}
           <div className="flex items-center">
-            <Link to="/dashboard" className="flex-shrink-0 flex items-center space-x-2">
+            <Link to="/dashboard" className="flex-shrink-0 flex items-center space-x-2 transition-opacity duration-200 hover:opacity-70">
               <img src="/logo.svg" alt="Logo" className="h-8 w-8" />
               <h1 className="text-black text-xl font-bold">묘한</h1>
             </Link>
