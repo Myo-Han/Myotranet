@@ -48,7 +48,15 @@ const Work: React.FC = () => {
         if (error) throw error;
 
         const menu = data.config.work_menu || [];
-        const filtered = menu.filter((item: WorkMenuItem) => {
+        
+        // parent_id, is_folder 없는 기존 메뉴는 기본값 추가
+        const normalizedMenu = menu.map((item: any) => ({
+          ...item,
+          parent_id: item.parent_id || null,
+          is_folder: item.is_folder || false,
+        }));
+        
+        const filtered = normalizedMenu.filter((item: WorkMenuItem) => {
           if (item.show_to.includes('all')) return true;
 
           // role 체크
