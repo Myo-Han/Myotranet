@@ -70,7 +70,7 @@ const Dashboard: React.FC = () => {
   };
 
   // ✅ 상태/소속 표시용(값 없으면 소속 카드 숨김)
-  onst rawStatus = String((user as any)?.current_status || '').trim();
+  const rawStatus = String((user as any)?.current_status || '').trim();
 
   // Attendance.tsx 기준: working / paused / off / vacation (+ null)
   const normalizedStatus = rawStatus || 'none';
