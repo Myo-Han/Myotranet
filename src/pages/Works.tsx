@@ -5,6 +5,8 @@ import Loading from '../components/Loading';
 import ErrorMessage from '../components/ErrorMessage';
 import SuccessMessage from '../components/SuccessMessage';
 import LeaveWorkQueue from '../components/LeaveWorkQueue';
+import UserManager from '../components/UserManager';
+import UserInviteManager from '../components/UserInviteManager';
 
 type WorkMenuItem = {
   id: string;
@@ -332,6 +334,14 @@ const Work: React.FC = () => {
 
           {selectedMenu === 'leave-approval' && (
             <LeaveWorkQueue />
+          )}
+
+          {selectedMenu === 'user-manage' && (
+            <UserManager currentUserId={user?.id} />
+          )}
+
+          {selectedMenu === 'user-invite' && (
+            <UserInviteManager />
           )}
 
           {submitting && (
