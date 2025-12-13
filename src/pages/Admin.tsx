@@ -4,8 +4,9 @@ import { supabase } from '../supabaseClient';
 import { User } from '../types';
 import LeavePolicyManager from '../components/LeavePolicyManager';
 import WorkMenuManager from '../components/WorkMenuManager';
+import OrganizationManager from '../components/OrganizationManager';
 
-type AdminTab = 'users' | 'notices' | 'layout' | 'leave-policy' | 'work-menu';
+type AdminTab = 'users' | 'notices' | 'layout' | 'leave-policy' | 'work-menu' | 'organization';
 type PageKey = 'dashboard' | 'attendance' | 'leave' | 'letters' | 'search';
 
 interface ContainerConfig {
@@ -423,6 +424,7 @@ const Admin: React.FC = () => {
                     >
                         휴가 정책
                     </button>
+                    // 수정 후
                     <button
                         type="button"
                         onClick={() => setActiveTab('work-menu')}
@@ -432,6 +434,16 @@ const Admin: React.FC = () => {
                             }`}
                     >
                         Work 메뉴
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setActiveTab('organization')}
+                        className={`flex-1 px-4 py-2 text-sm font-medium ${activeTab === 'organization'
+                                ? 'border-b-2 border-indigo-500 text-indigo-600'
+                                : 'text-gray-500 hover:text-gray-700'
+                            }`}
+                    >
+                        조직 관리
                     </button>
                 </div>
 
@@ -1026,6 +1038,11 @@ const Admin: React.FC = () => {
                     {/* Work 메뉴 탭 */}
                     {activeTab === 'work-menu' && (
                         <WorkMenuManager />
+                    )}
+
+                    {/* 조직 관리 탭 */}
+                    {activeTab === 'organization' && (
+                        <OrganizationManager />
                     )}
                 </div>
             </div>

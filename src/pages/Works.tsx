@@ -209,7 +209,7 @@ const Work: React.FC = () => {
       {/* 왼쪽 메뉴 */}
       <div className="w-64 bg-white shadow-lg">
         <div className="p-6 border-b">
-          <h1 className="text-2xl font-bold text-gray-900">Work</h1>
+          <h1 className="text-2xl font-bold text-gray-900">업무</h1>
           <p className="text-xs text-gray-500 mt-1">업무 관리</p>
         </div>
         <nav className="p-4 space-y-1">
