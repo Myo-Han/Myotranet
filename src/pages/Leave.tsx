@@ -8,7 +8,7 @@ import ErrorMessage from '../components/ErrorMessage';
 import SuccessMessage from '../components/SuccessMessage';
 
 const Leave: React.FC = () => {
-  const { user, refreshUser } = useAuth();
+  const { user } = useAuth();
   const [leaves, setLeaves] = useState<LeaveType[]>([]);
   const [policies, setPolicies] = useState<LeavePolicy[]>([]);
   const [balanceHistory, setBalanceHistory] = useState<LeaveBalanceHistory[]>([]);
@@ -16,7 +16,7 @@ const Leave: React.FC = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [showModal, setShowModal] = useState(false);
-  
+
   // 필터 상태
   const [historyFilter, setHistoryFilter] = useState({
     period: '1month',
@@ -49,15 +49,15 @@ const Leave: React.FC = () => {
         .order('created_at', { ascending: true });
 
       if (policiesError) throw policiesError;
-      
-      const sortedPolicies = (policiesData || []).sort((a, b) => 
+
+      const sortedPolicies = (policiesData || []).sort((a, b) =>
         (a.config.deduction_priority || 999) - (b.config.deduction_priority || 999)
       );
       setPolicies(sortedPolicies);
 
       // 휴가 신청 내역 가져오기
       await fetchLeaves();
-      
+
       // 휴가 증감 이력 가져오기
       await fetchBalanceHistory();
     } catch (err: any) {
@@ -68,16 +68,15 @@ const Leave: React.FC = () => {
   };
 
   const fetchLeaves = async () => {
+    if (!user) return;
+
     try {
-      const isManagerOrAdmin = user?.role === 'Manager' || user?.role === 'Admin';
+      const { data, error } = await supabase
+        .from('leaves')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('start_date', { ascending: false });
 
-      let query = supabase.from('leaves').select('*').order('start_date', { ascending: false });
-
-      if (!isManagerOrAdmin && user) {
-        query = query.eq('user_id', user.id);
-      }
-
-      const { data, error } = await query;
       if (error) throw error;
 
       setLeaves(data || []);
@@ -100,7 +99,7 @@ const Leave: React.FC = () => {
       if (historyFilter.period !== 'all') {
         const now = new Date();
         let startDate = new Date();
-        
+
         switch (historyFilter.period) {
           case '1month':
             startDate.setMonth(now.getMonth() - 1);
@@ -115,7 +114,7 @@ const Leave: React.FC = () => {
             startDate.setFullYear(now.getFullYear() - 1);
             break;
         }
-        
+
         query = query.gte('created_at', startDate.toISOString());
       }
 
@@ -146,20 +145,20 @@ const Leave: React.FC = () => {
 
   const calculateDays = (startDate: string, endDate: string, leaveType: string) => {
     if (!startDate || !endDate) return 0;
-    
+
     const start = new Date(startDate);
     const end = new Date(endDate);
-    
+
     // 날짜 검증
     if (end < start) {
       return 0;
     }
-    
+
     // 반차는 무조건 0.5일
     if (leaveType === 'half_day') {
       return 0.5;
     }
-    
+
     const diffTime = end.getTime() - start.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
     return diffDays;
@@ -240,103 +239,6 @@ const Leave: React.FC = () => {
       setTimeout(() => setSuccess(''), 3000);
     } catch (err: any) {
       setError(err.message || '신청 실패');
-    }
-  };
-
-  const reviewLeaveRequest = async (
-    leave: LeaveType,
-    status: 'approved' | 'rejected',
-    notes: string
-  ) => {
-    if (!user) return;
-
-    try {
-      // 휴가 승인 처리
-      const { error: updateError } = await supabase
-        .from('leaves')
-        .update({
-          status,
-          review_notes: notes,
-          reviewed_at: new Date().toISOString(),
-          reviewed_by: user.id,
-        })
-        .eq('id', leave.id);
-
-      if (updateError) throw updateError;
-
-      // 승인된 경우에만 잔여일수 차감
-      if (status === 'approved') {
-        await deductLeaveBalance(leave);
-      }
-
-      setSuccess(`휴가 신청이 ${status === 'approved' ? '승인' : '반려'}되었습니다`);
-      fetchLeaves();
-      refreshUser();
-      setTimeout(() => setSuccess(''), 3000);
-    } catch (err: any) {
-      setError(err.message || '승인 처리 실패');
-    }
-  };
-
-  const deductLeaveBalance = async (leave: LeaveType) => {
-    if (!leave.user_id) return;
-
-    try {
-      // 사용자 정보 가져오기
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('annual_leave_balance, monthly_leave_balance')
-        .eq('id', leave.user_id)
-        .single();
-
-      if (userError) throw userError;
-
-      let balanceField = '';
-      let currentBalance = 0;
-      let policyCode = leave.type;
-
-      // 정책에 따라 차감할 잔액 필드 결정
-      if (leave.type === 'annual_leave' || leave.type === 'half_day') {
-        balanceField = 'annual_leave_balance';
-        currentBalance = userData.annual_leave_balance || 0;
-      } else if (leave.type === 'monthly_leave') {
-        balanceField = 'monthly_leave_balance';
-        currentBalance = userData.monthly_leave_balance || 0;
-      } else {
-        // 기타 휴가는 차감하지 않음 (1회성 또는 이벤트성)
-        return;
-      }
-
-      const newBalance = currentBalance - leave.days_requested;
-
-      if (newBalance < 0) {
-        throw new Error('잔여 휴가가 부족합니다');
-      }
-
-      // 잔액 차감
-      const { error: balanceError } = await supabase
-        .from('users')
-        .update({ [balanceField]: newBalance })
-        .eq('id', leave.user_id);
-
-      if (balanceError) throw balanceError;
-
-      // 이력 기록
-      await supabase.from('leave_balance_history').insert({
-        user_id: leave.user_id,
-        policy_code: policyCode,
-        change_type: 'used',
-        change_amount: -leave.days_requested,
-        balance_after: newBalance,
-        reason: `휴가 사용: ${leave.reason}`,
-        related_leave_id: leave.id,
-      });
-
-      // 이력 새로고침
-      fetchBalanceHistory();
-    } catch (err: any) {
-      console.error('잔액 차감 실패:', err);
-      throw err;
     }
   };
 
@@ -495,22 +397,20 @@ const Leave: React.FC = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span
-                      className={`px-2 py-1 text-xs rounded-full ${
-                        history.change_type === 'accrual' || history.change_type === 'manual_add'
-                          ? 'bg-green-100 text-green-800'
-                          : history.change_type === 'used'
+                      className={`px-2 py-1 text-xs rounded-full ${history.change_type === 'accrual' || history.change_type === 'manual_add'
+                        ? 'bg-green-100 text-green-800'
+                        : history.change_type === 'used'
                           ? 'bg-orange-100 text-orange-800'
                           : 'bg-red-100 text-red-800'
-                      }`}
+                        }`}
                     >
                       {getChangeTypeLabel(history.change_type)}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     <span
-                      className={`font-semibold ${
-                        history.change_amount > 0 ? 'text-green-600' : 'text-red-600'
-                      }`}
+                      className={`font-semibold ${history.change_amount > 0 ? 'text-green-600' : 'text-red-600'
+                        }`}
                     >
                       {history.change_amount > 0 ? '+' : ''}
                       {history.change_amount}일
@@ -545,26 +445,21 @@ const Leave: React.FC = () => {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                {(user?.role === 'Manager' || user?.role === 'Admin') && (
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">신청자</th>
-                )}
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">신청일자</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">시작일</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">종료일</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">유형</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">일수</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">사유</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">상태</th>
-                {(user?.role === 'Manager' || user?.role === 'Admin') && (
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">작업</th>
-                )}
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {leaves.map((leave) => (
                 <tr key={leave.id}>
-                  {(user?.role === 'Manager' || user?.role === 'Admin') && (
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{leave.name}</td>
-                  )}
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {new Date(((leave as any).created_at || leave.start_date) as string).toLocaleDateString('ko-KR')}
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {new Date(leave.start_date).toLocaleDateString('ko-KR')}
                   </td>
@@ -583,45 +478,21 @@ const Leave: React.FC = () => {
                   <td className="px-6 py-4 text-sm text-gray-900">{leave.reason}</td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span
-                      className={`px-2 py-1 text-xs rounded-full ${
-                        leave.status === 'approved'
+                      className={`px-2 py-1 text-xs rounded-full ${leave.status === 'approved'
                           ? 'bg-green-100 text-green-800'
                           : leave.status === 'rejected'
-                          ? 'bg-red-100 text-red-800'
-                          : 'bg-yellow-100 text-yellow-800'
-                      }`}
+                            ? 'bg-red-100 text-red-800'
+                            : 'bg-yellow-100 text-yellow-800'
+                        }`}
                     >
                       {leave.status === 'approved' ? '승인' : leave.status === 'rejected' ? '반려' : '대기'}
                     </span>
                   </td>
-                  {(user?.role === 'Manager' || user?.role === 'Admin') && (
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      {leave.status === 'pending' && (
-                        <div className="flex space-x-2">
-                          <button
-                            onClick={() => reviewLeaveRequest(leave, 'approved', '승인됨')}
-                            className="text-green-600 hover:text-green-800"
-                          >
-                            승인
-                          </button>
-                          <button
-                            onClick={() => reviewLeaveRequest(leave, 'rejected', '반려됨')}
-                            className="text-red-600 hover:text-red-800"
-                          >
-                            반려
-                          </button>
-                        </div>
-                      )}
-                    </td>
-                  )}
                 </tr>
               ))}
               {leaves.length === 0 && (
                 <tr>
-                  <td
-                    colSpan={(user?.role === 'Manager' || user?.role === 'Admin') ? 8 : 7}
-                    className="px-6 py-8 text-center text-gray-500"
-                  >
+                  <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
                     신청 내역이 없습니다
                   </td>
                 </tr>
