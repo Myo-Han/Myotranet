@@ -11,6 +11,8 @@ type WorkMenuItem = {
   path: string;
   order: number;
   show_to: string[];
+  parent_id: string | null;
+  is_folder: boolean;
 };
 
 const WorkMenuManager: React.FC = () => {
@@ -20,6 +22,7 @@ const WorkMenuManager: React.FC = () => {
   const [success, setSuccess] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingItem, setEditingItem] = useState<WorkMenuItem | null>(null);
+  // 수정 후
   const [form, setForm] = useState({
     id: '',
     label: '',
@@ -27,7 +30,10 @@ const WorkMenuManager: React.FC = () => {
     path: '',
     order: 1,
     show_to: [] as string[],
+    parent_id: null as string | null,
+    is_folder: false,
   });
+
   const [orgConfig, setOrgConfig] = useState({
     departments: [],
     projects: [],
@@ -82,13 +88,15 @@ const WorkMenuManager: React.FC = () => {
 
   const openAddModal = () => {
     setEditingItem(null);
-    setForm({
-      id: '',
-      label: '',
-      icon: 'briefcase',
-      path: '',
+    setForm({ 
+      id: '', 
+      label: '', 
+      icon: 'briefcase', 
+      path: '', 
       order: menuItems.length + 1,
       show_to: [],
+      parent_id: null,
+      is_folder: false
     });
     setShowModal(true);
   };
@@ -100,8 +108,12 @@ const WorkMenuManager: React.FC = () => {
   };
 
   const handleSubmit = async () => {
-    if (!form.label || !form.path) {
-      setError('메뉴명과 경로는 필수입니다');
+    if (!form.label) {
+      setError('메뉴명은 필수입니다');
+      return;
+    }
+    if (!form.is_folder && !form.path) {
+      setError('폴더가 아닌 경우 경로는 필수입니다');
       return;
     }
 
@@ -289,8 +301,36 @@ const WorkMenuManager: React.FC = () => {
                   value={form.path}
                   onChange={(e) => setForm({ ...form, path: e.target.value })}
                   className="w-full border border-gray-300 rounded-md px-3 py-2"
-                  placeholder="예: build"
+                  placeholder="예: build (폴더인 경우 비워두기)"
+                  disabled={form.is_folder}
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">상위 메뉴</label>
+                <select
+                  value={form.parent_id || ''}
+                  onChange={(e) => setForm({ ...form, parent_id: e.target.value || null })}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2"
+                >
+                  <option value="">최상위</option>
+                  {menuItems.filter(m => m.is_folder).map((item) => (
+                    <option key={item.id} value={item.id}>{item.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={form.is_folder}
+                  onChange={(e) => setForm({ ...form, is_folder: e.target.checked, path: e.target.checked ? '' : form.path })}
+                  className="rounded"
+                  id="is_folder"
+                />
+                <label htmlFor="is_folder" className="text-sm font-medium text-gray-700">
+                  폴더(하위 메뉴 포함)
+                </label>
               </div>
 
               <div>

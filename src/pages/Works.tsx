@@ -13,6 +13,8 @@ type WorkMenuItem = {
   path: string;
   order: number;
   show_to: string[];
+  parent_id: string | null;
+  is_folder: boolean;
 };
 
 const Work: React.FC = () => {
@@ -20,6 +22,7 @@ const Work: React.FC = () => {
   const [menuItems, setMenuItems] = useState<WorkMenuItem[]>([]);
   const [selectedMenu, setSelectedMenu] = useState('build');
   const [loadingMenu, setLoadingMenu] = useState(true);
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const [showBuildModal, setShowBuildModal] = useState(false);
   const [buildPassword, setBuildPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -214,18 +217,63 @@ const Work: React.FC = () => {
           <p className="text-xs text-gray-500 mt-1">업무 관리</p>
         </div>
         <nav className="p-4 space-y-1">
-          {menuItems.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => setSelectedMenu(item.path)}
-              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition ${selectedMenu === item.path
-                ? 'bg-blue-50 text-blue-600 font-medium'
-                : 'text-gray-700 hover:bg-gray-50'
+          {menuItems.filter(item => !item.parent_id).map((item) => (
+            <div key={item.id}>
+              <button
+                onClick={() => {
+                  if (item.is_folder) {
+                    const newExpanded = new Set(expandedFolders);
+                    if (newExpanded.has(item.id)) {
+                      newExpanded.delete(item.id);
+                    } else {
+                      newExpanded.add(item.id);
+                    }
+                    setExpandedFolders(newExpanded);
+                  } else {
+                    setSelectedMenu(item.path);
+                  }
+                }}
+                className={`w-full flex items-center justify-between px-4 py-3 rounded-lg transition ${
+                  !item.is_folder && selectedMenu === item.path
+                    ? 'bg-blue-50 text-blue-600 font-medium'
+                    : 'text-gray-700 hover:bg-gray-50'
                 }`}
-            >
-              {getIcon(item.icon)}
-              <span>{item.label}</span>
-            </button>
+              >
+                <div className="flex items-center space-x-3">
+                  {getIcon(item.icon)}
+                  <span>{item.label}</span>
+                </div>
+                {item.is_folder && (
+                  <svg 
+                    className={`w-4 h-4 transition-transform ${expandedFolders.has(item.id) ? 'rotate-90' : ''}`} 
+                    fill="none" 
+                    viewBox="0 0 24 24" 
+                    stroke="currentColor"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                )}
+              </button>
+              
+              {item.is_folder && expandedFolders.has(item.id) && (
+                <div className="ml-6 mt-1 space-y-1">
+                  {menuItems.filter(child => child.parent_id === item.id).map((child) => (
+                    <button
+                      key={child.id}
+                      onClick={() => setSelectedMenu(child.path)}
+                      className={`w-full flex items-center space-x-3 px-4 py-2 rounded-lg transition text-sm ${
+                        selectedMenu === child.path
+                          ? 'bg-blue-50 text-blue-600 font-medium'
+                          : 'text-gray-600 hover:bg-gray-50'
+                      }`}
+                    >
+                      {getIcon(child.icon)}
+                      <span>{child.label}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           ))}
         </nav>
       </div>

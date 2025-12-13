@@ -31,11 +31,11 @@ const LeaveWorkQueue: React.FC = () => {
   const { user } = useAuth();
 
   const [loading, setLoading] = useState(true);
-const [error, setError] = useState('');
-const [success, setSuccess] = useState('');
-const [submittingId, setSubmittingId] = useState<string | null>(null);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [submittingId, setSubmittingId] = useState<string | null>(null);
 
-const [rows, setRows] = useState<QueueRow[]>([]);
+  const [rows, setRows] = useState<QueueRow[]>([]);
   const [userMap, setUserMap] = useState<Record<string, UserMini>>({});
 
   const requesterIds = useMemo(() => {
@@ -85,94 +85,94 @@ const [rows, setRows] = useState<QueueRow[]>([]);
   };
 
   const getMaxStep = async (approvalLineId: string) => {
-  const { data, error } = await supabase
-    .from('approval_line_steps')
-    .select('step_order')
-    .eq('approval_line_id', approvalLineId)
-    .order('step_order', { ascending: false })
-    .limit(1)
-    .single();
+    const { data, error } = await supabase
+      .from('approval_line_steps')
+      .select('step_order')
+      .eq('approval_line_id', approvalLineId)
+      .order('step_order', { ascending: false })
+      .limit(1)
+      .single();
 
-  if (error) throw error;
-  return Number(data?.step_order || 1);
-};
+    if (error) throw error;
+    return Number(data?.step_order || 1);
+  };
 
-const handleApprove = async (r: QueueRow) => {
-  if (!user?.id) return;
+  const handleApprove = async (r: QueueRow) => {
+    if (!user?.id) return;
 
-  setError('');
-  setSuccess('');
-  setSubmittingId(r.leave_approval_id);
+    setError('');
+    setSuccess('');
+    setSubmittingId(r.leave_approval_id);
 
-  try {
-    const maxStep = await getMaxStep(r.approval_line_id);
+    try {
+      const maxStep = await getMaxStep(r.approval_line_id);
 
-    const { error: logErr } = await supabase.from('leave_approval_actions').insert({
-      leave_approval_id: r.leave_approval_id,
-      step_order: r.current_step_order,
-      actor_user_id: user.id,
-      action: 'approved',
-      notes: null,
-    });
-    if (logErr) throw logErr;
+      const { error: logErr } = await supabase.from('leave_approval_actions').insert({
+        leave_approval_id: r.leave_approval_id,
+        step_order: r.current_step_order,
+        actor_user_id: user.id,
+        action: 'approved',
+        notes: null,
+      });
+      if (logErr) throw logErr;
 
-    if (r.current_step_order >= maxStep) {
-      const { error: upErr } = await supabase
-        .from('leave_approvals')
-        .update({ status: 'approved', updated_at: new Date().toISOString() })
-        .eq('id', r.leave_approval_id);
-      if (upErr) throw upErr;
-    } else {
-      const { error: upErr } = await supabase
-        .from('leave_approvals')
-        .update({ current_step_order: r.current_step_order + 1, updated_at: new Date().toISOString() })
-        .eq('id', r.leave_approval_id);
-      if (upErr) throw upErr;
+      if (r.current_step_order >= maxStep) {
+        const { error: upErr } = await supabase
+          .from('leave_approvals')
+          .update({ status: 'approved', updated_at: new Date().toISOString() })
+          .eq('id', r.leave_approval_id);
+        if (upErr) throw upErr;
+      } else {
+        const { error: upErr } = await supabase
+          .from('leave_approvals')
+          .update({ current_step_order: r.current_step_order + 1, updated_at: new Date().toISOString() })
+          .eq('id', r.leave_approval_id);
+        if (upErr) throw upErr;
+      }
+
+      setSuccess('승인 처리되었습니다.');
+      await fetchQueue();
+    } catch (e: any) {
+      setError(e?.message || '승인 처리 실패');
+    } finally {
+      setSubmittingId(null);
+      setTimeout(() => setSuccess(''), 2000);
     }
+  };
 
-    setSuccess('승인 처리되었습니다.');
-    await fetchQueue();
-  } catch (e: any) {
-    setError(e?.message || '승인 처리 실패');
-  } finally {
-    setSubmittingId(null);
-    setTimeout(() => setSuccess(''), 2000);
-  }
-};
+  const handleReject = async (r: QueueRow) => {
+    if (!user?.id) return;
 
-const handleReject = async (r: QueueRow) => {
-  if (!user?.id) return;
+    const notes = window.prompt('반려 사유를 입력하세요 (선택)');
+    setError('');
+    setSuccess('');
+    setSubmittingId(r.leave_approval_id);
 
-  const notes = window.prompt('반려 사유를 입력하세요 (선택)');
-  setError('');
-  setSuccess('');
-  setSubmittingId(r.leave_approval_id);
+    try {
+      const { error: logErr } = await supabase.from('leave_approval_actions').insert({
+        leave_approval_id: r.leave_approval_id,
+        step_order: r.current_step_order,
+        actor_user_id: user.id,
+        action: 'rejected',
+        notes: notes || null,
+      });
+      if (logErr) throw logErr;
 
-  try {
-    const { error: logErr } = await supabase.from('leave_approval_actions').insert({
-      leave_approval_id: r.leave_approval_id,
-      step_order: r.current_step_order,
-      actor_user_id: user.id,
-      action: 'rejected',
-      notes: notes || null,
-    });
-    if (logErr) throw logErr;
+      const { error: upErr } = await supabase
+        .from('leave_approvals')
+        .update({ status: 'rejected', updated_at: new Date().toISOString() })
+        .eq('id', r.leave_approval_id);
+      if (upErr) throw upErr;
 
-    const { error: upErr } = await supabase
-      .from('leave_approvals')
-      .update({ status: 'rejected', updated_at: new Date().toISOString() })
-      .eq('id', r.leave_approval_id);
-    if (upErr) throw upErr;
-
-    setSuccess('반려 처리되었습니다.');
-    await fetchQueue();
-  } catch (e: any) {
-    setError(e?.message || '반려 처리 실패');
-  } finally {
-    setSubmittingId(null);
-    setTimeout(() => setSuccess(''), 2000);
-  }
-};
+      setSuccess('반려 처리되었습니다.');
+      await fetchQueue();
+    } catch (e: any) {
+      setError(e?.message || '반려 처리 실패');
+    } finally {
+      setSubmittingId(null);
+      setTimeout(() => setSuccess(''), 2000);
+    }
+  };
 
   useEffect(() => {
     fetchQueue();
@@ -208,7 +208,7 @@ const handleReject = async (r: QueueRow) => {
       </div>
 
       {error && <ErrorMessage message={error} />}
-{success && <div className="text-sm text-green-700 bg-green-50 border border-green-200 rounded p-3">{success}</div>}
+      {success && <div className="text-sm text-green-700 bg-green-50 border border-green-200 rounded p-3">{success}</div>}
 
 
       <div className="bg-white shadow rounded-lg overflow-hidden">
@@ -236,24 +236,24 @@ const handleReject = async (r: QueueRow) => {
                 <td className="px-4 py-3 text-sm text-gray-700">{r.reason || '-'}</td>
                 <td className="px-4 py-3 text-sm text-gray-700">{r.current_step_order}단계</td>
 
-<td className="px-4 py-3 text-sm">
-  <div className="flex gap-2">
-    <button
-      onClick={() => handleApprove(r)}
-      disabled={submittingId === r.leave_approval_id}
-      className="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-    >
-      승인
-    </button>
-    <button
-      onClick={() => handleReject(r)}
-      disabled={submittingId === r.leave_approval_id}
-      className="px-3 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
-    >
-      반려
-    </button>
-  </div>
-</td>
+                <td className="px-4 py-3 text-sm">
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleApprove(r)}
+                      disabled={submittingId === r.leave_approval_id}
+                      className="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+                    >
+                      승인
+                    </button>
+                    <button
+                      onClick={() => handleReject(r)}
+                      disabled={submittingId === r.leave_approval_id}
+                      className="px-3 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
+                    >
+                      반려
+                    </button>
+                  </div>
+                </td>
 
               </tr>
             ))}
