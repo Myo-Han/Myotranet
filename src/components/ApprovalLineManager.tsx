@@ -35,14 +35,12 @@ type ApprovalLine = {
   updated_at: string;
 };
 
-type StepKind = 'approve' | 'agree' | 'final' | 'view';
 type StepAssigneeType = 'user' | 'role' | 'position';
 
 type ApprovalLineStep = {
   id: string;
   approval_line_id: string;
   step_order: number;
-  step_kind: StepKind;
   assignee_user_id: string | null;
   assignee_role: string | null;
   assignee_position: string | null;
@@ -53,7 +51,6 @@ type ApprovalLineStep = {
 type StepForm = {
   _key: string;
   step_order: number;
-  step_kind: StepKind;
   _assigneeType: StepAssigneeType;
   assignee_user_id: string | null;
   assignee_role: string | null;
@@ -61,12 +58,6 @@ type StepForm = {
   required: boolean;
 };
 
-const stepKindLabel: Record<StepKind, string> = {
-  approve: '승인',
-  agree: '합의',
-  final: '최종',
-  view: '열람',
-};
 
 const requestTypeLabel: Record<string, string> = {
   leave: '휴가',
@@ -188,7 +179,6 @@ const ApprovalLineManager: React.FC = () => {
       return {
         _key: `step_${s.id}`,
         step_order: s.step_order,
-        step_kind: s.step_kind,
         _assigneeType: type,
         assignee_user_id: s.assignee_user_id,
         assignee_role: s.assignee_role,
@@ -204,7 +194,6 @@ const ApprovalLineManager: React.FC = () => {
     {
       _key: `step_${Date.now()}_1`,
       step_order: 1,
-      step_kind: 'approve',
       _assigneeType: 'position',
       assignee_user_id: null,
       assignee_role: null,
@@ -214,7 +203,6 @@ const ApprovalLineManager: React.FC = () => {
     {
       _key: `step_${Date.now()}_2`,
       step_order: 2,
-      step_kind: 'final',
       _assigneeType: 'role',
       assignee_user_id: null,
       assignee_role: '',
@@ -277,7 +265,6 @@ const ApprovalLineManager: React.FC = () => {
         {
           _key: `step_${Date.now()}_${order}`,
           step_order: order,
-          step_kind: 'approve',
           _assigneeType: 'role',
           assignee_user_id: null,
           assignee_role: '',
@@ -318,8 +305,6 @@ const ApprovalLineManager: React.FC = () => {
     if (s.length === 0) return '결재 단계를 1개 이상 추가해주세요.';
 
     for (const step of s) {
-      if (!step.step_kind) return '단계 종류를 선택해주세요.';
-
       if (step._assigneeType === 'user' && !step.assignee_user_id) {
         return `${step.step_order}단계: 담당 사용자 선택이 필요합니다.`;
       }
@@ -381,7 +366,6 @@ const ApprovalLineManager: React.FC = () => {
         const base = {
           approval_line_id: lineId!,
           step_order: s.step_order,
-          step_kind: s.step_kind,
           required: !!s.required,
         };
 
@@ -473,9 +457,8 @@ const ApprovalLineManager: React.FC = () => {
                 <td className="px-4 py-3 text-sm text-gray-700">{renderScope(line)}</td>
                 <td className="px-4 py-3 text-sm">
                   <span
-                    className={`px-2 py-1 text-xs rounded-full ${
-                      line.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-700'
-                    }`}
+                    className={`px-2 py-1 text-xs rounded-full ${line.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-700'
+                      }`}
                   >
                     {line.is_active ? '활성' : '비활성'}
                   </span>
@@ -605,7 +588,6 @@ const ApprovalLineManager: React.FC = () => {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">순서</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">단계</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">담당 타입</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">담당자</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">필수</th>
@@ -616,20 +598,6 @@ const ApprovalLineManager: React.FC = () => {
                   {normalizeSteps(steps).map((s) => (
                     <tr key={s._key}>
                       <td className="px-4 py-3 text-sm text-gray-900">{s.step_order}</td>
-
-                      <td className="px-4 py-3 text-sm">
-                        <select
-                          value={s.step_kind}
-                          onChange={(e) => setStepField(s._key, { step_kind: e.target.value as StepKind })}
-                          className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
-                        >
-                          <option value="approve">{stepKindLabel.approve}</option>
-                          <option value="agree">{stepKindLabel.agree}</option>
-                          <option value="final">{stepKindLabel.final}</option>
-                          <option value="view">{stepKindLabel.view}</option>
-                        </select>
-                      </td>
-
                       <td className="px-4 py-3 text-sm">
                         <select
                           value={s._assigneeType}
@@ -747,7 +715,7 @@ const ApprovalLineManager: React.FC = () => {
 
                   {steps.length === 0 && (
                     <tr>
-                      <td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">
+                      <td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-500">
                         단계가 없습니다. “단계 추가”로 추가해주세요.
                       </td>
                     </tr>
@@ -760,9 +728,8 @@ const ApprovalLineManager: React.FC = () => {
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className={`flex-1 px-4 py-2 text-white rounded ${
-                  saving ? 'bg-blue-300' : 'bg-blue-600 hover:bg-blue-700'
-                }`}
+                className={`flex-1 px-4 py-2 text-white rounded ${saving ? 'bg-blue-300' : 'bg-blue-600 hover:bg-blue-700'
+                  }`}
               >
                 {saving ? '저장 중...' : '저장'}
               </button>
