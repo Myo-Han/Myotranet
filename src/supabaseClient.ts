@@ -12,9 +12,3 @@ export const supabase = createClient(
     }
   }
 );
-
-// 백엔드 전용 (Vercel Serverless에서만 사용)
-export const supabaseAdmin = createClient(
-  process.env.VITE_SUPABASE_URL!,
-  process.env.VITE_SUPABASE_SERVICE_ROLE_KEY!
-);
