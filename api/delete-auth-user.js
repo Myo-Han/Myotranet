@@ -6,9 +6,12 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { userId } = req.body;
+    console.log('Request body:', req.body);
+    
+    const { userId } = req.body || {};
 
     if (!userId) {
+      console.error('userId missing');
       return res.status(400).json({ error: 'userId is required' });
     }
 
@@ -17,13 +20,18 @@ export default async function handler(req, res) {
       process.env.SUPABASE_SERVICE_ROLE_KEY
     );
 
+    console.log('Deleting user:', userId);
+
     const { error } = await supabaseAdmin.auth.admin.deleteUser(userId);
 
-    if (error) throw error;
+    if (error) {
+      console.error('Supabase delete error:', error);
+      throw error;
+    }
 
     return res.status(200).json({ success: true });
   } catch (error) {
     console.error('Delete user error:', error);
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: error.message, stack: error.stack });
   }
 }
