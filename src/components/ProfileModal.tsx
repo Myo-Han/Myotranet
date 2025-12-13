@@ -50,13 +50,13 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, userId, cu
       const fileExt = file.name.split('.').pop();
       const fileName = `banner-${userId}-${Date.now()}.${fileExt}`;
       const { error: uploadError } = await supabase.storage
-        .from('profile-pictures')
+        .from('profile-picture')
         .upload(fileName, file);
 
       if (uploadError) throw uploadError;
 
       const { data: { publicUrl } } = supabase.storage
-        .from('profile-pictures')
+        .from('profile-picture')
         .getPublicUrl(fileName);
 
       const { error: updateError } = await supabase
@@ -84,13 +84,13 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, userId, cu
       const fileExt = file.name.split('.').pop();
       const fileName = `profile-${userId}-${Date.now()}.${fileExt}`;
       const { error: uploadError } = await supabase.storage
-        .from('profile-pictures')
+        .from('profile-picture')
         .upload(fileName, file);
 
       if (uploadError) throw uploadError;
 
       const { data: { publicUrl } } = supabase.storage
-        .from('profile-pictures')
+        .from('profile-picture')
         .getPublicUrl(fileName);
 
       const { error: updateError } = await supabase
