@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabaseClient';
 import { User } from '../types';
+import ProfileModal from '../components/ProfileModal';
 
 type Notice = {
   id: number;
@@ -34,6 +35,7 @@ const Dashboard: React.FC = () => {
   const [notices, setNotices] = useState<Notice[]>([]);
   const [selectedNotice, setSelectedNotice] = useState<Notice | null>(null);
   const [isNoticeModalOpen, setIsNoticeModalOpen] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
 
   const [orgConfig, setOrgConfig] = useState<OrgConfig | null>(null);
   const [userExtra, setUserExtra] = useState<{
@@ -230,7 +232,15 @@ const Dashboard: React.FC = () => {
                 />
               )}
               <div className="flex-1">
-                <h3 className="text-2xl font-bold text-gray-900">{user?.name}</h3>
+                <div className="flex items-center space-x-2">
+                  <h3 className="text-2xl font-bold text-gray-900">{user?.name}</h3>
+                  <button
+                    onClick={() => setShowProfileModal(true)}
+                    className="text-sm text-gray-500 hover:text-gray-700 bg-transparent"
+                  >
+                    [편집]
+                  </button>
+                </div>
                 <p className="text-gray-600 mt-1">{user?.email}</p>
                 <div className="mt-3 flex items-center space-x-4">
                   <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
@@ -426,6 +436,16 @@ const Dashboard: React.FC = () => {
           <p className="text-sm text-gray-500 mt-1">상세 프로필 조회</p>
         </button>
       </div>
+
+      {/* 프로필 모달 */}
+      {user && (
+        <ProfileModal
+          isOpen={showProfileModal}
+          onClose={() => setShowProfileModal(false)}
+          userId={user.id}
+          currentUserId={user.id}
+        />
+      )}
     </div>
   );
 };
