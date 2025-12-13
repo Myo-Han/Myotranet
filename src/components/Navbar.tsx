@@ -11,10 +11,45 @@ const Navbar: React.FC = () => {
     return location.pathname === path || location.pathname.startsWith(path + '/');
   };
 
+  const [activeTab, setActiveTab] = React.useState('/dashboard');
+  const navRef = React.useRef<HTMLDivElement>(null);
+  const [indicatorStyle, setIndicatorStyle] = React.useState({ left: 0, width: 0 });
+
+  const navItems = [
+    { path: '/dashboard', label: '묘한', isLogo: true },
+    { path: '/attendance', label: '출퇴근관리' },
+    { path: '/works', label: '업무' },
+    { path: '/leave', label: '휴가관리' },
+    ...(user?.role === 'Admin' ? [{ path: '/admin', label: '관리자' }] : []),
+  ];
+
+  React.useEffect(() => {
+    const currentPath = location.pathname;
+    const activeItem = navItems.find(item => 
+      currentPath === item.path || currentPath.startsWith(item.path + '/')
+    );
+    if (activeItem) {
+      setActiveTab(activeItem.path);
+    }
+  }, [location.pathname, user?.role]);
+
+  React.useEffect(() => {
+    if (navRef.current) {
+      const activeLink = navRef.current.querySelector(`[data-path="${activeTab}"]`) as HTMLElement;
+      if (activeLink) {
+        setIndicatorStyle({
+          left: activeLink.offsetLeft,
+          width: activeLink.offsetWidth,
+        });
+      }
+    }
+  }, [activeTab, user?.role]);
+
   const navLinkClass = (path: string) =>
-    `px-3 py-2 text-sm font-medium transition-all duration-300 border-b-2 ${isActive(path)
-      ? 'border-blue-600 text-blue-600'
-      : 'border-transparent text-gray-700 hover:border-gray-400 hover:text-gray-900'
+    `px-3 py-2 text-sm font-medium transition-colors duration-200 ${
+      activeTab === path
+        ? 'text-black'
+        : 'text-gray-600 hover:text-gray-900'
     }`;
 
   return (
@@ -22,29 +57,33 @@ const Navbar: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Left side - Logo and nav links */}
-          <div className="flex items-center">
-            <Link to="/dashboard" className="flex-shrink-0 flex items-center space-x-2 transition-opacity duration-200 hover:opacity-70">
-              <img src="/logo.svg" alt="Logo" className="h-8 w-8" />
-              <h1 className="text-black text-xl font-bold">묘한</h1>
-            </Link>
-            <div className="hidden md:block ml-10">
-              <div className="flex items-baseline space-x-4">
-                <Link to="/attendance" className={navLinkClass('/attendance')}>
-                  출퇴근관리
-                </Link>
-                <Link to="/works" className={navLinkClass('/works')}>
-                  업무
-                </Link>
-                <Link to="/leave" className={navLinkClass('/leave')}>
-                  휴가관리
-                </Link>
-                {user?.role === 'Admin' && (
-                  <Link to="/admin" className={navLinkClass('/admin')}>
-                    관리자
-                  </Link>
+          <div className="flex items-center relative" ref={navRef}>
+            {navItems.map((item) => (
+              <Link
+                key={item.path}
+                to={item.path}
+                data-path={item.path}
+                className={`${navLinkClass(item.path)} ${item.isLogo ? 'flex items-center space-x-2 mr-6' : ''}`}
+              >
+                {item.isLogo ? (
+                  <>
+                    <img src="/logo.svg" alt="Logo" className="h-8 w-8" />
+                    <span className="text-xl font-bold">{item.label}</span>
+                  </>
+                ) : (
+                  item.label
                 )}
-              </div>
-            </div>
+              </Link>
+            ))}
+            
+            {/* Animated underline indicator */}
+            <div
+              className="absolute bottom-0 h-0.5 bg-black transition-all duration-300 ease-out"
+              style={{
+                left: `${indicatorStyle.left}px`,
+                width: `${indicatorStyle.width}px`,
+              }}
+            />
           </div>
 
           {/* Right side - Session timer and user profile */}
@@ -76,26 +115,15 @@ const Navbar: React.FC = () => {
 
       {/* Mobile menu */}
       <div className="md:hidden px-2 pt-2 pb-3 space-y-1 sm:px-3">
-        <Link to="/dashboard" className={`${navLinkClass('/dashboard')} block`}>
-          Dashboard
-        </Link>
-        <Link to="/attendance" className={`${navLinkClass('/attendance')} block`}>
-          Attendance
-        </Link>
-        <Link to="/leave" className={`${navLinkClass('/leave')} block`}>
-          Leave
-        </Link>
-        <Link to="/letters" className={`${navLinkClass('/letters')} block`}>
-          Letters
-        </Link>
-        <Link to="/search" className={`${navLinkClass('/search')} block`}>
-          Search
-        </Link>
-        {user?.role === 'Admin' && (
-          <Link to="/admin" className={`${navLinkClass('/admin')} block`}>
-            Admin
+        {navItems.filter(item => !item.isLogo).map((item) => (
+          <Link
+            key={item.path}
+            to={item.path}
+            className={`${navLinkClass(item.path)} block`}
+          >
+            {item.label}
           </Link>
-        )}
+        ))}
       </div>
     </nav>
   );
