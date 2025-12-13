@@ -424,7 +424,6 @@ const Admin: React.FC = () => {
                     >
                         휴가 정책
                     </button>
-                    // 수정 후
                     <button
                         type="button"
                         onClick={() => setActiveTab('work-menu')}
