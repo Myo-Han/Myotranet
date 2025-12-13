@@ -22,7 +22,8 @@ const SessionTimer: React.FC = () => {
       </div>
       <button
         onClick={extendSession}
-        className="px-3 py-1 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition duration-200"
+        className="px-3 py-1 text-sm font-medium text-gray-800 hover:opacity-80 rounded-md transition duration-200"
+        style={{ backgroundColor: '#cccfd1' }}
       >
         연장하기
       </button>
