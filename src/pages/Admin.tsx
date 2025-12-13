@@ -5,10 +5,8 @@ import { User } from '../types';
 import LeavePolicyManager from '../components/LeavePolicyManager';
 import WorkMenuManager from '../components/WorkMenuManager';
 import OrganizationManager from '../components/OrganizationManager';
-import UserManager from '../components/UserManager';
-import UserInviteManager from '../components/UserInviteManager';
 
-type AdminTab = 'users' | 'user-invite' | 'notices' | 'layout' | 'leave-policy' | 'work-menu' | 'organization';
+type AdminTab = 'notices' | 'layout' | 'leave-policy' | 'work-menu' | 'organization';
 type PageKey = 'dashboard' | 'attendance' | 'leave' | 'letters' | 'search';
 
 interface ContainerConfig {
@@ -251,7 +249,7 @@ const Admin: React.FC = () => {
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900">관리자 설정</h1>
                     <p className="text-sm text-gray-500 mt-1">
-                        직원 정보, 공지, 페이지 레이아웃을 한 곳에서 관리합니다.
+                        관리자 전용 페이지입니다.
                     </p>
                 </div>
                 {user && (
@@ -266,26 +264,6 @@ const Admin: React.FC = () => {
             <div className="bg-white shadow rounded-lg">
                 {/* 탭 버튼 */}
                 <div className="border-b border-gray-200 flex">
-                    <button
-                        type="button"
-                        onClick={() => setActiveTab('user-invite')}
-                        className={`flex-1 px-4 py-2 text-sm font-medium ${activeTab === 'user-invite'
-                            ? 'border-b-2 border-indigo-500 text-indigo-600'
-                            : 'text-gray-500 hover:text-gray-700'
-                            }`}
-                    >
-                        직원 초대
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => setActiveTab('users')}
-                        className={`flex-1 px-4 py-2 text-sm font-medium ${activeTab === 'users'
-                            ? 'border-b-2 border-indigo-500 text-indigo-600'
-                            : 'text-gray-500 hover:text-gray-700'
-                            }`}
-                    >
-                        직원 관리
-                    </button>
                     <button
                         type="button"
                         onClick={() => setActiveTab('notices')}
@@ -340,16 +318,6 @@ const Admin: React.FC = () => {
 
                 {/* 탭 내용 */}
                 <div className="p-6">
-                    {/* 직원 추가 탭 */}
-                    {activeTab === 'user-invite' && (
-                        <UserInviteManager />
-                    )}
-
-                    {/* 직원 관리 탭 */}
-                    {activeTab === 'users' && (
-                        <UserManager currentUserId={user?.id} />
-                    )}
-
                     {/* 공지 관리 탭 */}
                     {activeTab === 'notices' && (
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
