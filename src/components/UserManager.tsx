@@ -10,10 +10,37 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
   const [users, setUsers] = useState<User[]>([]);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [savingUser, setSavingUser] = useState(false);
+  const [orgConfig, setOrgConfig] = useState({
+    departments: [],
+    projects: [],
+    parts: [],
+    positions: [],
+  });
 
   useEffect(() => {
     fetchUsers();
+    fetchOrgConfig();
   }, [currentUserId]);
+
+  const fetchOrgConfig = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('org_settings')
+        .select('config')
+        .single();
+
+      if (!error && data) {
+        setOrgConfig({
+          departments: data.config.departments || [],
+          projects: data.config.projects || [],
+          parts: data.config.parts || [],
+          positions: data.config.positions || [],
+        });
+      }
+    } catch (e) {
+      console.error('조직 설정 로드 실패:', e);
+    }
+  };
 
   const fetchUsers = async () => {
     const { data, error } = await supabase
@@ -254,27 +281,9 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
                   className="w-full rounded-md border-gray-300 text-sm"
                 >
                   <option value="">미지정</option>
-                  <option value="HR">인사팀</option>
-                  <option value="Finance">재무팀</option>
-                  <option value="Development">개발본부</option>
-                </select>
-              </div>
-
-              {/* 직급 */}
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">
-                  직급
-                </label>
-                <select
-                  value={(selectedUser as any).position || ''}
-                  onChange={e => handleUserChange('position', e.target.value)}
-                  className="w-full rounded-md border-gray-300 text-sm"
-                >
-                  <option value="">미지정</option>
-                  <option value="CEO">대표</option>
-                  <option value="Team_Lead">팀장</option>
-                  <option value="Part_Lead">파트장</option>
-                  <option value="Staff">사원</option>
+                  {orgConfig.departments.map((dept: any) => (
+                    <option key={dept.id} value={dept.code}>{dept.name}</option>
+                  ))}
                 </select>
               </div>
 
@@ -289,7 +298,9 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
                   className="w-full rounded-md border-gray-300 text-sm"
                 >
                   <option value="">미지정</option>
-                  <option value="LDProject">LDProject</option>
+                  {orgConfig.projects.map((proj: any) => (
+                    <option key={proj.id} value={proj.code}>{proj.name}</option>
+                  ))}
                 </select>
               </div>
 
@@ -304,13 +315,28 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
                   className="w-full rounded-md border-gray-300 text-sm"
                 >
                   <option value="">미지정</option>
-                  <option value="Dev">개발</option>
-                  <option value="Art">아트</option>
-                  <option value="Design">기획</option>
-                  <option value="QA">QA</option>
+                  {orgConfig.parts.map((part: any) => (
+                    <option key={part.id} value={part.code}>{part.name}</option>
+                  ))}
                 </select>
               </div>
-            </div>
+
+              {/* 직급 */}
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">
+                  직급
+                </label>
+                <select
+                  value={(selectedUser as any).position || ''}
+                  onChange={e => handleUserChange('position', e.target.value)}
+                  className="w-full rounded-md border-gray-300 text-sm"
+                >
+                  <option value="">미지정</option>
+                  {orgConfig.positions.map((pos: any) => (
+                    <option key={pos.id} value={pos.code}>{pos.name}</option>
+                  ))}
+                </select>
+              </div>
 
             <div className="flex justify-between mt-4">
               {selectedUser.id && (

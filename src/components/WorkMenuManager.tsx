@@ -28,10 +28,37 @@ const WorkMenuManager: React.FC = () => {
     order: 1,
     show_to: [] as string[],
   });
+  const [orgConfig, setOrgConfig] = useState({
+    departments: [],
+    projects: [],
+    parts: [],
+    positions: [],
+  });
 
   useEffect(() => {
     fetchMenu();
+    fetchOrgConfig();
   }, []);
+
+  const fetchOrgConfig = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('org_settings')
+        .select('config')
+        .single();
+
+      if (!error && data) {
+        setOrgConfig({
+          departments: data.config.departments || [],
+          projects: data.config.projects || [],
+          parts: data.config.parts || [],
+          positions: data.config.positions || [],
+        });
+      }
+    } catch (e) {
+      console.error('조직 설정 로드 실패:', e);
+    }
+  };
 
   const fetchMenu = async () => {
     setLoading(true);
@@ -302,100 +329,74 @@ const WorkMenuManager: React.FC = () => {
                     <span className="text-sm font-medium">전체</span>
                   </label>
                   <details className="border rounded p-2">
-                    <summary className="text-xs font-medium text-gray-700 cursor-pointer">직급별</summary>
-                    <div className="mt-2 space-y-2 ml-2">
-                      <label className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
-                          checked={form.show_to.includes('CEO')}
-                          onChange={() => toggleRole('CEO')}
-                          disabled={form.show_to.includes('all')}
-                          className="rounded"
-                        />
-                        <span className="text-sm">대표</span>
-                      </label>
-                      <label className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
-                          checked={form.show_to.includes('Team_Lead')}
-                          onChange={() => toggleRole('Team_Lead')}
-                          disabled={form.show_to.includes('all')}
-                          className="rounded"
-                        />
-                        <span className="text-sm">팀장</span>
-                      </label>
-                      <label className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
-                          checked={form.show_to.includes('Part_Lead')}
-                          onChange={() => toggleRole('Part_Lead')}
-                          disabled={form.show_to.includes('all')}
-                          className="rounded"
-                        />
-                        <span className="text-sm">파트장</span>
-                      </label>
-                      <label className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
-                          checked={form.show_to.includes('Staff')}
-                          onChange={() => toggleRole('Staff')}
-                          disabled={form.show_to.includes('all')}
-                          className="rounded"
-                        />
-                        <span className="text-sm">사원</span>
-                      </label>
-                    </div>
-                  </details>
-
-                  <details className="border rounded p-2">
                     <summary className="text-xs font-medium text-gray-700 cursor-pointer">부서별</summary>
                     <div className="mt-2 space-y-2 ml-2">
-                      <label className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
-                          checked={form.show_to.includes('HR')}
-                          onChange={() => toggleRole('HR')}
-                          disabled={form.show_to.includes('all')}
-                          className="rounded"
-                        />
-                        <span className="text-sm">인사팀</span>
-                      </label>
-                      <label className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
-                          checked={form.show_to.includes('Finance')}
-                          onChange={() => toggleRole('Finance')}
-                          disabled={form.show_to.includes('all')}
-                          className="rounded"
-                        />
-                        <span className="text-sm">재무팀</span>
-                      </label>
-                      <label className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
-                          checked={form.show_to.includes('Development')}
-                          onChange={() => toggleRole('Development')}
-                          disabled={form.show_to.includes('all')}
-                          className="rounded"
-                        />
-                        <span className="text-sm">개발본부</span>
-                      </label>
+                      {orgConfig.departments.map((dept: any) => (
+                        <label key={dept.id} className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            checked={form.show_to.includes(dept.code)}
+                            onChange={() => toggleRole(dept.code)}
+                            disabled={form.show_to.includes('all')}
+                            className="rounded"
+                          />
+                          <span className="text-sm">{dept.name}</span>
+                        </label>
+                      ))}
                     </div>
                   </details>
 
                   <details className="border rounded p-2">
                     <summary className="text-xs font-medium text-gray-700 cursor-pointer">프로젝트별</summary>
                     <div className="mt-2 space-y-2 ml-2">
-                      <label className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
-                          checked={form.show_to.includes('LDProject')}
-                          onChange={() => toggleRole('LDProject')}
-                          disabled={form.show_to.includes('all')}
-                          className="rounded"
-                        />
-                        <span className="text-sm">LDProject</span>
-                      </label>
+                      {orgConfig.projects.map((proj: any) => (
+                        <label key={proj.id} className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            checked={form.show_to.includes(proj.code)}
+                            onChange={() => toggleRole(proj.code)}
+                            disabled={form.show_to.includes('all')}
+                            className="rounded"
+                          />
+                          <span className="text-sm">{proj.name}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </details>
+
+                  <details className="border rounded p-2">
+                    <summary className="text-xs font-medium text-gray-700 cursor-pointer">파트별</summary>
+                    <div className="mt-2 space-y-2 ml-2">
+                      {orgConfig.parts.map((part: any) => (
+                        <label key={part.id} className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            checked={form.show_to.includes(part.code)}
+                            onChange={() => toggleRole(part.code)}
+                            disabled={form.show_to.includes('all')}
+                            className="rounded"
+                          />
+                          <span className="text-sm">{part.name}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </details>
+
+                  <details className="border rounded p-2">
+                    <summary className="text-xs font-medium text-gray-700 cursor-pointer">직급별</summary>
+                    <div className="mt-2 space-y-2 ml-2">
+                      {orgConfig.positions.map((pos: any) => (
+                        <label key={pos.id} className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            checked={form.show_to.includes(pos.code)}
+                            onChange={() => toggleRole(pos.code)}
+                            disabled={form.show_to.includes('all')}
+                            className="rounded"
+                          />
+                          <span className="text-sm">{pos.name}</span>
+                        </label>
+                      ))}
                     </div>
                   </details>
                 </div>

@@ -40,10 +40,37 @@ const UserInviteManager: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [orgConfig, setOrgConfig] = useState({
+    departments: [],
+    projects: [],
+    parts: [],
+    positions: [],
+  });
 
   useEffect(() => {
     fetchData();
+    fetchOrgConfig();
   }, []);
+
+  const fetchOrgConfig = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('org_settings')
+        .select('config')
+        .single();
+
+      if (!error && data) {
+        setOrgConfig({
+          departments: data.config.departments || [],
+          projects: data.config.projects || [],
+          parts: data.config.parts || [],
+          positions: data.config.positions || [],
+        });
+      }
+    } catch (e) {
+      console.error('조직 설정 로드 실패:', e);
+    }
+  };
 
   const fetchData = async () => {
     setLoading(true);
@@ -376,9 +403,37 @@ const UserInviteManager: React.FC = () => {
                   className="w-full border border-gray-300 rounded-md px-3 py-2"
                 >
                   <option value="">미지정</option>
-                  <option value="HR">인사팀</option>
-                  <option value="Finance">재무팀</option>
-                  <option value="Development">개발본부</option>
+                  {orgConfig.departments.map((dept: any) => (
+                    <option key={dept.id} value={dept.code}>{dept.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">프로젝트</label>
+                <select
+                  value={assignForm.project}
+                  onChange={(e) => setAssignForm({ ...assignForm, project: e.target.value })}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2"
+                >
+                  <option value="">미지정</option>
+                  {orgConfig.projects.map((proj: any) => (
+                    <option key={proj.id} value={proj.code}>{proj.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">파트</label>
+                <select
+                  value={assignForm.part}
+                  onChange={(e) => setAssignForm({ ...assignForm, part: e.target.value })}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2"
+                >
+                  <option value="">미지정</option>
+                  {orgConfig.parts.map((part: any) => (
+                    <option key={part.id} value={part.code}>{part.name}</option>
+                  ))}
                 </select>
               </div>
 
@@ -390,41 +445,9 @@ const UserInviteManager: React.FC = () => {
                   className="w-full border border-gray-300 rounded-md px-3 py-2"
                 >
                   <option value="">미지정</option>
-                  <option value="CEO">대표</option>
-                  <option value="Team_Lead">팀장</option>
-                  <option value="Part_Lead">파트장</option>
-                  <option value="Staff">사원</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  프로젝트 (개발본부만)
-                </label>
-                <select
-                  value={assignForm.project}
-                  onChange={(e) => setAssignForm({ ...assignForm, project: e.target.value })}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2"
-                >
-                  <option value="">미지정</option>
-                  <option value="LDProject">LDProject</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  파트 (프로젝트 있을 때만)
-                </label>
-                <select
-                  value={assignForm.part}
-                  onChange={(e) => setAssignForm({ ...assignForm, part: e.target.value })}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2"
-                >
-                  <option value="">미지정</option>
-                  <option value="Dev">개발</option>
-                  <option value="Art">아트</option>
-                  <option value="Design">기획</option>
-                  <option value="QA">QA</option>
+                  {orgConfig.positions.map((pos: any) => (
+                    <option key={pos.id} value={pos.code}>{pos.name}</option>
+                  ))}
                 </select>
               </div>
             </div>
