@@ -44,16 +44,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       let profile = existing;
 
-      // 없으면 한 줄 생성 (처음 로그인은 is_active: false)
       if (!error && !existing) {
-        await supabase.from("users").insert({
-          id: data.user.id,
-          email: data.user.email || "",
-          name: (data.user.user_metadata as any)?.full_name || null,
-          profile_picture: (data.user.user_metadata as any)?.avatar_url || null,
-          role: "User",
-          is_active: false,
-        });
+        alert("관리자에게 권한을 요청하세요.");
+        await supabase.auth.signOut();
+        setUser(null);
+        setLoading(false);
+        return;
       }
 
       // 아직 승인 안 된 유저면 막기
