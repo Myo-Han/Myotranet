@@ -338,6 +338,8 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
                 </select>
               </div>
 
+            </div>
+
             <div className="flex justify-between mt-4">
               {selectedUser.id && (
                 <button
