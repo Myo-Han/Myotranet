@@ -239,7 +239,7 @@ const Dashboard: React.FC = () => {
     <div className="space-y-6">
       {/* User Profile Card */}
       {/* Profile + Notice Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         {/* User Profile Card */}
         <div className="bg-white shadow rounded-lg overflow-hidden">
           <div className="bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-4">
@@ -274,7 +274,7 @@ const Dashboard: React.FC = () => {
             </div>
 
             <div className="mt-6 pt-6 border-t border-gray-200">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
                 {/* ✅ 상태 */}
                 <div className={`rounded-lg p-4 border ${statusMeta.wrap}`}>
                   <div className="flex items-center justify-between">
