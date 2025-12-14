@@ -274,24 +274,9 @@ const Dashboard: React.FC = () => {
             </div>
 
             <div className="mt-6 pt-6 border-t border-gray-200">
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                {/* ✅ 상태 */}
-                <div className={`rounded-lg p-4 border ${statusMeta.wrap}`}>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className={`text-sm font-medium ${statusMeta.title}`}>상태</p>
-                      <p className={`text-lg font-semibold mt-1 ${statusMeta.value}`}>{statusMeta.label}</p>
-                    </div>
-                    <div className={`${statusMeta.icon} shrink-0`}>
-                      <svg className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={statusMeta.iconPath} />
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* ✅ 소속(항상 표시, 없으면 전사(공통)) */}
-                <div className="bg-purple-50 rounded-lg p-4 border border-purple-200">
+                <div className="bg-purple-50 rounded-lg p-4 border border-purple-200 sm:col-span-2">
                   <div className="flex items-start gap-3">
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium text-purple-600 whitespace-nowrap">소속</p>
@@ -305,6 +290,21 @@ const Dashboard: React.FC = () => {
                           strokeWidth={2}
                           d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6"
                         />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ✅ 상태 */}
+                <div className={`rounded-lg p-4 border ${statusMeta.wrap}`}>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className={`text-sm font-medium ${statusMeta.title}`}>상태</p>
+                      <p className={`text-lg font-semibold mt-1 ${statusMeta.value}`}>{statusMeta.label}</p>
+                    </div>
+                    <div className={`${statusMeta.icon} shrink-0`}>
+                      <svg className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={statusMeta.iconPath} />
                       </svg>
                     </div>
                   </div>
