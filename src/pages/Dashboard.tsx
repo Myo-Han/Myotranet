@@ -227,7 +227,7 @@ const Dashboard: React.FC = () => {
   const affiliationParts = [deptName, projName, partName].filter(Boolean);
   const affiliationText =
     affiliationParts.length ? affiliationParts.join(' / ')
-      : (posName || '전사(공통)');
+      : (posName || ' ');
 
   // ✅ 남은 휴가(0도 무조건 표시되게)
   const annual = Number(userExtra?.annual_leave_balance ?? (user as any)?.annual_leave_balance ?? 0);
