@@ -239,13 +239,13 @@ const Dashboard: React.FC = () => {
     <div className="space-y-6">
       {/* User Profile Card */}
       {/* Profile + Notice Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
         {/* User Profile Card */}
-        <div className="bg-white shadow rounded-lg overflow-hidden">
+        <div className="bg-white shadow rounded-lg overflow-hidden h-full flex flex-col">
           <div className="bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-4">
             <h2 className="text-xl font-semibold text-white">프로필</h2>
           </div>
-          <div className="p-6">
+          <div className="p-6 flex-1">
             <div className="flex items-center space-x-6">
               {user?.profile_picture && (
                 <img
@@ -274,7 +274,7 @@ const Dashboard: React.FC = () => {
             </div>
 
             <div className="mt-6 pt-6 border-t border-gray-200">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
                 {/* ✅ 상태 */}
                 <div className={`rounded-lg p-4 border ${statusMeta.wrap}`}>
                   <div className="flex items-center justify-between">
@@ -282,8 +282,8 @@ const Dashboard: React.FC = () => {
                       <p className={`text-sm font-medium ${statusMeta.title}`}>상태</p>
                       <p className={`text-lg font-semibold mt-1 ${statusMeta.value}`}>{statusMeta.label}</p>
                     </div>
-                    <div className={statusMeta.icon}>
-                      <svg className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <div className={`${statusMeta.icon} shrink-0`}>
+                      <svg className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={statusMeta.iconPath} />
                       </svg>
                     </div>
@@ -292,13 +292,13 @@ const Dashboard: React.FC = () => {
 
                 {/* ✅ 소속(항상 표시, 없으면 전사(공통)) */}
                 <div className="bg-purple-50 rounded-lg p-4 border border-purple-200">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-purple-600">소속</p>
-                      <p className="text-lg font-semibold text-purple-700 mt-1">{affiliationText}</p>
+                  <div className="flex items-start gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-purple-600 whitespace-nowrap">소속</p>
+                      <p className="text-lg font-semibold text-purple-700 mt-1 truncate">{affiliationText}</p>
                     </div>
-                    <div className="text-purple-500">
-                      <svg className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <div className="text-purple-500 shrink-0">
+                      <svg className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path
                           strokeLinecap="round"
                           strokeLinejoin="round"
@@ -337,7 +337,7 @@ const Dashboard: React.FC = () => {
         </div>
 
         {/* Notice Container */}
-        <div className="bg-white shadow rounded-lg overflow-hidden">
+        <div className="bg-white shadow rounded-lg overflow-hidden h-full flex flex-col">
           <div className="bg-gradient-to-r from-yellow-400 to-yellow-500 px-6 py-4 flex items-center justify-between">
             <h2 className="text-xl font-semibold text-white">공지</h2>
             {notices.length > 0 && (
@@ -346,7 +346,7 @@ const Dashboard: React.FC = () => {
               </span>
             )}
           </div>
-          <div className="p-6 space-y-3">
+          <div className="p-6 space-y-3 flex-1 overflow-y-auto">
             {notices.length === 0 ? (
               <p className="text-gray-500 text-sm">최근 7일 이내 공지가 없습니다.</p>
             ) : (
@@ -374,7 +374,7 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
 
-        <CalendarCard title="캘린더" />
+        <CalendarCard title="캘린더" className="h-full" />
       </div>
 
       {/* Quick Actions */}
