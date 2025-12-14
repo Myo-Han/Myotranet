@@ -8,6 +8,8 @@ import LeaveWorkQueue from '../components/LeaveWorkQueue';
 import UserManager from '../components/UserManager';
 import UserInviteManager from '../components/UserInviteManager';
 import NoticeManager from '../components/NoticeManager';
+import TodoManager from '../components/TodoManager';
+import MemoManager from '../components/MemoManager';
 
 type WorkMenuItem = {
   id: string;
@@ -51,14 +53,14 @@ const Work: React.FC = () => {
         if (error) throw error;
 
         const menu = data.config.work_menu || [];
-        
+
         // parent_id, is_folder 없는 기존 메뉴는 기본값 추가
         const normalizedMenu = menu.map((item: any) => ({
           ...item,
           parent_id: item.parent_id || null,
           is_folder: item.is_folder || false,
         }));
-        
+
         const filtered = normalizedMenu.filter((item: WorkMenuItem) => {
           if (item.show_to.includes('all')) return true;
 
@@ -356,39 +358,37 @@ const Work: React.FC = () => {
                     setSelectedMenu(item.path);
                   }
                 }}
-                className={`w-full flex items-center justify-between px-4 py-3 rounded-lg transition ${
-                  !item.is_folder && selectedMenu === item.path
+                className={`w-full flex items-center justify-between px-4 py-3 rounded-lg transition ${!item.is_folder && selectedMenu === item.path
                     ? 'bg-blue-50 text-blue-600 font-medium'
                     : 'text-gray-700 hover:bg-gray-50'
-                }`}
+                  }`}
               >
                 <div className="flex items-center space-x-3">
                   {getIcon(item.icon)}
                   <span>{item.label}</span>
                 </div>
                 {item.is_folder && (
-                  <svg 
-                    className={`w-4 h-4 transition-transform ${expandedFolders.has(item.id) ? 'rotate-90' : ''}`} 
-                    fill="none" 
-                    viewBox="0 0 24 24" 
+                  <svg
+                    className={`w-4 h-4 transition-transform ${expandedFolders.has(item.id) ? 'rotate-90' : ''}`}
+                    fill="none"
+                    viewBox="0 0 24 24"
                     stroke="currentColor"
                   >
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                   </svg>
                 )}
               </button>
-              
+
               {item.is_folder && expandedFolders.has(item.id) && (
                 <div className="ml-6 mt-1 space-y-1">
                   {menuItems.filter(child => child.parent_id === item.id).map((child) => (
                     <button
                       key={child.id}
                       onClick={() => setSelectedMenu(child.path)}
-                      className={`w-full flex items-center space-x-3 px-4 py-2 rounded-lg transition text-sm ${
-                        selectedMenu === child.path
+                      className={`w-full flex items-center space-x-3 px-4 py-2 rounded-lg transition text-sm ${selectedMenu === child.path
                           ? 'bg-blue-50 text-blue-600 font-medium'
                           : 'text-gray-600 hover:bg-gray-50'
-                      }`}
+                        }`}
                     >
                       {getIcon(child.icon)}
                       <span>{child.label}</span>
@@ -459,6 +459,13 @@ const Work: React.FC = () => {
 
           {selectedMenu === 'notice-manager' && (
             <NoticeManager />
+          )}
+
+          {selectedMenu === 'My-work' && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <TodoManager />
+              <MemoManager />
+            </div>
           )}
 
           {submitting && (
