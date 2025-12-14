@@ -7,9 +7,10 @@ interface ProfileModalProps {
     onClose: () => void;
     userId: string;
     currentUserId: string;
+    readOnly?: boolean;
 }
 
-const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, userId, currentUserId }) => {
+const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, userId, currentUserId, readOnly = false }) => {
     const [user, setUser] = useState<any>(null);
     const [statusMessage, setStatusMessage] = useState('');
     const [phone, setPhone] = useState('');
@@ -19,6 +20,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, userId, cu
     const [editingPhone, setEditingPhone] = useState(false);
 
     const isOwnProfile = userId === currentUserId;
+    const canEdit = isOwnProfile && !readOnly;
 
     const [todayStatus, setTodayStatus] = useState<string | null>(null);
 
@@ -72,7 +74,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, userId, cu
     };
 
     const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (!e.target.files || !e.target.files[0] || !isOwnProfile) return;
+        if (!e.target.files || !e.target.files[0] || !canEdit) return;
 
         const file = e.target.files[0];
         setUploading(true);
@@ -109,9 +111,58 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, userId, cu
             setUploading(false);
         }
     };
+    const handleDeleteBanner = async () => {
+        if (!canEdit || !user?.banner_image) return;
+
+        setUploading(true);
+        try {
+            const oldPath = user.banner_image.split('/').pop();
+            if (oldPath) {
+                await supabase.storage.from('banners').remove([oldPath]);
+            }
+
+            const { error: updateError } = await supabase
+                .from('users')
+                .update({ banner_image: null })
+                .eq('id', userId);
+
+            if (updateError) throw updateError;
+
+            setUser((prev: any) => ({ ...prev, banner_image: null }));
+        } catch (error) {
+            console.error('배너 삭제 실패:', error);
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    const handleDeleteProfile = async () => {
+        if (!canEdit || !user?.profile_picture) return;
+
+        setUploading(true);
+        try {
+            const oldPath = user.profile_picture.split('/').pop();
+            if (oldPath) {
+                await supabase.storage.from('avatars').remove([oldPath]);
+            }
+
+            const { error: updateError } = await supabase
+                .from('users')
+                .update({ profile_picture: null })
+                .eq('id', userId);
+
+            if (updateError) throw updateError;
+
+            setUser((prev: any) => ({ ...prev, profile_picture: null }));
+        } catch (error) {
+            console.error('프로필 사진 삭제 실패:', error);
+        } finally {
+            setUploading(false);
+        }
+    };
 
     const handleProfileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (!e.target.files || !e.target.files[0] || !isOwnProfile) return;
+        if (!e.target.files || !e.target.files[0] || !canEdit) return;
 
         const file = e.target.files[0];
         setUploading(true);
@@ -150,7 +201,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, userId, cu
     };
 
     const handleSaveStatusMessage = async () => {
-        if (!isOwnProfile) return;
+        if (!canEdit) return;
 
         setSaving(true);
         try {
@@ -171,7 +222,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, userId, cu
     };
 
     const handleSavePhone = async () => {
-        if (!isOwnProfile) return;
+        if (!canEdit) return;
 
         setSaving(true);
         try {
@@ -203,17 +254,30 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, userId, cu
                     ) : (
                         <div className="w-full h-full bg-gradient-to-r from-blue-400 to-purple-500" />
                     )}
-                    {isOwnProfile && (
-                        <label className="absolute top-4 right-4 bg-white bg-opacity-80 text-gray-700 px-3 py-2 rounded-lg cursor-pointer hover:bg-opacity-100 text-sm">
-                            배너 변경
-                            <input
-                                type="file"
-                                accept="image/*"
-                                onChange={handleBannerUpload}
-                                className="hidden"
-                                disabled={uploading}
-                            />
-                        </label>
+                    {canEdit && (
+                        <div className="absolute top-4 right-4 flex gap-2">
+                            <label className="bg-white bg-opacity-80 text-gray-700 px-3 py-2 rounded-lg cursor-pointer hover:bg-opacity-100 text-sm">
+                                배너 변경
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={handleBannerUpload}
+                                    className="hidden"
+                                    disabled={uploading}
+                                />
+                            </label>
+
+                            {user.banner_image && (
+                                <button
+                                    type="button"
+                                    onClick={handleDeleteBanner}
+                                    disabled={uploading}
+                                    className="bg-white bg-opacity-80 text-red-600 px-3 py-2 rounded-lg hover:bg-opacity-100 text-sm disabled:opacity-50"
+                                >
+                                    배너 삭제
+                                </button>
+                            )}
+                        </div>
                     )}
                 </div>
 
@@ -228,20 +292,34 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, userId, cu
                                     <span className="text-gray-400">No Image</span>
                                 )}
                             </div>
-                            {isOwnProfile && (
-                                <label className="absolute bottom-0 right-0 bg-blue-600 text-white p-2 rounded-full cursor-pointer hover:bg-blue-700 shadow-lg">
-                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    </svg>
-                                    <input
-                                        type="file"
-                                        accept="image/*"
-                                        onChange={handleProfileUpload}
-                                        className="hidden"
-                                        disabled={uploading}
-                                    />
-                                </label>
+                            {canEdit && (
+                                <div className="absolute bottom-0 right-0 flex gap-2">
+                                    <label className="bg-blue-600 text-white p-2 rounded-full cursor-pointer hover:bg-blue-700 shadow-lg">
+                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        </svg>
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={handleProfileUpload}
+                                            className="hidden"
+                                            disabled={uploading}
+                                        />
+                                    </label>
+
+                                    {user.profile_picture && (
+                                        <button
+                                            type="button"
+                                            onClick={handleDeleteProfile}
+                                            disabled={uploading}
+                                            className="bg-white text-red-600 px-2 rounded-full shadow-lg hover:bg-gray-50 disabled:opacity-50"
+                                            aria-label="프로필 삭제"
+                                        >
+                                            삭제
+                                        </button>
+                                    )}
+                                </div>
                             )}
                         </div>
                     </div>
@@ -323,7 +401,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, userId, cu
                             ) : (
                                 <div className="flex items-center justify-between">
                                     <p className="text-base text-gray-900">{user.phone || '미지정'}</p>
-                                    {isOwnProfile && (
+                                    {canEdit && (
                                         <button
                                             onClick={() => setEditingPhone(true)}
                                             className="text-blue-600 hover:text-blue-700 text-sm"
@@ -373,7 +451,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, userId, cu
                             ) : (
                                 <div className="flex items-center justify-between">
                                     <p className="text-base text-gray-900 italic">{user.status_message || '상태 메시지가 없습니다.'}</p>
-                                    {isOwnProfile && (
+                                    {canEdit && (
                                         <button
                                             onClick={() => setEditingStatus(true)}
                                             className="text-blue-600 hover:text-blue-700 text-sm"
@@ -390,7 +468,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, userId, cu
                         <button
                             onClick={() => {
                                 onClose();
-                                window.location.reload();
+                                if (readOnly) window.location.reload();
                             }}
                             className="px-6 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
                         >
