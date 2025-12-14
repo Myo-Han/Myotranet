@@ -550,7 +550,7 @@ const Attendance: React.FC = () => {
     return inKey !== outKey;
   };
 
-  cconst calculateWorkHours = (
+  const calculateWorkHours = (
     recordId: string | null,
     isMine: boolean,
     checkIn: string | null,
