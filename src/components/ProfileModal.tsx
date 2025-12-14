@@ -229,8 +229,25 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, userId, cu
                     <div className="text-center mb-6">
                         <div className="flex items-center justify-center gap-2">
                             <h2 className="text-2xl font-bold text-gray-900">{user.name}</h2>
-                            <span>{statusLabel}</span>
+
+                            <span
+                                className={[
+                                    'px-2 py-0.5 text-xs rounded-full border',
+                                    user.current_status === 'working'
+                                        ? 'bg-green-100 text-green-700 border-green-200'
+                                        : user.current_status === 'paused'
+                                            ? 'bg-yellow-100 text-yellow-700 border-yellow-200'
+                                            : user.current_status === 'off'
+                                                ? 'bg-indigo-100 text-indigo-700 border-indigo-200'
+                                                : user.current_status === 'vacation'
+                                                    ? 'bg-pink-100 text-pink-700 border-pink-200'
+                                                    : 'bg-gray-100 text-gray-700 border-gray-200',
+                                ].join(' ')}
+                            >
+                                {statusLabel}
+                            </span>
                         </div>
+
                         <p className="text-sm text-gray-500">{user.email}</p>
                     </div>
 

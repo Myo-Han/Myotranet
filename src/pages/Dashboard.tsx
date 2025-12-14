@@ -85,16 +85,42 @@ const Dashboard: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    const getTodayDate = () => {
+      const now = new Date();
+      const yyyy = now.getFullYear();
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      const dd = String(now.getDate()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}`;
+    };
+
     const fetchMe = async () => {
       if (!user?.id) return;
 
-      const { data, error } = await supabase
+      const { data: userRow, error: userErr } = await supabase
         .from('users')
-        .select('department, project, part, position, annual_leave_balance, monthly_leave_balance, current_status')
+        .select('department, project, part, position, annual_leave_balance, monthly_leave_balance')
         .eq('id', user.id)
         .maybeSingle();
 
-      if (!error && data) setUserExtra(data as any);
+      const today = getTodayDate();
+
+      const { data: attendanceRow, error: attErr } = await supabase
+        .from('attendance')
+        .select('status')
+        .eq('user_id', user.id)
+        .eq('date', today)
+        .maybeSingle();
+
+      if (userErr) return;
+      if (attErr) {
+        setUserExtra({ ...(userRow as any), current_status: null });
+        return;
+      }
+
+      setUserExtra({
+        ...(userRow as any),
+        current_status: (attendanceRow?.status ?? null) as any,
+      });
     };
 
     fetchMe();
