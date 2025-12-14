@@ -40,7 +40,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, userId, cu
     const fetchUser = async () => {
         const { data, error } = await supabase
             .from('users')
-            .select('id, name, email, profile_picture, banner_image, department_name, project_name, position_name, hire_date, current_status, status_message, phone')
+            .select('id, name, email, profile_picture, banner_image, department, project, part, position, hire_date, current_status, status_message, phone')
             .eq('id', userId)
             .single();
 
@@ -257,7 +257,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, userId, cu
                             <div className="col-span-2">
                                 <label className="block text-sm font-medium text-gray-500 mb-1">소속</label>
                                 <p className="text-base text-gray-900">
-                                    {[user.department_name, user.project_name, user.position_name]
+                                    {[user.department, user.project, user.part, user.position]
                                         .filter(Boolean)
                                         .join(' ')}
                                 </p>
