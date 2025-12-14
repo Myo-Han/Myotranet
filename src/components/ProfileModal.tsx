@@ -22,7 +22,34 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, userId, cu
     const isOwnProfile = userId === currentUserId;
     const canEdit = isOwnProfile && !readOnly;
 
+    type OrgItem = { code: string; name: string };
+    type OrgConfig = {
+        departments: OrgItem[];
+        projects: OrgItem[];
+        parts: OrgItem[];
+        positions: OrgItem[];
+    };
+
     const [todayStatus, setTodayStatus] = useState<string | null>(null);
+    const [orgConfig, setOrgConfig] = useState<OrgConfig | null>(null);
+
+    const getOrgName = (list: OrgItem[] | undefined, code: any) => {
+        const c = String(code ?? '').trim();
+        if (!c) return '';
+        return list?.find((x) => x.code === c)?.name || '';
+    };
+
+    const fetchOrgConfig = async () => {
+        const { data, error } = await supabase.from('org_settings').select('config').single();
+        if (error) return;
+
+        setOrgConfig({
+            departments: data?.config?.departments || [],
+            projects: data?.config?.projects || [],
+            parts: data?.config?.parts || [],
+            positions: data?.config?.positions || [],
+        });
+    };
 
     const statusLabel =
         todayStatus === 'working'
@@ -37,6 +64,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, userId, cu
 
     useEffect(() => {
         if (isOpen) {
+            fetchOrgConfig();
             fetchUser();
         }
     }, [isOpen, userId]);
@@ -355,9 +383,14 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, userId, cu
                             <div className="col-span-2">
                                 <label className="block text-sm font-medium text-gray-500 mb-1">소속</label>
                                 <p className="text-base text-gray-900">
-                                    {[user.department, user.project, user.part, user.position]
+                                    {[
+                                        getOrgName(orgConfig?.departments, user.department),
+                                        getOrgName(orgConfig?.projects, user.project),
+                                        getOrgName(orgConfig?.parts, user.part),
+                                        getOrgName(orgConfig?.positions, user.position),
+                                    ]
                                         .filter(Boolean)
-                                        .join(' ')}
+                                        .join(' ') || '미지정'}
                                 </p>
                             </div>
 
