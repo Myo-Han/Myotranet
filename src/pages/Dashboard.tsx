@@ -239,7 +239,7 @@ const Dashboard: React.FC = () => {
     <div className="space-y-6">
       {/* User Profile Card */}
       {/* Profile + Notice Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch h-[520px]">
         {/* User Profile Card */}
         <div className="bg-white shadow rounded-lg overflow-hidden h-full flex flex-col">
           <div className="bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-4">
@@ -374,7 +374,7 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
 
-        <CalendarCard title="캘린더" className="h-[520px]" />
+        <CalendarCard title="캘린더" />
       </div>
 
       {/* Quick Actions */}
