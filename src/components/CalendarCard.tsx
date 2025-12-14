@@ -30,7 +30,7 @@ const CalendarCard: React.FC<CalendarCardProps> = ({
   );
 
   return (
-    <div className={`bg-white shadow rounded-lg overflow-hidden ${className}`}>
+    <div className={`bg-white shadow rounded-lg overflow-hidden flex flex-col ${className}`}>
       <div className="bg-gradient-to-r from-emerald-500 to-emerald-600 px-6 py-4 flex items-center justify-between">
         <div>
           <h2 className="text-xl font-semibold text-white">{title}</h2>
