@@ -975,7 +975,7 @@ const Attendance: React.FC = () => {
       setLiveRunning(true);
 
       setSuccess('업무재개 처리되었습니다');
-      fetchData(false);
+      
       setTimeout(() => setSuccess(''), 3000);
     } catch (err: any) {
       setError(err.message || '업무재개 실패');
