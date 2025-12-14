@@ -261,6 +261,14 @@ const Leave: React.FC = () => {
       return;
     }
 
+    // 너무 먼 미래 방지 (2년 이내)
+    const twoYearsLater = new Date();
+    twoYearsLater.setFullYear(twoYearsLater.getFullYear() + 2);
+    if (start > twoYearsLater) {
+      setError('2년 이내의 날짜만 신청 가능합니다');
+      return;
+    }
+
     try {
       // 선택한 정책 찾기
       const selectedPolicy = policies.find(p => p.policy_code === form.leaveType);
@@ -710,12 +718,12 @@ const Leave: React.FC = () => {
 
                                 <span
                                   className={`px-2 py-1 text-xs rounded-full ${stateLabel === '완료'
-                                      ? 'bg-green-100 text-green-800'
-                                      : stateLabel === '반려'
-                                        ? 'bg-red-100 text-red-800'
-                                        : stateLabel === '진행중'
-                                          ? 'bg-blue-100 text-blue-800'
-                                          : 'bg-gray-100 text-gray-700'
+                                    ? 'bg-green-100 text-green-800'
+                                    : stateLabel === '반려'
+                                      ? 'bg-red-100 text-red-800'
+                                      : stateLabel === '진행중'
+                                        ? 'bg-blue-100 text-blue-800'
+                                        : 'bg-gray-100 text-gray-700'
                                     }`}
                                 >
                                   {stateLabel}
