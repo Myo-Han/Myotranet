@@ -49,6 +49,11 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, userId, cu
         try {
             const fileExt = file.name.split('.').pop();
             const fileName = `banner-${userId}-${Date.now()}.${fileExt}`;
+            if (user.banner_image) {
+                const oldPath = user.banner_image.split('/').pop();
+                await supabase.storage.from('banners').remove([oldPath]);
+            }
+
             const { error: uploadError } = await supabase.storage
                 .from('banners')
                 .upload(fileName, file);
@@ -83,6 +88,11 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, userId, cu
         try {
             const fileExt = file.name.split('.').pop();
             const fileName = `profile-${userId}-${Date.now()}.${fileExt}`;
+            if (user.profile_picture) {
+                const oldPath = user.profile_picture.split('/').pop();
+                await supabase.storage.from('avatars').remove([oldPath]);
+            }
+
             const { error: uploadError } = await supabase.storage
                 .from('avatars')
                 .upload(fileName, file);
@@ -174,14 +184,6 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, userId, cu
                             />
                         </label>
                     )}
-                    <button
-                        onClick={onClose}
-                        className="absolute top-4 left-4 text-white bg-black bg-opacity-30 hover:bg-opacity-50 rounded-full p-2"
-                    >
-                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                    </button>
                 </div>
 
                 {/* 프로필 사진 */}
