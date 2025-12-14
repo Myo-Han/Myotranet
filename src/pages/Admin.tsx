@@ -1,12 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { supabase } from '../supabaseClient';
-import { User } from '../types';
 import LeavePolicyManager from '../components/LeavePolicyManager';
 import WorkMenuManager from '../components/WorkMenuManager';
 import OrganizationManager from '../components/OrganizationManager';
 
-type AdminTab = 'notices' | 'layout' | 'leave-policy' | 'work-menu' | 'organization';
+type AdminTab = 'layout' | 'leave-policy' | 'work-menu' | 'organization';
 type PageKey = 'dashboard' | 'attendance' | 'leave' | 'letters' | 'search';
 
 interface ContainerConfig {
@@ -21,22 +19,10 @@ interface PageLayoutConfig {
     containers: ContainerConfig[];
 }
 
-interface Notice {
-    id: number;
-    title: string;
-    content: string;
-    is_pinned: boolean;
-    created_at: string;
-}
-
 const Admin: React.FC = () => {
     const { user } = useAuth();
 
-    const [activeTab, setActiveTab] = useState<AdminTab>('users');
-
-    // 공지 관리
-    const [notices, setNotices] = useState<Notice[]>([]);
-    const [editingNotice, setEditingNotice] = useState<Notice | null>(null);
+    const [activeTab, setActiveTab] = useState<AdminTab>('layout');
 
     // 페이지 레이아웃 관리
     const [selectedPage, setSelectedPage] = useState<PageKey>('dashboard');
@@ -83,90 +69,6 @@ const Admin: React.FC = () => {
     }));
 
     const currentLayout = layouts[selectedPage];
-
-    useEffect(() => {
-        // 공지 목록 로딩
-        const fetchNotices = async () => {
-            const { data, error } = await supabase
-                .from<Notice>('notices')
-                .select('id, title, content, is_pinned, created_at')
-                .order('is_pinned', { ascending: false })
-                .order('created_at', { ascending: false });
-
-            if (!error && data) {
-                setNotices(data);
-            }
-        };
-
-        fetchNotices();
-    }, [user?.id]);
-
-    // 공지 관리
-    const handleNewNotice = () => {
-        setEditingNotice({
-            id: 0,
-            title: '',
-            content: '',
-            is_pinned: false,
-            created_at: new Date().toISOString(),
-        });
-    };
-
-    const handleSaveNotice = async () => {
-        if (!editingNotice) return;
-        if (!editingNotice.title.trim()) return;
-
-        // 수정
-        if (editingNotice.id) {
-            const { data, error } = await supabase
-                .from('notices')
-                .update({
-                    title: editingNotice.title,
-                    content: editingNotice.content,
-                    is_pinned: editingNotice.is_pinned,
-                })
-                .eq('id', editingNotice.id)
-                .select('id, title, content, is_pinned, created_at')
-                .single();
-
-            if (!error && data) {
-                setNotices(prev =>
-                    prev.map(n => (n.id === data.id ? (data as Notice) : n)),
-                );
-                setEditingNotice(null);
-            }
-        } else {
-            // 새 공지
-            const { data, error } = await supabase
-                .from('notices')
-                .insert({
-                    title: editingNotice.title,
-                    content: editingNotice.content,
-                    is_pinned: editingNotice.is_pinned,
-                })
-                .select('id, title, content, is_pinned, created_at')
-                .single();
-
-            if (!error && data) {
-                setNotices(prev => [data as Notice, ...prev]);
-                setEditingNotice(null);
-            }
-        }
-    };
-
-    const handleDeleteNotice = async (id: number) => {
-        const { error } = await supabase
-            .from('notices')
-            .delete()
-            .eq('id', id);
-
-        if (!error) {
-            setNotices(prev => prev.filter(n => n.id !== id));
-            if (editingNotice?.id === id) {
-                setEditingNotice(null);
-            }
-        }
-    };
 
     // 레이아웃 관리
     const updateLayout = (
@@ -266,16 +168,6 @@ const Admin: React.FC = () => {
                 <div className="border-b border-gray-200 flex">
                     <button
                         type="button"
-                        onClick={() => setActiveTab('notices')}
-                        className={`flex-1 px-4 py-2 text-sm font-medium ${activeTab === 'notices'
-                            ? 'border-b-2 border-indigo-500 text-indigo-600'
-                            : 'text-gray-500 hover:text-gray-700'
-                            }`}
-                    >
-                        공지 관리
-                    </button>
-                    <button
-                        type="button"
                         onClick={() => setActiveTab('layout')}
                         className={`flex-1 px-4 py-2 text-sm font-medium ${activeTab === 'layout'
                             ? 'border-b-2 border-indigo-500 text-indigo-600'
@@ -318,152 +210,6 @@ const Admin: React.FC = () => {
 
                 {/* 탭 내용 */}
                 <div className="p-6">
-                    {/* 공지 관리 탭 */}
-                    {activeTab === 'notices' && (
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                            <div className="lg:col-span-2 space-y-3">
-                                <div className="flex items-center justify-between mb-2">
-                                    <h2 className="text-sm font-semibold text-gray-700">공지 목록</h2>
-                                    <button
-                                        type="button"
-                                        onClick={handleNewNotice}
-                                        className="px-3 py-1.5 rounded-md bg-indigo-600 text-white text-xs font-medium hover:bg-indigo-700"
-                                    >
-                                        새 공지
-                                    </button>
-                                </div>
-                                <div className="space-y-2 max-h-[420px] overflow-auto">
-                                    {notices.map(notice => (
-                                        <div
-                                            key={notice.id}
-                                            className="border rounded-md px-3 py-2 flex items-start justify-between"
-                                        >
-                                            <div>
-                                                <div className="flex items-center space-x-2">
-                                                    {notice.is_pinned && (
-                                                        <span className="inline-flex items-center px-1.5 py-0.5 text-[10px] rounded bg-yellow-100 text-yellow-700">
-                                                            상단 고정
-                                                        </span>
-                                                    )}
-                                                    <h3 className="text-sm font-semibold text-gray-800">
-                                                        {notice.title}
-                                                    </h3>
-                                                </div>
-                                                <p className="text-xs text-gray-500 mt-1 line-clamp-2">
-                                                    {notice.content}
-                                                </p>
-                                            </div>
-                                            <div className="flex items-center space-x-1 ml-3">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setEditingNotice(notice)}
-                                                    className="text-xs text-indigo-600 hover:underline"
-                                                >
-                                                    수정
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleDeleteNotice(notice.id)}
-                                                    className="text-xs text-red-500 hover:underline"
-                                                >
-                                                    삭제
-                                                </button>
-                                            </div>
-                                        </div>
-                                    ))}
-                                    {notices.length === 0 && (
-                                        <p className="text-xs text-gray-400">
-                                            등록된 공지가 없습니다. &quot;새 공지&quot; 버튼으로 추가하세요.
-                                        </p>
-                                    )}
-                                </div>
-                            </div>
-
-                            <div className="lg:col-span-1">
-                                <h2 className="text-sm font-semibold text-gray-700 mb-3">
-                                    {editingNotice ? '공지 수정' : '공지 미리보기'}
-                                </h2>
-                                {editingNotice ? (
-                                    <div className="space-y-3">
-                                        <div>
-                                            <label className="block text-xs font-medium text-gray-500 mb-1">
-                                                제목
-                                            </label>
-                                            <input
-                                                type="text"
-                                                value={editingNotice.title}
-                                                onChange={e =>
-                                                    setEditingNotice({
-                                                        ...editingNotice,
-                                                        title: e.target.value,
-                                                    })
-                                                }
-                                                className="w-full rounded-md border-gray-300 text-sm"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-xs font-medium text-gray-500 mb-1">
-                                                내용
-                                            </label>
-                                            <textarea
-                                                rows={6}
-                                                value={editingNotice.content}
-                                                onChange={e =>
-                                                    setEditingNotice({
-                                                        ...editingNotice,
-                                                        content: e.target.value,
-                                                    })
-                                                }
-                                                className="w-full rounded-md border-gray-300 text-sm"
-                                            />
-                                        </div>
-                                        <div className="flex items-center space-x-2">
-                                            <input
-                                                id="pin"
-                                                type="checkbox"
-                                                checked={editingNotice.is_pinned}
-                                                onChange={e =>
-                                                    setEditingNotice({
-                                                        ...editingNotice,
-                                                        is_pinned: e.target.checked,
-                                                    })
-                                                }
-                                                className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
-                                            />
-                                            <label
-                                                htmlFor="pin"
-                                                className="text-xs font-medium text-gray-600"
-                                            >
-                                                대시보드 상단에 고정
-                                            </label>
-                                        </div>
-                                        <div className="flex justify-end space-x-2">
-                                            <button
-                                                type="button"
-                                                onClick={() => setEditingNotice(null)}
-                                                className="px-3 py-1.5 rounded-md border border-gray-300 text-xs text-gray-600"
-                                            >
-                                                취소
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={handleSaveNotice}
-                                                className="px-3 py-1.5 rounded-md bg-indigo-600 text-white text-xs font-medium"
-                                            >
-                                                저장
-                                            </button>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <p className="text-xs text-gray-400">
-                                        왼쪽에서 공지를 선택하거나 &quot;새 공지&quot; 버튼으로 작성하면
-                                        여기에서 내용을 편집할 수 있습니다.
-                                    </p>
-                                )}
-                            </div>
-                        </div>
-                    )}
-
                     {/* 페이지 레이아웃 탭 */}
                     {activeTab === 'layout' && currentLayout && (
                         <div className="space-y-4">
