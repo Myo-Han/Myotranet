@@ -127,17 +127,7 @@ const Dashboard: React.FC = () => {
     navigate(`/search?userId=${userId}`);
   };
 
-  // ✅ 상태/소속 표시용(값 없으면 소속 카드 숨김)
-  const rawStatus = String(
-    userExtra?.current_status === 'working' ||
-      userExtra?.current_status === 'paused' ||
-      userExtra?.current_status === 'off' ||
-      userExtra?.current_status === 'vacation'
-      ? userExtra.current_status
-      : ''
-  ).trim();
-
-  const normalizedStatus = rawStatus || 'none';
+  const normalizedStatus = 'none';
 
   const statusMeta = (() => {
     switch (normalizedStatus) {

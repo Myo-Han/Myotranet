@@ -218,14 +218,17 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, userId, cu
                     <div className="text-center mb-6">
                         <div className="flex items-center justify-center gap-2">
                             <h2 className="text-2xl font-bold text-gray-900">{user.name}</h2>
-                            <span className="px-2 py-0.5 text-xs rounded-full bg-green-100 text-green-700">
-                                {{
-                                    null: '미출근',
-                                    off: '퇴근',
-                                    vacation: '휴가',
-                                    paused: '근무중단',
-                                    working: '근무중'
-                                }[user.today_attendance_status ?? null]}
+                            <span
+                                className={`px-2 py-0.5 text-xs rounded-full ${statusLabel === '근무중'
+                                        ? 'bg-green-100 text-green-700'
+                                        : statusLabel === '퇴근'
+                                            ? 'bg-gray-100 text-gray-700'
+                                            : statusLabel === '휴가'
+                                                ? 'bg-blue-100 text-blue-700'
+                                                : 'bg-red-100 text-red-700'
+                                    }`}
+                            >
+                                {statusLabel}
                             </span>
                         </div>
                         <p className="text-sm text-gray-500">{user.email}</p>
