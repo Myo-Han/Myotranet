@@ -289,11 +289,6 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, userId, cu
                                     {user.hire_date ? new Date(user.hire_date).toLocaleDateString('ko-KR') : '미지정'}
                                 </p>
                             </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-500 mb-1">현재 상태</label>
-                                <p className="text-base text-gray-900">{statusLabel}</p>
-                            </div>
                         </div>
 
                         {/* 휴대폰 번호 */}
