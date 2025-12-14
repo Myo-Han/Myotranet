@@ -374,7 +374,7 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
 
-        <CalendarCard title="캘린더" className="h-full" />
+        <CalendarCard title="캘린더" className="h-[520px]" />
       </div>
 
       {/* Quick Actions */}

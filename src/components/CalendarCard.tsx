@@ -64,7 +64,7 @@ const CalendarCard: React.FC<CalendarCardProps> = ({
         </div>
       </div>
 
-      <div className="p-4">
+      <div className="p-4 flex-1 min-h-0">
         <FullCalendar
           ref={(r) => {
             calRef.current = r;
