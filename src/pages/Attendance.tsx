@@ -5,6 +5,7 @@ import { Attendance as AttendanceType, AttendanceRevisionRequest } from '../type
 import Loading from '../components/Loading';
 import ErrorMessage from '../components/ErrorMessage';
 import SuccessMessage from '../components/SuccessMessage';
+import ProfileModal from '../components/ProfileModal';
 
 const getTodayDate = () => {
   const today = new Date();
@@ -37,6 +38,9 @@ const Attendance: React.FC = () => {
   const [success, setSuccess] = useState('');
   const [showRevisionModal, setShowRevisionModal] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<AttendanceType | null>(null);
+
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [selectedProfileUserId, setSelectedProfileUserId] = useState<string | null>(null);
   const [revisionForm, setRevisionForm] = useState({
     requestedCheckIn: '',
     requestedCheckOut: '',
@@ -434,6 +438,16 @@ const Attendance: React.FC = () => {
     } catch (err: any) {
       setError(err.message || 'Check-out failed');
     }
+  };
+
+  const openProfileModal = (targetUserId: string) => {
+    setSelectedProfileUserId(targetUserId);
+    setShowProfileModal(true);
+  };
+
+  const closeProfileModal = () => {
+    setShowProfileModal(false);
+    setSelectedProfileUserId(null);
   };
 
   const openRevisionModal = (record: AttendanceType) => {
@@ -1052,7 +1066,11 @@ const Attendance: React.FC = () => {
               {records.map((record: any) => (
                 <tr key={record.id}>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => openProfileModal(record.user_id)}
+                      className="flex items-center gap-2 bg-transparent p-0 border-0 cursor-pointer"
+                    >
                       {record.users?.profile_picture ? (
                         <img
                           src={record.users.profile_picture}
@@ -1065,7 +1083,7 @@ const Attendance: React.FC = () => {
                         </div>
                       )}
                       <span>{record.users?.name ?? '이름 없음'}</span>
-                    </div>
+                    </button>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {formatTime(record.check_in)}
@@ -1209,6 +1227,15 @@ const Attendance: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {user && selectedProfileUserId && (
+        <ProfileModal
+          isOpen={showProfileModal}
+          onClose={closeProfileModal}
+          userId={selectedProfileUserId}
+          currentUserId={user.id}
+        />
       )}
 
       {/* Revision modal */}
