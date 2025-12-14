@@ -1067,15 +1067,15 @@ const Attendance: React.FC = () => {
           <h2 className="text-xl font-semibold">출퇴근 기록</h2>
         </div>
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
+          <table className="min-w-full divide-y divide-gray-200 table-fixed">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">직원</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">출근</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">퇴근</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">상태</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">근무시간</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">작업</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-1/6">직원</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-1/6">출근</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-1/6">퇴근</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-1/6">상태</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-1/6">근무시간</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-1/6">작업</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
