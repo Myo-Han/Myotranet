@@ -153,7 +153,7 @@ const Dashboard: React.FC = () => {
     navigate(`/search?userId=${userId}`);
   };
 
-  const normalizedStatus = 'none';
+  const normalizedStatus = String(userExtra?.current_status ?? '').trim() || 'none';
 
   const statusMeta = (() => {
     switch (normalizedStatus) {
@@ -168,44 +168,44 @@ const Dashboard: React.FC = () => {
         };
 
       case 'paused':
-        return {
-          label: '업무중단',
-          wrap: 'bg-yellow-50 border-yellow-200',
-          title: 'text-yellow-600',
-          value: 'text-yellow-700',
-          icon: 'text-yellow-500',
-          iconPath: 'M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
-        };
+  return {
+    label: '근무중단',
+    wrap: 'bg-orange-50 border-orange-200',
+    title: 'text-orange-600',
+    value: 'text-orange-700',
+    icon: 'text-orange-500',
+    iconPath: 'M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
+  };
 
-      case 'off':
-        return {
-          label: '퇴근',
-          wrap: 'bg-indigo-50 border-indigo-200',
-          title: 'text-indigo-600',
-          value: 'text-indigo-700',
-          icon: 'text-indigo-500',
-          iconPath: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',
-        };
+case 'off':
+  return {
+    label: '퇴근',
+    wrap: 'bg-gray-50 border-gray-200',
+    title: 'text-gray-600',
+    value: 'text-gray-700',
+    icon: 'text-gray-500',
+    iconPath: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',
+  };
 
-      case 'vacation':
-        return {
-          label: '휴가',
-          wrap: 'bg-pink-50 border-pink-200',
-          title: 'text-pink-600',
-          value: 'text-pink-700',
-          icon: 'text-pink-500',
-          iconPath: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z',
-        };
+case 'vacation':
+  return {
+    label: '휴가',
+    wrap: 'bg-blue-50 border-blue-200',
+    title: 'text-blue-600',
+    value: 'text-blue-700',
+    icon: 'text-blue-500',
+    iconPath: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z',
+  };
 
-      default:
-        return {
-          label: '미출근',
-          wrap: 'bg-gray-50 border-gray-200',
-          title: 'text-gray-600',
-          value: 'text-gray-700',
-          icon: 'text-gray-500',
-          iconPath: 'M12 8v4m0 4h.01M12 2a10 10 0 100 20 10 10 0 000-20z',
-        };
+default:
+  return {
+    label: '미출근',
+    wrap: 'bg-red-50 border-red-200',
+    title: 'text-red-600',
+    value: 'text-red-700',
+    icon: 'text-red-500',
+    iconPath: 'M12 8v4m0 4h.01M12 2a10 10 0 100 20 10 10 0 000-20z',
+  };
     }
   })();
 

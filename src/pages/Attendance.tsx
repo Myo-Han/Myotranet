@@ -295,7 +295,7 @@ const Attendance: React.FC = () => {
 
       if (insertError) throw insertError;
 
-      await supabase.from('users').update({ current_status: 'work' }).eq('id', user.id);
+      await supabase.from('users').update({ current_status: 'working' }).eq('id', user.id);
 
       // ✅ 출근 직후부터 클라에서만 실시간 표시 시작
       setLiveAttendanceId(inserted.id);
@@ -814,7 +814,7 @@ const Attendance: React.FC = () => {
         throw updateError;
       }
 
-      await supabase.from('users').update({ current_status: 'pause' }).eq('id', user!.id);
+      await supabase.from('users').update({ current_status: 'paused' }).eq('id', user!.id);
 
       // ✅ pause 직후: 클라 실시간 증가 멈춤 + 기준값 갱신
       setLiveAttendanceId(existing.id);
@@ -938,7 +938,7 @@ const Attendance: React.FC = () => {
         throw updateError;
       }
 
-      await supabase.from('users').update({ current_status: 'work' }).eq('id', user.id);
+      await supabase.from('users').update({ current_status: 'working' }).eq('id', user.id);
 
       // ✅ resume 직후: 클라 실시간 증가 재개 + 기준값 갱신
       setLiveAttendanceId(existing.id);

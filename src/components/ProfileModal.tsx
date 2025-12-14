@@ -20,14 +20,16 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, userId, cu
 
     const isOwnProfile = userId === currentUserId;
 
+    const [todayStatus, setTodayStatus] = useState<string | null>(null);
+
     const statusLabel =
-        user?.current_status === 'working'
+        todayStatus === 'working'
             ? '근무중'
-            : user?.current_status === 'paused'
+            : todayStatus === 'paused'
                 ? '근무중단'
-                : user?.current_status === 'off'
+                : todayStatus === 'off'
                     ? '퇴근'
-                    : user?.current_status === 'vacation'
+                    : todayStatus === 'vacation'
                         ? '휴가'
                         : '미출근';
 
@@ -37,6 +39,14 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, userId, cu
         }
     }, [isOpen, userId]);
 
+    const getTodayDate = () => {
+        const now = new Date();
+        const yyyy = now.getFullYear();
+        const mm = String(now.getMonth() + 1).padStart(2, '0');
+        const dd = String(now.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
+    };
+
     const fetchUser = async () => {
         const { data, error } = await supabase
             .from('users')
@@ -44,10 +54,20 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, userId, cu
             .eq('id', userId)
             .single();
 
+        const today = getTodayDate();
+
+        const { data: attendanceRow } = await supabase
+            .from('attendance')
+            .select('status')
+            .eq('user_id', userId)
+            .eq('date', today)
+            .maybeSingle();
+
         if (!error && data) {
             setUser(data);
             setStatusMessage(data.status_message || '');
             setPhone(data.phone || '');
+            setTodayStatus((attendanceRow?.status ?? null) as any);
         }
     };
 
@@ -233,15 +253,15 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, userId, cu
                             <span
                                 className={[
                                     'px-2 py-0.5 text-xs rounded-full border',
-                                    user.current_status === 'working'
+                                    todayStatus === 'working'
                                         ? 'bg-green-100 text-green-700 border-green-200'
-                                        : user.current_status === 'paused'
-                                            ? 'bg-yellow-100 text-yellow-700 border-yellow-200'
-                                            : user.current_status === 'off'
-                                                ? 'bg-indigo-100 text-indigo-700 border-indigo-200'
-                                                : user.current_status === 'vacation'
-                                                    ? 'bg-pink-100 text-pink-700 border-pink-200'
-                                                    : 'bg-gray-100 text-gray-700 border-gray-200',
+                                        : todayStatus === 'paused'
+                                            ? 'bg-orange-100 text-orange-700 border-orange-200'
+                                            : todayStatus === 'off'
+                                                ? 'bg-gray-100 text-gray-700 border-gray-200'
+                                                : todayStatus === 'vacation'
+                                                    ? 'bg-blue-100 text-blue-700 border-blue-200'
+                                                    : 'bg-red-100 text-red-700 border-red-200',
                                 ].join(' ')}
                             >
                                 {statusLabel}
