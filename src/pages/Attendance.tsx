@@ -442,12 +442,12 @@ const Attendance: React.FC = () => {
 
   const openProfileModal = (targetUserId: string) => {
     setSelectedProfileUserId(targetUserId);
-    setIsProfileModalOpen(true);
+    setShowProfileModal(true);
   };
 
   const closeProfileModal = () => {
-    setIsProfileModalOpen(false);
-    setSelectedProfileUserId('');
+    setShowProfileModal(false);
+    setSelectedProfileUserId(null);
   };
 
   const openRevisionModal = (record: AttendanceType) => {
