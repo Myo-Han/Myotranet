@@ -422,56 +422,59 @@ const Dashboard: React.FC = () => {
           <p className="text-sm text-gray-500 mt-1">출근, 퇴근, 조퇴 기록</p>
         </button>
 
-        <button
-          onClick={() => navigate('/leave')}
-          className="bg-white p-6 rounded-lg shadow hover:shadow-md transition duration-200 text-left"
+        href="https://forms.gle/yourFormLinkHere"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="bg-white p-6 rounded-lg shadow hover:shadow-md transition duration-200 text-left block"
         >
-          <div className="text-green-600 mb-3">
-            <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-          </div>
-          <h3 className="text-lg font-semibold text-gray-900">휴가 신청</h3>
-          <p className="text-sm text-gray-500 mt-1">연차 및 반차 신청</p>
-        </button>
+        <div className="text-orange-600 mb-3">
+          <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+          </svg>
+        </div>
+        <h3 className="text-lg font-semibold text-gray-900">운영툴 제안</h3>
+        <p className="text-sm text-gray-500 mt-1">버그 / 기능 개선 제안</p>
+      </a>
 
-        <button
-          onClick={() => navigate('/letters')}
-          className="bg-white p-6 rounded-lg shadow hover:shadow-md transition duration-200 text-left"
-        >
-          <div className="text-purple-600 mb-3">
-            <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-            </svg>
-          </div>
-          <h3 className="text-lg font-semibold text-gray-900">마음의 편지</h3>
-          <p className="text-sm text-gray-500 mt-1">익명 또는 실명 편지</p>
-        </button>
+      <button
+        onClick={() => navigate('/letters')}
+        className="bg-white p-6 rounded-lg shadow hover:shadow-md transition duration-200 text-left"
+      >
+        <div className="text-purple-600 mb-3">
+          <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+          </svg>
+        </div>
+        <h3 className="text-lg font-semibold text-gray-900">마음의 편지</h3>
+        <p className="text-sm text-gray-500 mt-1">익명 또는 실명 편지</p>
+      </button>
 
-        <button
-          onClick={() => navigate('/search')}
-          className="bg-white p-6 rounded-lg shadow hover:shadow-md transition duration-200 text-left"
-        >
-          <div className="text-indigo-600 mb-3">
-            <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-          </div>
-          <h3 className="text-lg font-semibold text-gray-900">직원 검색</h3>
-          <p className="text-sm text-gray-500 mt-1">상세 프로필 조회</p>
-        </button>
-      </div>
-
-      {/* 프로필 모달 */}
-      {user && (
-        <ProfileModal
-          isOpen={showProfileModal}
-          onClose={() => setShowProfileModal(false)}
-          userId={user.id}
-          currentUserId={user.id}
-        />
-      )}
+      <button
+        onClick={() => navigate('/search')}
+        className="bg-white p-6 rounded-lg shadow hover:shadow-md transition duration-200 text-left"
+      >
+        <div className="text-indigo-600 mb-3">
+          <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+        </div>
+        <h3 className="text-lg font-semibold text-gray-900">직원 검색</h3>
+        <p className="text-sm text-gray-500 mt-1">상세 프로필 조회</p>
+      </button>
     </div>
+
+      {/* 프로필 모달 */ }
+  {
+    user && (
+      <ProfileModal
+        isOpen={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
+        userId={user.id}
+        currentUserId={user.id}
+      />
+    )
+  }
+    </div >
   );
 };
 
