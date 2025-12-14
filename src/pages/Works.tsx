@@ -8,6 +8,7 @@ import LeaveWorkQueue from '../components/LeaveWorkQueue';
 import UserManager from '../components/UserManager';
 import UserInviteManager from '../components/UserInviteManager';
 import NoticeManager from '../components/NoticeManager';
+import BuildPackaging from '../components/BuildPackaging';
 import TodoManager from '../components/TodoManager';
 import MemoManager from '../components/MemoManager';
 
@@ -25,7 +26,7 @@ type WorkMenuItem = {
 const Work: React.FC = () => {
   const { user } = useAuth();
   const [menuItems, setMenuItems] = useState<WorkMenuItem[]>([]);
-  const [selectedMenu, setSelectedMenu] = useState('build');
+  const [selectedMenu, setSelectedMenu] = useState('');
   const [loadingMenu, setLoadingMenu] = useState(true);
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const [showBuildModal, setShowBuildModal] = useState(false);
@@ -79,7 +80,14 @@ const Work: React.FC = () => {
           return false;
         });
 
-        setMenuItems(filtered.sort((a: WorkMenuItem, b: WorkMenuItem) => a.order - b.order));
+        const sorted = filtered.sort((a: WorkMenuItem, b: WorkMenuItem) => a.order - b.order);
+        setMenuItems(sorted);
+
+        // 첫 번째 메뉴를 기본 선택
+        if (sorted.length > 0 && !selectedMenu) {
+          const firstMenu = sorted.find(m => !m.is_folder) || sorted[0];
+          setSelectedMenu(firstMenu.path);
+        }
       } catch (e) {
         console.error('메뉴 로드 실패:', e);
       } finally {
@@ -359,8 +367,8 @@ const Work: React.FC = () => {
                   }
                 }}
                 className={`w-full flex items-center justify-between px-4 py-3 rounded-lg transition ${!item.is_folder && selectedMenu === item.path
-                    ? 'bg-blue-50 text-blue-600 font-medium'
-                    : 'text-gray-700 hover:bg-gray-50'
+                  ? 'bg-blue-50 text-blue-600 font-medium'
+                  : 'text-gray-700 hover:bg-gray-50'
                   }`}
               >
                 <div className="flex items-center space-x-3">
@@ -386,8 +394,8 @@ const Work: React.FC = () => {
                       key={child.id}
                       onClick={() => setSelectedMenu(child.path)}
                       className={`w-full flex items-center space-x-3 px-4 py-2 rounded-lg transition text-sm ${selectedMenu === child.path
-                          ? 'bg-blue-50 text-blue-600 font-medium'
-                          : 'text-gray-600 hover:bg-gray-50'
+                        ? 'bg-blue-50 text-blue-600 font-medium'
+                        : 'text-gray-600 hover:bg-gray-50'
                         }`}
                     >
                       {getIcon(child.icon)}
@@ -406,37 +414,6 @@ const Work: React.FC = () => {
         <div className="p-6 space-y-4">
           {error && <ErrorMessage message={error} />}
           {success && <SuccessMessage message={success} />}
-
-          {selectedMenu === 'build' && (
-            <div className="bg-white shadow rounded-lg p-6">
-              <h2 className="text-xl font-bold mb-2">패키징(빌드)</h2>
-              <p className="text-sm text-gray-600 mb-4">
-                Jenkins 빌드를 트리거합니다. 관리자/매니저만 실행 가능합니다.
-              </p>
-
-              {!canBuild && (
-                <p className="text-sm text-gray-500">
-                  빌드 실행 권한이 없습니다.
-                </p>
-              )}
-
-              {canBuild && (
-                <div className="flex items-center gap-4">
-                  <button
-                    type="button"
-                    onClick={openBuildModal}
-                    className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                    disabled={submitting}
-                  >
-                    빌드 시작
-                  </button>
-                  <span className="text-xs text-gray-500">
-                    Jenkins 빌드 트리거
-                  </span>
-                </div>
-              )}
-            </div>
-          )}
 
           {selectedMenu === 'my' && (
             <div className="bg-white shadow rounded-lg p-6">
@@ -466,6 +443,10 @@ const Work: React.FC = () => {
               <TodoManager />
               <MemoManager />
             </div>
+          )}
+
+          {selectedMenu === 'build' && (
+            <BuildPackaging />
           )}
 
           {submitting && (
