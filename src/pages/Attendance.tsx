@@ -550,7 +550,7 @@ const Attendance: React.FC = () => {
     return inKey !== outKey;
   };
 
-  const calculateWorkHours = (
+  cconst calculateWorkHours = (
     recordId: string | null,
     isMine: boolean,
     checkIn: string | null,
@@ -579,12 +579,14 @@ const Attendance: React.FC = () => {
 
     const hours = Math.floor(totalSeconds / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
 
-    if (checkOut || !isToday) {
-      return `${hours}h`;
-    } else {
-      return `${hours}h ${minutes}m`;
-    }
+    const parts = [];
+    if (hours > 0) parts.push(`${hours}h`);
+    if (minutes > 0) parts.push(`${minutes}m`);
+    if (seconds > 0 || parts.length === 0) parts.push(`${seconds}s`);
+
+    return parts.join(' ');
   };
 
 
