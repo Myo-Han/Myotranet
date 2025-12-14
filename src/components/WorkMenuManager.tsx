@@ -23,6 +23,7 @@ const WorkMenuManager: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [editingItem, setEditingItem] = useState<WorkMenuItem | null>(null);
   const [draggedItem, setDraggedItem] = useState<WorkMenuItem | null>(null);
+  const [dropPosition, setDropPosition] = useState<{ itemId: string; position: 'before' | 'after' } | null>(null);
   const [form, setForm] = useState({
     id: '',
     label: '',
@@ -210,14 +211,30 @@ const WorkMenuManager: React.FC = () => {
     e.dataTransfer.effectAllowed = 'move';
   };
 
-  const handleDragOver = (e: React.DragEvent) => {
+  const handleDragOver = (e: React.DragEvent, item: WorkMenuItem) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
+    
+    if (!draggedItem || draggedItem.id === item.id) return;
+    
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const midPoint = rect.top + rect.height / 2;
+    const position = e.clientY < midPoint ? 'before' : 'after';
+    
+    setDropPosition({ itemId: item.id, position });
+  };
+
+  const handleDragLeave = () => {
+    setDropPosition(null);
   };
 
   const handleDrop = async (e: React.DragEvent, targetItem: WorkMenuItem) => {
     e.preventDefault();
-    if (!draggedItem || draggedItem.id === targetItem.id) return;
+    if (!draggedItem || draggedItem.id === targetItem.id || !dropPosition) {
+      setDropPosition(null);
+      setDraggedItem(null);
+      return;
+    }
 
     try {
       const { data, error } = await supabase
@@ -229,15 +246,31 @@ const WorkMenuManager: React.FC = () => {
 
       let menu = [...data.config.work_menu];
       
-      // 드래그한 아이템과 타겟 아이템의 order 교환
-      const draggedIndex = menu.findIndex((item: WorkMenuItem) => item.id === draggedItem.id);
-      const targetIndex = menu.findIndex((item: WorkMenuItem) => item.id === targetItem.id);
+      // 같은 parent 내에서만 이동 가능하도록 체크
+      if (draggedItem.parent_id !== targetItem.parent_id) {
+        setError('같은 레벨 내에서만 순서를 변경할 수 있습니다');
+        setDropPosition(null);
+        setDraggedItem(null);
+        setTimeout(() => setError(''), 3000);
+        return;
+      }
       
-      if (draggedIndex === -1 || targetIndex === -1) return;
-
-      const draggedOrder = menu[draggedIndex].order;
-      menu[draggedIndex].order = menu[targetIndex].order;
-      menu[targetIndex].order = draggedOrder;
+      // 드래그한 아이템 제거
+      const draggedIndex = menu.findIndex((item: WorkMenuItem) => item.id === draggedItem.id);
+      const [removed] = menu.splice(draggedIndex, 1);
+      
+      // 타겟 아이템의 새 위치 찾기
+      const targetIndex = menu.findIndex((item: WorkMenuItem) => item.id === targetItem.id);
+      const insertIndex = dropPosition.position === 'before' ? targetIndex : targetIndex + 1;
+      
+      // 새 위치에 삽입
+      menu.splice(insertIndex, 0, removed);
+      
+      // order 재정렬
+      menu = menu.map((item: WorkMenuItem, index: number) => ({
+        ...item,
+        order: index + 1
+      }));
 
       const { error: updateError } = await supabase
         .from('org_settings')
@@ -257,6 +290,7 @@ const WorkMenuManager: React.FC = () => {
     }
 
     setDraggedItem(null);
+    setDropPosition(null);
   };
 
   // 아이콘 렌더링
@@ -382,82 +416,101 @@ const WorkMenuManager: React.FC = () => {
   const renderMenuItem = (item: WorkMenuItem, depth: number = 0) => {
     const children = menuItems.filter(m => m.parent_id === item.id);
     const hasChildren = children.length > 0;
+    const isBeforeTarget = dropPosition?.itemId === item.id && dropPosition?.position === 'before';
+    const isAfterTarget = dropPosition?.itemId === item.id && dropPosition?.position === 'after';
 
     return (
       <div key={item.id} className="select-none">
-        <div
-          draggable
-          onDragStart={(e) => handleDragStart(e, item)}
-          onDragOver={handleDragOver}
-          onDrop={(e) => handleDrop(e, item)}
-          className={`
-            flex items-center justify-between p-3 mb-2 rounded-lg border-2 
-            bg-white hover:bg-gray-50 cursor-move transition
-            ${draggedItem?.id === item.id ? 'opacity-50 border-blue-400' : 'border-gray-200'}
-          `}
-          style={{ marginLeft: `${depth * 24}px` }}
-        >
-          <div className="flex items-center space-x-3 flex-1 min-w-0">
-            {/* 폴더 아이콘 또는 일반 메뉴 아이콘 */}
-            <div className="text-gray-600 flex-shrink-0">
-              {item.is_folder ? (
-                <svg className="w-5 h-5 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-                </svg>
-              ) : (
-                getIcon(item.icon)
-              )}
+        <div className="relative">
+          {/* 위쪽 드롭 인디케이터 */}
+          {isBeforeTarget && (
+            <div className="absolute -top-1 left-0 right-0 h-1 bg-blue-500 rounded-full z-10 shadow-lg">
+              <div className="absolute left-0 top-1/2 -translate-y-1/2 w-2 h-2 bg-blue-500 rounded-full" />
             </div>
-            
-            {/* 메뉴명 */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center space-x-2">
-                <span className="font-medium text-gray-900 truncate">
-                  {item.label}
-                </span>
-                {item.is_folder && (
-                  <span className="text-xs text-gray-500">({children.length})</span>
+          )}
+          
+          <div
+            draggable
+            onDragStart={(e) => handleDragStart(e, item)}
+            onDragOver={(e) => handleDragOver(e, item)}
+            onDrop={(e) => handleDrop(e, item)}
+            onDragLeave={handleDragLeave}
+            className={`
+              flex items-center justify-between p-3 mb-2 rounded-lg border-2 
+              bg-white hover:bg-gray-50 cursor-move transition
+              ${draggedItem?.id === item.id ? 'opacity-30 border-blue-400 scale-95' : 'border-gray-200'}
+            `}
+            style={{ marginLeft: `${depth * 24}px` }}
+          >
+            <div className="flex items-center space-x-3 flex-1 min-w-0">
+              {/* 폴더 아이콘 또는 일반 메뉴 아이콘 */}
+              <div className="text-gray-600 flex-shrink-0">
+                {item.is_folder ? (
+                  <svg className="w-5 h-5 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                  </svg>
+                ) : (
+                  getIcon(item.icon)
                 )}
               </div>
-              {!item.is_folder && item.path && (
-                <p className="text-xs text-gray-500 truncate">{item.path}</p>
-              )}
-            </div>
-
-            {/* 권한 뱃지 */}
-            <div className="flex gap-1 flex-wrap">
-              {item.show_to.includes('all') ? (
-                <span className="px-2 py-0.5 bg-green-100 text-green-800 rounded text-xs whitespace-nowrap">전체</span>
-              ) : (
-                item.show_to.slice(0, 2).map((role) => (
-                  <span key={role} className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded text-xs whitespace-nowrap">
-                    {role}
+              
+              {/* 메뉴명 */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center space-x-2">
+                  <span className="font-medium text-gray-900 truncate">
+                    {item.label}
                   </span>
-                ))
-              )}
-              {item.show_to.length > 2 && !item.show_to.includes('all') && (
-                <span className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-xs whitespace-nowrap">
-                  +{item.show_to.length - 2}
-                </span>
-              )}
+                  {item.is_folder && (
+                    <span className="text-xs text-gray-500">({children.length})</span>
+                  )}
+                </div>
+                {!item.is_folder && item.path && (
+                  <p className="text-xs text-gray-500 truncate">{item.path}</p>
+                )}
+              </div>
+
+              {/* 권한 뱃지 */}
+              <div className="flex gap-1 flex-wrap">
+                {item.show_to.includes('all') ? (
+                  <span className="px-2 py-0.5 bg-green-100 text-green-800 rounded text-xs whitespace-nowrap">전체</span>
+                ) : (
+                  item.show_to.slice(0, 2).map((role) => (
+                    <span key={role} className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded text-xs whitespace-nowrap">
+                      {role}
+                    </span>
+                  ))
+                )}
+                {item.show_to.length > 2 && !item.show_to.includes('all') && (
+                  <span className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-xs whitespace-nowrap">
+                    +{item.show_to.length - 2}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* 액션 버튼 */}
+            <div className="flex items-center space-x-2 ml-3">
+              <button
+                onClick={() => openEditModal(item)}
+                className="text-blue-600 hover:text-blue-800 text-sm"
+              >
+                수정
+              </button>
+              <button
+                onClick={() => handleDelete(item.id)}
+                className="text-red-600 hover:text-red-800 text-sm"
+              >
+                삭제
+              </button>
             </div>
           </div>
 
-          {/* 액션 버튼 */}
-          <div className="flex items-center space-x-2 ml-3">
-            <button
-              onClick={() => openEditModal(item)}
-              className="text-blue-600 hover:text-blue-800 text-sm"
-            >
-              수정
-            </button>
-            <button
-              onClick={() => handleDelete(item.id)}
-              className="text-red-600 hover:text-red-800 text-sm"
-            >
-              삭제
-            </button>
-          </div>
+          {/* 아래쪽 드롭 인디케이터 */}
+          {isAfterTarget && (
+            <div className="absolute -bottom-1 left-0 right-0 h-1 bg-blue-500 rounded-full z-10 shadow-lg">
+              <div className="absolute left-0 top-1/2 -translate-y-1/2 w-2 h-2 bg-blue-500 rounded-full" />
+            </div>
+          )}
         </div>
 
         {/* 하위 메뉴 렌더링 */}
