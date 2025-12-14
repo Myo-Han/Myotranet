@@ -19,7 +19,7 @@ const Login: React.FC = () => {
       <div className="max-w-md w-full space-y-8 p-8 bg-white rounded-xl shadow-2xl">
         <div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            점검중
+            묘한 운영툴
           </h2>
         </div>
 
@@ -29,21 +29,31 @@ const Login: React.FC = () => {
               {error === 'auth_failed'
                 ? '로그인에 실패했습니다. 다시 시도해주세요.'
                 : error === 'no_user'
-                ? '사용자 정보를 가져올 수 없습니다.'
-                : '접근 권한이 없습니다. 관리자에게 문의하세요.'}
+                  ? '사용자 정보를 가져올 수 없습니다.'
+                  : '접근 권한이 없습니다. 관리자에게 문의하세요.'}
             </p>
           </div>
         )}
 
         <div className="mt-8 space-y-6">
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 max-h-40 overflow-y-auto">
             <h3 className="text-sm font-medium text-blue-900 mb-2">
-              로그인 방법
+              25.12.15 06:07 패치노트
             </h3>
+
+            <p className="text-xs font-semibold text-blue-900 mb-1">기능 추가</p>
+            <ul className="text-sm text-blue-700 space-y-1 mb-3">
+              <li>• [대시보드] 캘린더 / 운영툴 제안 추가</li>
+              <li>• [출퇴근관리] 근무시간 실시간 확인 기능 추가</li>
+              <li>• [관리자] → [업무 메뉴] 커스텀 기능 확장</li>
+              <li>• [업무] → [내 업무] 할 일 목록 / 메모 기능 추가</li>
+            </ul>
+
+            <p className="text-xs font-semibold text-blue-900 mb-1">버그 수정</p>
             <ul className="text-sm text-blue-700 space-y-1">
-              <li>• Google 계정으로만 로그인 가능합니다</li>
-              <li>• 허가된 이메일만 접근할 수 있습니다</li>
-              <li>• 15분 비활성 시 자동 로그아웃됩니다</li>
+              <li>• [대시보드] 소속 / 상태 출력 오류 수정</li>
+              <li>• [출퇴근관리] 근무시간 표기 오류 수정</li>
+              <li>• [출퇴근관리] 업무 중지/재개 시 화면 미갱신 문제 수정</li>
             </ul>
           </div>
 
