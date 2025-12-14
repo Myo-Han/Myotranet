@@ -20,6 +20,17 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, userId, cu
 
     const isOwnProfile = userId === currentUserId;
 
+    const statusLabel =
+        user.current_status === 'working'
+            ? '근무중'
+            : user.current_status === 'paused'
+                ? '근무중단'
+                : user.current_status === 'off'
+                    ? '퇴근'
+                    : user.current_status === 'vacation'
+                        ? '휴가'
+                        : '미출근';
+
     useEffect(() => {
         if (isOpen) {
             fetchUser();
@@ -29,7 +40,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, userId, cu
     const fetchUser = async () => {
         const { data, error } = await supabase
             .from('users')
-            .select('id, name, email, profile_picture, banner_image, department, position, hire_date, current_status, status_message, phone')
+            .select('id, name, email, profile_picture, banner_image, department_name, project_name, position_name, hire_date, current_status, status_message, phone')
             .eq('id', userId)
             .single();
 
@@ -218,18 +229,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, userId, cu
                     <div className="text-center mb-6">
                         <div className="flex items-center justify-center gap-2">
                             <h2 className="text-2xl font-bold text-gray-900">{user.name}</h2>
-                            <span
-                                className={`px-2 py-0.5 text-xs rounded-full ${statusLabel === '근무중'
-                                        ? 'bg-green-100 text-green-700'
-                                        : statusLabel === '퇴근'
-                                            ? 'bg-gray-100 text-gray-700'
-                                            : statusLabel === '휴가'
-                                                ? 'bg-blue-100 text-blue-700'
-                                                : 'bg-red-100 text-red-700'
-                                    }`}
-                            >
-                                {statusLabel}
-                            </span>
+                            <span>{statusLabel}</span>
                         </div>
                         <p className="text-sm text-gray-500">{user.email}</p>
                     </div>
@@ -255,7 +255,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, userId, cu
 
                             <div>
                                 <label className="block text-sm font-medium text-gray-500 mb-1">현재 상태</label>
-                                <p className="text-base text-gray-900">{user.current_status || '미지정'}</p>
+                                <p className="text-base text-gray-900">{statusLabel}</p>
                             </div>
                         </div>
 
