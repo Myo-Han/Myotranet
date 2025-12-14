@@ -442,12 +442,12 @@ const Attendance: React.FC = () => {
 
   const openProfileModal = (targetUserId: string) => {
     setSelectedProfileUserId(targetUserId);
-    setShowProfileModal(true);
+    setIsProfileModalOpen(true);
   };
 
   const closeProfileModal = () => {
-    setShowProfileModal(false);
-    setSelectedProfileUserId(null);
+    setIsProfileModalOpen(false);
+    setSelectedProfileUserId('');
   };
 
   const openRevisionModal = (record: AttendanceType) => {
@@ -1229,12 +1229,13 @@ const Attendance: React.FC = () => {
         </div>
       )}
 
-      {user && selectedProfileUserId && (
+      {user && showProfileModal && selectedProfileUserId && (
         <ProfileModal
           isOpen={showProfileModal}
           onClose={closeProfileModal}
           userId={selectedProfileUserId}
           currentUserId={user.id}
+          readOnly
         />
       )}
 
