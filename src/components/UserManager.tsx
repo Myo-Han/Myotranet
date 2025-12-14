@@ -51,8 +51,7 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
       .order('name', { ascending: true });
 
     if (!error && data) {
-      // 현재 사용자 제외
-      setUsers(data.filter(u => u.id !== currentUserId));
+      setUsers(data);
     }
   };
 
