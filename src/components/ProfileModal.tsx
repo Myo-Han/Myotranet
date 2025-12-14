@@ -21,13 +21,13 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, userId, cu
     const isOwnProfile = userId === currentUserId;
 
     const statusLabel =
-        user.current_status === 'working'
+        user?.current_status === 'working'
             ? '근무중'
-            : user.current_status === 'paused'
+            : user?.current_status === 'paused'
                 ? '근무중단'
-                : user.current_status === 'off'
+                : user?.current_status === 'off'
                     ? '퇴근'
-                    : user.current_status === 'vacation'
+                    : user?.current_status === 'vacation'
                         ? '휴가'
                         : '미출근';
 
