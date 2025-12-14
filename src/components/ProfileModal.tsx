@@ -216,21 +216,23 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, userId, cu
                     </div>
 
                     <div className="text-center mb-6">
-                        <h2 className="text-2xl font-bold text-gray-900">{user.name}</h2>
+                        <div className="flex items-center justify-center gap-2">
+                            <h2 className="text-2xl font-bold text-gray-900">{user.name}</h2>
+                            <span className="px-2 py-0.5 text-xs rounded-full bg-green-100 text-green-700">
+                                {user.current_status}
+                            </span>
+                        </div>
                         <p className="text-sm text-gray-500">{user.email}</p>
                     </div>
 
                     {/* 정보 */}
                     <div className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
-                            <div>
+                            <div className="col-span-2">
                                 <label className="block text-sm font-medium text-gray-500 mb-1">소속</label>
-                                <p className="text-base text-gray-900">{user.department || '미지정'}</p>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-500 mb-1">직급</label>
-                                <p className="text-base text-gray-900">{user.position || '미지정'}</p>
+                                <p className="text-base text-gray-900">
+                                    {`${user.department} ${user.project} ${user.position}`}
+                                </p>
                             </div>
 
                             <div>
