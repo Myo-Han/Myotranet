@@ -20,3 +20,16 @@ body {
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
 }
+
+/* FullCalendar day cell: square */
+.fc .fc-daygrid-day-frame {
+  aspect-ratio: 1 / 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* 내용 때문에 높이 늘어나는 것 방지(필요 시) */
+.fc .fc-daygrid-day-events {
+  overflow: hidden;
+}

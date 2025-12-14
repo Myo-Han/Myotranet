@@ -72,8 +72,9 @@ const CalendarCard: React.FC<CalendarCardProps> = ({
           plugins={[dayGridPlugin, interactionPlugin]}
           initialView="dayGridMonth"
           headerToolbar={false}
-          height="auto"
-          fixedWeekCount={false}
+          fixedWeekCount={true}
+          expandRows={true}
+          height="100%"
           dayMaxEvents={true}
           events={events}
           datesSet={(arg) => setViewTitle(arg.view.title)}
