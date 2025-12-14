@@ -468,7 +468,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, userId, cu
                         <button
                             onClick={() => {
                                 onClose();
-                                if (readOnly) window.location.reload();
+                                if (canEdit) window.location.reload();
                             }}
                             className="px-6 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
                         >
