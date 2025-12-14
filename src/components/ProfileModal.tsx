@@ -219,7 +219,12 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, userId, cu
                         <div className="flex items-center justify-center gap-2">
                             <h2 className="text-2xl font-bold text-gray-900">{user.name}</h2>
                             <span className="px-2 py-0.5 text-xs rounded-full bg-green-100 text-green-700">
-                                {user.current_status}
+                                {{
+                                    working: '근무중',
+                                    paused: '근무중단',
+                                    off: '퇴근',
+                                    vacation: '휴가'
+                                }[user.current_status] ?? '미출근'}
                             </span>
                         </div>
                         <p className="text-sm text-gray-500">{user.email}</p>
@@ -231,7 +236,9 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, userId, cu
                             <div className="col-span-2">
                                 <label className="block text-sm font-medium text-gray-500 mb-1">소속</label>
                                 <p className="text-base text-gray-900">
-                                    {`${user.department} ${user.project} ${user.position}`}
+                                    {[user.department_name, user.project_name, user.position_name]
+                                        .filter(Boolean)
+                                        .join(' ')}
                                 </p>
                             </div>
 
