@@ -854,7 +854,7 @@ const Attendance: React.FC = () => {
       setShowPauseModal(false);
       setPauseReason('');
       setPauseMemo('');
-      fetchData(false);
+      setTimeout(() => fetchData(false), 300);
       setTimeout(() => setSuccess(''), 3000);
     } catch (err: any) {
       setError(err.message || '업무중지 실패');
@@ -975,7 +975,9 @@ const Attendance: React.FC = () => {
       setLiveRunning(true);
 
       setSuccess('업무재개 처리되었습니다');
-      
+      setTimeout(() => fetchData(false), 300);
+      setTimeout(() => setSuccess(''), 3000);
+
       setTimeout(() => setSuccess(''), 3000);
     } catch (err: any) {
       setError(err.message || '업무재개 실패');
