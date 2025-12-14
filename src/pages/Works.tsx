@@ -7,6 +7,7 @@ import SuccessMessage from '../components/SuccessMessage';
 import LeaveWorkQueue from '../components/LeaveWorkQueue';
 import UserManager from '../components/UserManager';
 import UserInviteManager from '../components/UserInviteManager';
+import NoticeManager from '../components/NoticeManager';
 
 type WorkMenuItem = {
   id: string;
@@ -454,6 +455,10 @@ const Work: React.FC = () => {
 
           {selectedMenu === 'user-invite' && (
             <UserInviteManager />
+          )}
+
+          {selectedMenu === 'notice-manager' && (
+            <NoticeManager />
           )}
 
           {submitting && (
