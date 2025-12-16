@@ -38,22 +38,19 @@ const Login: React.FC = () => {
         <div className="mt-8 space-y-6">
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 max-h-40 overflow-y-auto">
             <h3 className="text-sm font-medium text-blue-900 mb-2">
-              25.12.15 06:07 패치노트
+              25.12.17 03:45 패치노트
             </h3>
 
             <p className="text-xs font-semibold text-blue-900 mb-1">기능 추가</p>
             <ul className="text-sm text-blue-700 space-y-1 mb-3">
-              <li>• [대시보드] 캘린더 / 운영툴 제안 추가</li>
-              <li>• [출퇴근관리] 근무시간 실시간 확인 기능 추가</li>
-              <li>• [관리자] → [업무 메뉴] 커스텀 기능 확장</li>
-              <li>• [업무] → [내 업무] 할 일 목록 / 메모 기능 추가</li>
+              <li>• [휴가 지급/차감] 추가</li>
+              <li>• [휴가 조회] 추가</li>
             </ul>
 
             <p className="text-xs font-semibold text-blue-900 mb-1">버그 수정</p>
             <ul className="text-sm text-blue-700 space-y-1">
-              <li>• [대시보드] 소속 / 상태 출력 오류 수정</li>
-              <li>• [출퇴근관리] 근무시간 표기 오류 수정</li>
-              <li>• [출퇴근관리] 업무 중지/재개 시 화면 미갱신 문제 수정</li>
+              <li>• [출퇴근관리] 다른 사람 누적 시간 갱신 문제 해결</li>
+              <li>• [출퇴근관리] 자정 넘어갈 시 중복 세션 문제 조치(확인 필요)</li>
             </ul>
           </div>
 
