@@ -44,10 +44,43 @@ type BalanceHistoryRow = {
 
 type PeriodPreset = 'all' | '3months' | '6months' | '1year';
 
+type OrgItem = { code: string; name: string };
+type OrgConfig = {
+  departments?: OrgItem[];
+  positions?: OrgItem[];
+  projects?: OrgItem[];
+};
+
 const PAGE_SIZE = 50;
 
 const LeaveEmployeeOverview: React.FC = () => {
   const { user } = useAuth();
+
+  const [orgConfig, setOrgConfig] = useState<OrgConfig | null>(null);
+
+  const getOrgName = (list: OrgItem[] | undefined, code: string | null) => {
+    const c = String(code ?? '').trim();
+    if (!c) return '';
+    return list?.find(x => x.code === c)?.name || c;
+  };
+
+  const getAffiliationText = (u: Pick<UserRow, 'department' | 'position' | 'project'>) => {
+    const deptName = getOrgName(orgConfig?.departments, u.department);
+    const posName = getOrgName(orgConfig?.positions, u.position);
+    const projName = getOrgName(orgConfig?.projects, u.project);
+    const parts = [deptName, posName, projName].filter(Boolean);
+    return parts.length ? parts.join(' · ') : '';
+  };
+
+  const fetchOrgConfig = async () => {
+    try {
+      const { data, error } = await supabase.from('org_settings').select('config').single();
+      if (error) throw error;
+      setOrgConfig((data?.config || {}) as any);
+    } catch {
+      setOrgConfig(null);
+    }
+  };
 
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -104,7 +137,8 @@ const LeaveEmployeeOverview: React.FC = () => {
       if (project !== 'all' && (u.project || '') !== project) return false;
 
       if (!q) return true;
-      const hay = `${u.name || ''} ${u.email || ''} ${u.department || ''} ${u.position || ''} ${u.project || ''}`.toLowerCase();
+      const aff = getAffiliationText(u);
+      const hay = `${u.name || ''} ${u.email || ''} ${aff}`.toLowerCase();
       return hay.includes(q);
     });
 
@@ -121,7 +155,8 @@ const LeaveEmployeeOverview: React.FC = () => {
       if (project !== 'all' && (u.project || '') !== project) return false;
 
       if (!q) return true;
-      const hay = `${u.name || ''} ${u.email || ''} ${u.department || ''} ${u.position || ''} ${u.project || ''}`.toLowerCase();
+      const aff = getAffiliationText(u);
+      const hay = `${u.name || ''} ${u.email || ''} ${aff}`.toLowerCase();
       return hay.includes(q);
     }).length;
   }, [users, search, department, position, project]);
@@ -130,6 +165,7 @@ const LeaveEmployeeOverview: React.FC = () => {
 
   useEffect(() => {
     fetchUsers();
+    fetchOrgConfig();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -291,7 +327,7 @@ const LeaveEmployeeOverview: React.FC = () => {
             className="border rounded-md px-3 py-2 text-sm"
           >
             <option value="all">부서: 전체</option>
-            {optionSets.departments.map(d => <option key={d} value={d}>{d}</option>)}
+            {optionSets.departments.map(d => <option key={d} value={d}>{getOrgName(orgConfig?.departments, d)}</option>)}
           </select>
 
           <select
@@ -300,7 +336,7 @@ const LeaveEmployeeOverview: React.FC = () => {
             className="border rounded-md px-3 py-2 text-sm"
           >
             <option value="all">직급: 전체</option>
-            {optionSets.positions.map(p => <option key={p} value={p}>{p}</option>)}
+            {optionSets.positions.map(p => <option key={p} value={p}>{getOrgName(orgConfig?.positions, p)}</option>)}
           </select>
 
           <select
@@ -309,7 +345,7 @@ const LeaveEmployeeOverview: React.FC = () => {
             className="border rounded-md px-3 py-2 text-sm"
           >
             <option value="all">프로젝트: 전체</option>
-            {optionSets.projects.map(pj => <option key={pj} value={pj}>{pj}</option>)}
+            {optionSets.projects.map(pj => <option key={pj} value={pj}>{getOrgName(orgConfig?.projects, pj)}</option>)}
           </select>
         </div>
 
@@ -370,9 +406,9 @@ const LeaveEmployeeOverview: React.FC = () => {
                       <span>{u.name || '(이름 없음)'}</span>
                     </button>
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-700">{u.department || '-'}</td>
-                  <td className="px-4 py-3 text-sm text-gray-700">{u.position || '-'}</td>
-                  <td className="px-4 py-3 text-sm text-gray-700">{u.project || '-'}</td>
+                  <td className="px-4 py-3 text-sm text-gray-700">{getOrgName(orgConfig?.departments, u.department) || ''}</td>
+                  <td className="px-4 py-3 text-sm text-gray-700">{getOrgName(orgConfig?.positions, u.position) || ''}</td>
+                  <td className="px-4 py-3 text-sm text-gray-700">{getOrgName(orgConfig?.projects, u.project) || ''}</td>
                   <td className="px-4 py-3 text-sm text-right font-semibold text-blue-700">{u.annual_leave_balance ?? 0}일</td>
                   <td className="px-4 py-3 text-sm text-right font-semibold text-green-700">{u.monthly_leave_balance ?? 0}일</td>
                   <td className="px-4 py-3 text-sm text-right">
@@ -404,9 +440,11 @@ const LeaveEmployeeOverview: React.FC = () => {
             <div className="px-6 py-4 border-b flex items-center justify-between">
               <div>
                 <div className="text-lg font-semibold">{selectedUser.name || '(이름 없음)'}</div>
-                <div className="text-sm text-gray-500">
-                  {selectedUser.department || '-'} · {selectedUser.position || '-'} · {selectedUser.project || '-'}
-                </div>
+                {getAffiliationText(selectedUser) && (
+                  <div className="text-sm text-gray-500">
+                    {getAffiliationText(selectedUser)}
+                  </div>
+                )}
               </div>
               <button onClick={closeModal} className="px-3 py-1 border rounded text-sm hover:bg-gray-50">
                 닫기

@@ -32,8 +32,41 @@ type BalanceHistoryRow = {
 type BalanceType = 'annual_leave' | 'monthly_leave';
 type ActionType = 'manual_add' | 'manual_subtract';
 
+type OrgItem = { code: string; name: string };
+type OrgConfig = {
+  departments?: OrgItem[];
+  positions?: OrgItem[];
+  projects?: OrgItem[];
+};
+
 const LeaveBalanceAdjust: React.FC = () => {
   const { user } = useAuth();
+
+  const [orgConfig, setOrgConfig] = useState<OrgConfig | null>(null);
+
+  const getOrgName = (list: OrgItem[] | undefined, code: string | null) => {
+    const c = String(code ?? '').trim();
+    if (!c) return '';
+    return list?.find(x => x.code === c)?.name || c;
+  };
+
+  const getAffiliationText = (u: Pick<UserRow, 'department' | 'position' | 'project'>) => {
+    const deptName = getOrgName(orgConfig?.departments, u.department);
+    const posName = getOrgName(orgConfig?.positions, u.position);
+    const projName = getOrgName(orgConfig?.projects, u.project);
+    const parts = [deptName, posName, projName].filter(Boolean);
+    return parts.length ? parts.join(' · ') : '';
+  };
+
+  const fetchOrgConfig = async () => {
+    try {
+      const { data, error } = await supabase.from('org_settings').select('config').single();
+      if (error) throw error;
+      setOrgConfig((data?.config || {}) as any);
+    } catch {
+      setOrgConfig(null);
+    }
+  };
 
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -74,6 +107,7 @@ const LeaveBalanceAdjust: React.FC = () => {
 
   useEffect(() => {
     fetchUsers();
+    fetchOrgConfig();
   }, []);
 
   useEffect(() => {
@@ -87,11 +121,12 @@ const LeaveBalanceAdjust: React.FC = () => {
     if (!q) return users.slice(0, 20);
     return users
       .filter(u => {
-        const hay = `${u.name || ''} ${u.email || ''} ${u.department || ''} ${u.position || ''} ${u.project || ''}`.toLowerCase();
+        const aff = getAffiliationText(u);
+        const hay = `${u.name || ''} ${u.email || ''} ${aff}`.toLowerCase();
         return hay.includes(q);
       })
       .slice(0, 20);
-  }, [users, userQuery]);
+  }, [users, userQuery, orgConfig]);
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -238,24 +273,25 @@ const LeaveBalanceAdjust: React.FC = () => {
             />
 
             <div className="mt-2 border rounded-md max-h-56 overflow-auto">
-              {filteredCandidates.map(u => (
-                <button
-                  key={u.id}
-                  type="button"
-                  onClick={() => {
-                    setSelectedUserId(u.id);
-                    setShowEmployeeHeader(true);
-                    setShowAdjustForm(true);
-                  }}
-                  className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 ${selectedUserId === u.id ? 'bg-indigo-50' : ''
-                    }`}
-                >
-                  <div className="font-medium text-gray-900">{u.name || '(이름 없음)'}</div>
-                  <div className="text-xs text-gray-500">
-                    {u.department || '-'} · {u.position || '-'} · {u.project || '-'}
-                  </div>
-                </button>
-              ))}
+              {filteredCandidates.map(u => {
+                const aff = getAffiliationText(u);
+                return (
+                  <button
+                    key={u.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedUserId(u.id);
+                      setShowEmployeeHeader(true);
+                      setShowAdjustForm(true);
+                    }}
+                    className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 ${selectedUserId === u.id ? 'bg-indigo-50' : ''
+                      }`}
+                  >
+                    <div className="font-medium text-gray-900">{u.name || '(이름 없음)'}</div>
+                    {aff && <div className="text-xs text-gray-500">{aff}</div>}
+                  </button>
+                );
+              })}
               {filteredCandidates.length === 0 && (
                 <div className="px-3 py-6 text-sm text-gray-500 text-center">검색 결과가 없습니다.</div>
               )}
@@ -333,6 +369,9 @@ const LeaveBalanceAdjust: React.FC = () => {
               >
                 <div>
                   <div className="font-semibold text-gray-900">{selectedUser.name || '이름'}</div>
+                  {getAffiliationText(selectedUser) && (
+                    <div className="text-xs text-gray-500 mt-0.5">{getAffiliationText(selectedUser)}</div>
+                  )}
                   <div className="text-sm text-gray-600">
                     연차: {selectedUser.annual_leave_balance ?? 0}일 · 월차: {selectedUser.monthly_leave_balance ?? 0}일
                   </div>

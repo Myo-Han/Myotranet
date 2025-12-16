@@ -275,7 +275,6 @@ const Dashboard: React.FC = () => {
 
             <div className="mt-6 pt-6 border-t border-gray-200">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* ✅ 소속(항상 표시, 없으면 전사(공통)) */}
                 <div className="bg-purple-50 rounded-lg p-4 border border-purple-200 sm:col-span-2">
                   <div className="flex items-start gap-3">
                     <div className="min-w-0 flex-1">
