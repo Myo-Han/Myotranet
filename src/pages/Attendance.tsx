@@ -28,10 +28,9 @@ const Attendance: React.FC = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
 
   // ✅ 실시간 표시는 클라에서만(기준값+경과초)
-  const [liveAttendanceId, setLiveAttendanceId] = useState<string | null>(null);
-  const [liveBaseSeconds, setLiveBaseSeconds] = useState<number>(0);
-  const [liveBaseMs, setLiveBaseMs] = useState<number>(Date.now());
-  const [liveRunning, setLiveRunning] = useState<boolean>(false);
+  const [eventsByAttendanceId, setEventsByAttendanceId] = useState<
+    Record<string, { attendance_id: string; event_type: string; occurred_at: string }[]>
+  >({});
   const [showCalendar, setShowCalendar] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -78,12 +77,26 @@ const Attendance: React.FC = () => {
       if (employeesError) throw employeesError;
       setAllEmployees(employeesData || []);
 
-      const { data: attendanceData, error: attendanceError } = await supabase
-        .from('attendance')
-        .select('*')
-        .eq('date', selectedDate);
+      const attendanceIds = (attendanceData || []).map((a: any) => a.id).filter(Boolean);
 
-      if (attendanceError) throw attendanceError;
+      if (attendanceIds.length > 0) {
+        const { data: evts, error: evtErr } = await supabase
+          .from('attendance_events')
+          .select('attendance_id, event_type, occurred_at')
+          .in('attendance_id', attendanceIds)
+          .in('event_type', ['pause', 'resume'])
+          .order('occurred_at', { ascending: true });
+
+        if (evtErr) throw evtErr;
+
+        const map: Record<string, any[]> = {};
+        (evts || []).forEach((e: any) => {
+          (map[e.attendance_id] ||= []).push(e);
+        });
+        setEventsByAttendanceId(map);
+      } else {
+        setEventsByAttendanceId({});
+      }
 
       const matchedRecords = (employeesData || []).map((employee: any) => {
         const record = attendanceData?.find((a: any) => a.user_id === employee.id);
@@ -576,17 +589,29 @@ const Attendance: React.FC = () => {
 
     if (checkOut) {
       totalSeconds = workSeconds || 0;
-    } else if (isToday) {
-      // ✅ 내 기록 + 오늘 + live 연결된 경우: 클라에서만 증가
-      if (isMine && recordId && liveAttendanceId === recordId) {
-        const delta = liveRunning ? Math.floor((currentTime.getTime() - liveBaseMs) / 1000) : 0;
-        totalSeconds = Math.max(0, liveBaseSeconds + delta);
-      } else {
-        // 다른 사람은 DB에 저장된 값만 표시(실시간 X)
-        totalSeconds = workSeconds || 0;
-      }
     } else {
-      return '-';
+      // check_out이 없으면: (now - check_in) - pause구간합
+      const nowMs = currentTime.getTime();
+      const checkInMs = new Date(checkIn).getTime();
+
+      const evts = recordId ? (eventsByAttendanceId[recordId] || []) : [];
+      let totalPauseSeconds = 0;
+      let lastPauseMs: number | null = null;
+
+      evts.forEach((e) => {
+        const t = new Date(e.occurred_at).getTime();
+        if (e.event_type === 'pause') lastPauseMs = t;
+        else if (e.event_type === 'resume' && lastPauseMs != null) {
+          totalPauseSeconds += (t - lastPauseMs) / 1000;
+          lastPauseMs = null;
+        }
+      });
+
+      // 아직 pause 상태면 (now - lastPause) 만큼 pause에 포함 → 근무시간이 증가하지 않음
+      if (lastPauseMs != null) totalPauseSeconds += (nowMs - lastPauseMs) / 1000;
+
+      const totalSecondsRaw = Math.floor((nowMs - checkInMs) / 1000);
+      totalSeconds = Math.max(0, totalSecondsRaw - Math.floor(totalPauseSeconds));
     }
 
     const hours = Math.floor(totalSeconds / 3600);
