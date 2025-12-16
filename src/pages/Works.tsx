@@ -451,11 +451,11 @@ const Work: React.FC = () => {
             <BuildPackaging />
           )}
 
-          {selectedMenu === 'test' && (
+          {selectedMenu === 'leave_adjust' && (
               <LeaveBalanceAdjust />
           )}
 
-          {selectedMenu === 'test2' && (
+          {selectedMenu === 'leave_overview' && (
               <LeaveEmployeeOverview />
           )}
 
