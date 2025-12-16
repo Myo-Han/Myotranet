@@ -452,10 +452,7 @@ const Work: React.FC = () => {
           )}
 
           {selectedMenu === 'test' && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <LeaveBalanceAdjust />
-              <LeaveEmployeeOverview />
-            </div>
           )}
 
           {submitting && (
