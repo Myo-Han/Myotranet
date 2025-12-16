@@ -1,14 +1,17 @@
 // 휴가 조회
 import React, { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../supabaseClient';
+import { useAuth } from '../context/AuthContext';
 import Loading from './Loading';
 import ErrorMessage from './ErrorMessage';
 import SuccessMessage from './SuccessMessage';
+import ProfileModal from './ProfileModal';
 
 type UserRow = {
   id: string;
   name: string | null;
   email?: string | null;
+  profile_picture?: string | null;
   department: string | null;
   position: string | null;
   project: string | null;
@@ -44,10 +47,25 @@ type PeriodPreset = 'all' | '3months' | '6months' | '1year';
 const PAGE_SIZE = 50;
 
 const LeaveEmployeeOverview: React.FC = () => {
+  const { user } = useAuth();
+
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [selectedProfileUserId, setSelectedProfileUserId] = useState<string | null>(null);
+
+  const openProfileModal = (targetUserId: string) => {
+    setSelectedProfileUserId(targetUserId);
+    setShowProfileModal(true);
+  };
+
+  const closeProfileModal = () => {
+    setShowProfileModal(false);
+    setSelectedProfileUserId(null);
+  };
 
   const [users, setUsers] = useState<UserRow[]>([]);
   const [page, setPage] = useState(1);
@@ -127,7 +145,7 @@ const LeaveEmployeeOverview: React.FC = () => {
     try {
       const { data, error } = await supabase
         .from('users')
-        .select('id,name,email,department,position,project,annual_leave_balance,monthly_leave_balance')
+        .select('id,name,email,profile_picture,department,position,project,annual_leave_balance,monthly_leave_balance')
         .order('name', { ascending: true });
 
       if (error) throw error;
@@ -332,7 +350,26 @@ const LeaveEmployeeOverview: React.FC = () => {
             <tbody className="bg-white divide-y divide-gray-100">
               {filteredUsers.map(u => (
                 <tr key={u.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 text-sm text-gray-900">{u.name || '(이름 없음)'}</td>
+                  <td className="px-4 py-3 text-sm text-gray-900">
+                    <button
+                      type="button"
+                      onClick={() => openProfileModal(u.id)}
+                      className="flex items-center gap-2 hover:underline"
+                    >
+                      {u.profile_picture ? (
+                        <img
+                          src={u.profile_picture}
+                          alt="profile"
+                          className="h-8 w-8 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="h-8 w-8 rounded-full bg-gray-300 flex items-center justify-center text-xs font-semibold text-gray-700">
+                          {(u.name?.charAt(0) || '?').toUpperCase()}
+                        </div>
+                      )}
+                      <span>{u.name || '(이름 없음)'}</span>
+                    </button>
+                  </td>
                   <td className="px-4 py-3 text-sm text-gray-700">{u.department || '-'}</td>
                   <td className="px-4 py-3 text-sm text-gray-700">{u.position || '-'}</td>
                   <td className="px-4 py-3 text-sm text-gray-700">{u.project || '-'}</td>
@@ -523,6 +560,17 @@ const LeaveEmployeeOverview: React.FC = () => {
           </div>
         </div>
       )}
+
+      {user && showProfileModal && selectedProfileUserId && (
+        <ProfileModal
+          isOpen={showProfileModal}
+          onClose={closeProfileModal}
+          userId={selectedProfileUserId}
+          currentUserId={user.id}
+          readOnly
+        />
+      )}
+
     </div>
   );
 };

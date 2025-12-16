@@ -39,6 +39,8 @@ const LeaveBalanceAdjust: React.FC = () => {
   const [users, setUsers] = useState<UserRow[]>([]);
   const [userQuery, setUserQuery] = useState('');
   const [selectedUserId, setSelectedUserId] = useState<string>('');
+  const [showEmployeeHeader, setShowEmployeeHeader] = useState(false);
+  const [showAdjustForm, setShowAdjustForm] = useState(false);
 
   const selectedUser = useMemo(
     () => users.find(u => u.id === selectedUserId) || null,
@@ -223,10 +225,13 @@ const LeaveBalanceAdjust: React.FC = () => {
                 <button
                   key={u.id}
                   type="button"
-                  onClick={() => setSelectedUserId(u.id)}
-                  className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 ${
-                    selectedUserId === u.id ? 'bg-indigo-50' : ''
-                  }`}
+                  onClick={() => {
+                    setSelectedUserId(u.id);
+                    setShowEmployeeHeader(true);
+                    setShowAdjustForm(false);
+                  }}
+                  className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 ${selectedUserId === u.id ? 'bg-indigo-50' : ''
+                    }`}
                 >
                   <div className="font-medium text-gray-900">{u.name || '(이름 없음)'}</div>
                   <div className="text-xs text-gray-500">
@@ -240,71 +245,83 @@ const LeaveBalanceAdjust: React.FC = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">대상 잔액</label>
-              <select
-                value={balanceType}
-                onChange={(e) => setBalanceType(e.target.value as BalanceType)}
-                className="w-full border rounded-md px-3 py-2 text-sm"
-              >
-                <option value="annual_leave">연차</option>
-                <option value="monthly_leave">월차</option>
-              </select>
-            </div>
+          {selectedUser && showAdjustForm && (
+            <div className="mt-4 space-y-4 border border-gray-200 rounded-lg p-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">대상 잔액</label>
+                  <select
+                    value={balanceType}
+                    onChange={(e) => setBalanceType(e.target.value as BalanceType)}
+                    className="w-full border rounded-md px-3 py-2 text-sm"
+                  >
+                    <option value="annual_leave">연차</option>
+                    <option value="monthly_leave">월차</option>
+                  </select>
+                </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">동작</label>
-              <select
-                value={actionType}
-                onChange={(e) => setActionType(e.target.value as ActionType)}
-                className="w-full border rounded-md px-3 py-2 text-sm"
-              >
-                <option value="manual_add">지급</option>
-                <option value="manual_subtract">차감</option>
-              </select>
-            </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">동작</label>
+                  <select
+                    value={actionType}
+                    onChange={(e) => setActionType(e.target.value as ActionType)}
+                    className="w-full border rounded-md px-3 py-2 text-sm"
+                  >
+                    <option value="manual_add">지급</option>
+                    <option value="manual_subtract">차감</option>
+                  </select>
+                </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">일수</label>
-              <input
-                type="number"
-                min={1}
-                value={amount}
-                onChange={(e) => setAmount(Number(e.target.value))}
-                className="w-full border rounded-md px-3 py-2 text-sm"
-              />
-            </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">일수</label>
+                  <input
+                    type="number"
+                    min={1}
+                    value={amount}
+                    onChange={(e) => setAmount(Number(e.target.value))}
+                    className="w-full border rounded-md px-3 py-2 text-sm"
+                  />
+                </div>
 
-            <div className="flex items-end">
-              <button
-                onClick={handleSubmit}
-                disabled={busy}
-                className="w-full px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-sm disabled:opacity-50"
-              >
-                {busy ? '처리 중...' : '적용'}
-              </button>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">사유</label>
-            <textarea
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              rows={3}
-              className="w-full border rounded-md px-3 py-2 text-sm"
-              placeholder="지급/차감 사유를 입력하세요"
-            />
-          </div>
-
-          {selectedUser && (
-            <div className="bg-gray-50 border rounded-lg p-4 text-sm">
-              <div className="font-semibold text-gray-900">{selectedUser.name || '(이름 없음)'}</div>
-              <div className="text-gray-600 mt-1">
-                연차: <span className="font-semibold text-blue-700">{selectedUser.annual_leave_balance ?? 0}일</span> ·
-                월차: <span className="font-semibold text-green-700 ml-1">{selectedUser.monthly_leave_balance ?? 0}일</span>
+                <div className="flex items-end">
+                  <button
+                    onClick={handleSubmit}
+                    disabled={busy}
+                    className="w-full px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-sm disabled:opacity-50"
+                  >
+                    {busy ? '처리 중...' : '적용'}
+                  </button>
+                </div>
               </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">사유</label>
+                <textarea
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  rows={3}
+                  className="w-full border rounded-md px-3 py-2 text-sm"
+                  placeholder="지급/차감 사유를 입력하세요"
+                />
+              </div>
+            </div>
+          )}
+
+          {selectedUser && showEmployeeHeader && (
+            <div className="border border-gray-200 rounded-lg overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setShowAdjustForm(v => !v)}
+                className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-gray-50"
+              >
+                <div>
+                  <div className="font-semibold text-gray-900">{selectedUser.name || '이름'}</div>
+                  <div className="text-sm text-gray-600">
+                    연차: {selectedUser.annual_leave_balance ?? 0}일 · 월차: {selectedUser.monthly_leave_balance ?? 0}일
+                  </div>
+                </div>
+                <div className="text-sm text-gray-500">{showAdjustForm ? '접기' : '펼치기'}</div>
+              </button>
             </div>
           )}
         </div>
