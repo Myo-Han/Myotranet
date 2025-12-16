@@ -313,6 +313,24 @@ const Attendance: React.FC = () => {
         }
       }
 
+      // ✅ 3.5 어제 미퇴근(야근) 세션 있으면 출근 막기
+      const yesterdayStr = shiftDate(today, -1);
+
+      const { data: yesterdayOpen, error: yesterdayError } = await supabase
+        .from('attendance')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('date', yesterdayStr)
+        .is('check_out', null)
+        .maybeSingle();
+
+      if (yesterdayError && yesterdayError.code !== 'PGRST116') throw yesterdayError;
+
+      if (yesterdayOpen) {
+        setError('어제 출근 기록이 아직 종료되지 않았습니다(야근 중). 퇴근/업무중지를 먼저 처리하세요.');
+        return;
+      }
+
       // 4. 출근 처리
       const nowIso = now.toISOString();
 
@@ -658,9 +676,22 @@ const Attendance: React.FC = () => {
     return parts.join(' ');
   };
 
-  const getStatusLabel = (status: string | null, currentStatus?: string | null) => {
-    const isToday = selectedDate === getTodayDate();
-    if (!status) return '미출근';
+  const getStatusLabel = (
+    status: string | null,
+    currentStatus: string | null | undefined,
+    isToday: boolean
+  ) => {
+    // 오늘 attendance(status)가 없더라도(전날 출근 야근 등) users.current_status로 상태 추정
+    if (!status) {
+      if (isToday) {
+        if (currentStatus === 'working') return '근무중';
+        if (currentStatus === 'pause') return '근무중단';
+        if (currentStatus === 'outside') return '외근중';
+        if (currentStatus === 'meeting') return '회의중';
+      }
+      return '미출근';
+    }
+
     if (status === 'off') return '퇴근';
     if (status === 'vacation') return '휴가';
     if (status === 'paused') return '근무중단';
@@ -668,8 +699,8 @@ const Attendance: React.FC = () => {
     return '미출근';
   };
 
-  const getStatusColor = (status: string | null, currentStatus: string | null) => {
-    const label = getStatusLabel(status, currentStatus);
+  const getStatusColor = (status: string | null, currentStatus: string | null, isToday: boolean) => {
+    const label = getStatusLabel(status, currentStatus, isToday);
     if (label === '근무중') return 'bg-green-100 text-green-800';
     if (label === '근무중단') return 'bg-orange-100 text-orange-800';
     if (label === '외근중') return 'bg-blue-100 text-blue-800';
@@ -697,13 +728,12 @@ const Attendance: React.FC = () => {
     const myEmployee = allEmployees.find(e => e.id === user?.id);
     const currentStatus = myEmployee?.current_status;
 
-    const label = getStatusLabel(todayStatus, currentStatus);
+    const label = getStatusLabel(todayStatus, currentStatus, true);
 
     if (label === '휴가' || label === '퇴근') return '';
     if (label === '근무중') return '업무중지';
     if (label === '근무중단') return '업무재개';
     if (label === '미출근') return '출근';
-    if (!todayStatus) return '출근';
 
     return '출근';
   };
@@ -757,9 +787,9 @@ const Attendance: React.FC = () => {
     const myEmployee = allEmployees.find(e => e.id === user.id);
     const currentStatus = myEmployee?.current_status;
 
-    const label = getStatusLabel(todayStatus, currentStatus);
+    const label = getStatusLabel(todayStatus, currentStatus, true);
 
-    if (!todayStatus || label === '미출근') {
+    if (label === '미출근') {
       await handleCheckIn();
       return;
     }
@@ -1043,6 +1073,8 @@ const Attendance: React.FC = () => {
   if (loading) return <Loading />;
 
   const isToday = selectedDate === getTodayDate();
+  const myEmployee = allEmployees.find(e => e.id === user?.id);
+  const myCurrentStatus = myEmployee?.current_status ?? null;
 
   return (
     <div className="space-y-6">
@@ -1055,7 +1087,7 @@ const Attendance: React.FC = () => {
         <p className="text-sm text-gray-600 mb-4">
           오늘 상태:{' '}
           <span className="font-medium">
-            {getStatusLabel(isTodayOnLeave ? 'vacation' : todayStatus)}
+            {getStatusLabel(isTodayOnLeave ? 'vacation' : todayStatus, myCurrentStatus, true)}
           </span>
         </p>
         {getTodayButtonLabel() ? (
