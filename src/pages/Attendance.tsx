@@ -532,8 +532,8 @@ const Attendance: React.FC = () => {
         attendance_id: selectedRecord.id,
         user_id: user.id,
         requested_date: selectedRecord.date,
-        requested_check_in: revisionForm.requestedCheckIn || null,
-        requested_check_out: revisionForm.requestedCheckOut || null,
+        requested_check_in_at: revisionForm.requestedCheckIn || null,
+        requested_check_out_at: revisionForm.requestedCheckOut || null,
         reason: revisionForm.reason,
         status: 'pending',
       });
@@ -1260,8 +1260,8 @@ const Attendance: React.FC = () => {
                     <p className="text-sm text-gray-600">날짜: {new Date(request.requested_date).toLocaleDateString('ko-KR')}</p>
                     <p className="text-sm text-gray-600 mt-2">사유: {request.reason}</p>
                     <div className="mt-2 text-sm">
-                      <p>요청 출근: {formatTime(request.requested_check_in)}</p>
-                      <p>요청 퇴근: {formatTime(request.requested_check_out)}</p>
+                      <p>요청 출근: {formatTime(request.requested_check_in_at)}</p>
+                      <p>요청 퇴근: {formatTime(request.requested_check_out_at)}</p>
                     </div>
                   </div>
                   {request.status === 'pending' && (
