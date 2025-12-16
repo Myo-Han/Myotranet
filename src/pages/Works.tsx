@@ -11,6 +11,8 @@ import NoticeManager from '../components/NoticeManager';
 import BuildPackaging from '../components/BuildPackaging';
 import TodoManager from '../components/TodoManager';
 import MemoManager from '../components/MemoManager';
+import LeaveEmployeeOverview from '../components/LeaveEmployeeOverview';
+import LeaveBalanceAdjust from '../components/LeaveBalanceAdjust';
 
 type WorkMenuItem = {
   id: string;
@@ -447,6 +449,13 @@ const Work: React.FC = () => {
 
           {selectedMenu === 'build' && (
             <BuildPackaging />
+          )}
+
+          {selectedMenu === 'test' && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <LeaveBalanceAdjust />
+              <LeaveEmployeeOverview />
+            </div>
           )}
 
           {submitting && (
