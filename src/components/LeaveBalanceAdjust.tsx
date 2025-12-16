@@ -1,9 +1,11 @@
 // 휴가 지급/차감
 import React, { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../supabaseClient';
+import { useAuth } from '../context/AuthContext';
 import Loading from './Loading';
 import ErrorMessage from './ErrorMessage';
 import SuccessMessage from './SuccessMessage';
+import ProfileModal from './ProfileModal';
 
 type UserRow = {
   id: string;
@@ -31,6 +33,8 @@ type BalanceType = 'annual_leave' | 'monthly_leave';
 type ActionType = 'manual_add' | 'manual_subtract';
 
 const LeaveBalanceAdjust: React.FC = () => {
+  const { user } = useAuth();
+
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -41,6 +45,19 @@ const LeaveBalanceAdjust: React.FC = () => {
   const [selectedUserId, setSelectedUserId] = useState<string>('');
   const [showEmployeeHeader, setShowEmployeeHeader] = useState(false);
   const [showAdjustForm, setShowAdjustForm] = useState(false);
+
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [selectedProfileUserId, setSelectedProfileUserId] = useState<string | null>(null);
+
+  const openProfileModal = (targetUserId: string) => {
+    setSelectedProfileUserId(targetUserId);
+    setShowProfileModal(true);
+  };
+
+  const closeProfileModal = () => {
+    setShowProfileModal(false);
+    setSelectedProfileUserId(null);
+  };
 
   const selectedUser = useMemo(
     () => users.find(u => u.id === selectedUserId) || null,
@@ -228,7 +245,7 @@ const LeaveBalanceAdjust: React.FC = () => {
                   onClick={() => {
                     setSelectedUserId(u.id);
                     setShowEmployeeHeader(true);
-                    setShowAdjustForm(false);
+                    setShowAdjustForm(true);
                   }}
                   className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 ${selectedUserId === u.id ? 'bg-indigo-50' : ''
                     }`}
@@ -311,7 +328,7 @@ const LeaveBalanceAdjust: React.FC = () => {
             <div className="border border-gray-200 rounded-lg overflow-hidden">
               <button
                 type="button"
-                onClick={() => setShowAdjustForm(v => !v)}
+                onClick={() => selectedUser && openProfileModal(selectedUser.id)}
                 className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-gray-50"
               >
                 <div>
@@ -320,7 +337,6 @@ const LeaveBalanceAdjust: React.FC = () => {
                     연차: {selectedUser.annual_leave_balance ?? 0}일 · 월차: {selectedUser.monthly_leave_balance ?? 0}일
                   </div>
                 </div>
-                <div className="text-sm text-gray-500">{showAdjustForm ? '접기' : '펼치기'}</div>
               </button>
             </div>
           )}
@@ -391,6 +407,16 @@ const LeaveBalanceAdjust: React.FC = () => {
           </div>
         </div>
       </div>
+      {user && showProfileModal && selectedProfileUserId && (
+        <ProfileModal
+          isOpen={showProfileModal}
+          onClose={closeProfileModal}
+          userId={selectedProfileUserId}
+          currentUserId={user.id}
+          readOnly
+        />
+      )}
+
     </div>
   );
 };
