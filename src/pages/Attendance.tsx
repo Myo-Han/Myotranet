@@ -678,10 +678,13 @@ const Attendance: React.FC = () => {
 
   const getStatusLabel = (
     status: string | null,
-    currentStatus: string | null | undefined,
-    isToday: boolean
+    currentStatus?: string | null,
+    isTodayOverride?: boolean
   ) => {
-    // 오늘 attendance(status)가 없더라도(전날 출근 야근 등) users.current_status로 상태 추정
+    const isToday =
+      typeof isTodayOverride === 'boolean' ? isTodayOverride : selectedDate === getTodayDate();
+
+    // ✅ 오늘 attendance(status)가 없더라도 users.current_status로 상태 추정(야근/자정 넘김 대비)
     if (!status) {
       if (isToday) {
         if (currentStatus === 'working') return '근무중';
@@ -699,8 +702,12 @@ const Attendance: React.FC = () => {
     return '미출근';
   };
 
-  const getStatusColor = (status: string | null, currentStatus: string | null, isToday: boolean) => {
-    const label = getStatusLabel(status, currentStatus, isToday);
+  const getStatusColor = (
+    status: string | null,
+    currentStatus: string | null,
+    isTodayOverride?: boolean
+  ) => {
+    const label = getStatusLabel(status, currentStatus, isTodayOverride);
     if (label === '근무중') return 'bg-green-100 text-green-800';
     if (label === '근무중단') return 'bg-orange-100 text-orange-800';
     if (label === '외근중') return 'bg-blue-100 text-blue-800';
@@ -1087,7 +1094,11 @@ const Attendance: React.FC = () => {
         <p className="text-sm text-gray-600 mb-4">
           오늘 상태:{' '}
           <span className="font-medium">
-            {getStatusLabel(isTodayOnLeave ? 'vacation' : todayStatus, myCurrentStatus, true)}
+            {getStatusLabel(
+              isTodayOnLeave ? 'vacation' : todayStatus,
+              allEmployees.find(e => e.id === user?.id)?.current_status,
+              true
+            )}
           </span>
         </p>
         {getTodayButtonLabel() ? (
