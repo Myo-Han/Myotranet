@@ -66,10 +66,11 @@ const LeaveEmployeeOverview: React.FC = () => {
 
   const getAffiliationText = (u: Pick<UserRow, 'department' | 'position' | 'project'>) => {
     const deptName = getOrgName(orgConfig?.departments, u.department);
-    const posName = getOrgName(orgConfig?.positions, u.position);
     const projName = getOrgName(orgConfig?.projects, u.project);
-    const parts = [deptName, posName, projName].filter(Boolean);
-    return parts.length ? parts.join(' · ') : '';
+    const posName = getOrgName(orgConfig?.positions, u.position);
+
+    const affiliationParts = [deptName, projName].filter(Boolean);
+    return affiliationParts.length ? affiliationParts.join(' / ') : (posName || '');
   };
 
   const fetchOrgConfig = async () => {
@@ -375,9 +376,7 @@ const LeaveEmployeeOverview: React.FC = () => {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">이름</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">부서</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">직급</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">프로젝트</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">소속</th>
                 <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">연차</th>
                 <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">월차</th>
                 <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">상세</th>
@@ -406,9 +405,7 @@ const LeaveEmployeeOverview: React.FC = () => {
                       <span>{u.name || '(이름 없음)'}</span>
                     </button>
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-700">{getOrgName(orgConfig?.departments, u.department) || ''}</td>
-                  <td className="px-4 py-3 text-sm text-gray-700">{getOrgName(orgConfig?.positions, u.position) || ''}</td>
-                  <td className="px-4 py-3 text-sm text-gray-700">{getOrgName(orgConfig?.projects, u.project) || ''}</td>
+                  <td className="px-4 py-3 text-sm text-gray-700">{getAffiliationText(u) || ''}</td>
                   <td className="px-4 py-3 text-sm text-right font-semibold text-blue-700">{u.annual_leave_balance ?? 0}일</td>
                   <td className="px-4 py-3 text-sm text-right font-semibold text-green-700">{u.monthly_leave_balance ?? 0}일</td>
                   <td className="px-4 py-3 text-sm text-right">
@@ -424,7 +421,7 @@ const LeaveEmployeeOverview: React.FC = () => {
 
               {filteredUsers.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-4 py-10 text-center text-gray-500">
+                  <td colSpan={5} className="px-4 py-10 text-center text-gray-500">
                     결과가 없습니다.
                   </td>
                 </tr>

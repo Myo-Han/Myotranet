@@ -52,10 +52,11 @@ const LeaveBalanceAdjust: React.FC = () => {
 
   const getAffiliationText = (u: Pick<UserRow, 'department' | 'position' | 'project'>) => {
     const deptName = getOrgName(orgConfig?.departments, u.department);
-    const posName = getOrgName(orgConfig?.positions, u.position);
     const projName = getOrgName(orgConfig?.projects, u.project);
-    const parts = [deptName, posName, projName].filter(Boolean);
-    return parts.length ? parts.join(' · ') : '';
+    const posName = getOrgName(orgConfig?.positions, u.position);
+
+    const affiliationParts = [deptName, projName].filter(Boolean);
+    return affiliationParts.length ? affiliationParts.join(' / ') : (posName || '');
   };
 
   const fetchOrgConfig = async () => {
