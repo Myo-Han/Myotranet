@@ -32,6 +32,10 @@ const Attendance: React.FC = () => {
   const [liveBaseSeconds, setLiveBaseSeconds] = useState<number>(0);
   const [liveBaseMs, setLiveBaseMs] = useState<number>(Date.now());
   const [liveRunning, setLiveRunning] = useState<boolean>(false);
+
+  const [eventsByAttendanceId, setEventsByAttendanceId] = useState<
+    Record<string, { attendance_id: string; event_type: 'pause' | 'resume'; occurred_at: string }[]>
+  >({});
   const [showCalendar, setShowCalendar] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -84,6 +88,33 @@ const Attendance: React.FC = () => {
         .eq('date', selectedDate);
 
       if (attendanceError) throw attendanceError;
+
+      const attendanceIds = (attendanceData || []).map((a: any) => a.id).filter(Boolean);
+
+      if (attendanceIds.length > 0) {
+        const { data: evts, error: evtErr } = await supabase
+          .from('attendance_events')
+          .select('attendance_id, event_type, occurred_at')
+          .in('attendance_id', attendanceIds)
+          .in('event_type', ['pause', 'resume'])
+          .order('occurred_at', { ascending: true });
+
+        if (evtErr) throw evtErr;
+
+        const map: Record<string, { attendance_id: string; event_type: 'pause' | 'resume'; occurred_at: string }[]> = {};
+        (evts || []).forEach((e: any) => {
+          const key = String(e.attendance_id);
+          if (!map[key]) map[key] = [];
+          map[key].push({
+            attendance_id: String(e.attendance_id),
+            event_type: e.event_type,
+            occurred_at: e.occurred_at
+          });
+        });
+        setEventsByAttendanceId(map);
+      } else {
+        setEventsByAttendanceId({});
+      }
 
       const matchedRecords = (employeesData || []).map((employee: any) => {
         const record = attendanceData?.find((a: any) => a.user_id === employee.id);
@@ -577,13 +608,39 @@ const Attendance: React.FC = () => {
     if (checkOut) {
       totalSeconds = workSeconds || 0;
     } else if (isToday) {
-      // ✅ 내 기록 + 오늘 + live 연결된 경우: 클라에서만 증가
+      // ✅ 내 기록 + 오늘 + live 연결된 경우: 기존 그대로 유지
       if (isMine && recordId && liveAttendanceId === recordId) {
         const delta = liveRunning ? Math.floor((currentTime.getTime() - liveBaseMs) / 1000) : 0;
         totalSeconds = Math.max(0, liveBaseSeconds + delta);
       } else {
-        // 다른 사람은 DB에 저장된 값만 표시(실시간 X)
-        totalSeconds = workSeconds || 0;
+        // ✅ 타사원 포함: now 기준으로 계산해서 "표시만" 증가 (pause 구간은 제외)
+        if (!recordId) {
+          totalSeconds = workSeconds || 0;
+        } else {
+          const nowMs = currentTime.getTime();
+          const checkInMs = new Date(checkIn).getTime();
+
+          const evts = eventsByAttendanceId[recordId] || [];
+          let totalPauseSeconds = 0;
+          let lastPauseMs: number | null = null;
+
+          for (const e of evts) {
+            const t = new Date(e.occurred_at).getTime();
+            if (e.event_type === 'pause') {
+              lastPauseMs = t;
+            } else if (e.event_type === 'resume' && lastPauseMs !== null) {
+              totalPauseSeconds += (t - lastPauseMs) / 1000;
+              lastPauseMs = null;
+            }
+          }
+
+          if (lastPauseMs !== null) {
+            totalPauseSeconds += (nowMs - lastPauseMs) / 1000;
+          }
+
+          const totalSecondsRaw = Math.floor((nowMs - checkInMs) / 1000);
+          totalSeconds = Math.max(0, totalSecondsRaw - Math.floor(totalPauseSeconds));
+        }
       }
     } else {
       return '-';
@@ -600,7 +657,6 @@ const Attendance: React.FC = () => {
 
     return parts.join(' ');
   };
-
 
   const getStatusLabel = (status: string | null, currentStatus?: string | null) => {
     const isToday = selectedDate === getTodayDate();
