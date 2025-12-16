@@ -455,6 +455,10 @@ const Work: React.FC = () => {
               <LeaveBalanceAdjust />
           )}
 
+          {selectedMenu === 'test2' && (
+              <LeaveEmployeeOverview />
+          )}
+
           {submitting && (
             <div className="mt-4">
               <Loading />
