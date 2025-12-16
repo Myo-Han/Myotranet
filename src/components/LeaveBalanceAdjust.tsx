@@ -11,6 +11,7 @@ type UserRow = {
   id: string;
   name: string | null;
   email?: string | null;
+  profile_picture?: string | null;
   department: string | null;
   position: string | null;
   project: string | null;
@@ -137,7 +138,7 @@ const LeaveBalanceAdjust: React.FC = () => {
     try {
       const { data, error } = await supabase
         .from('users')
-        .select('id,name,email,department,position,project,annual_leave_balance,monthly_leave_balance')
+        .select('id,name,email,profile_picture,department,position,project,annual_leave_balance,monthly_leave_balance')
         .order('name', { ascending: true });
 
       if (error) throw error;
@@ -285,11 +286,26 @@ const LeaveBalanceAdjust: React.FC = () => {
                       setShowEmployeeHeader(true);
                       setShowAdjustForm(true);
                     }}
-                    className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 ${selectedUserId === u.id ? 'bg-indigo-50' : ''
-                      }`}
+                    className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 ${selectedUserId === u.id ? 'bg-indigo-50' : ''}`}
                   >
-                    <div className="font-medium text-gray-900">{u.name || '(이름 없음)'}</div>
-                    {aff && <div className="text-xs text-gray-500">{aff}</div>}
+                    <div className="flex items-center gap-3">
+                      {u.profile_picture ? (
+                        <img
+                          src={u.profile_picture}
+                          alt="profile"
+                          className="h-8 w-8 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="h-8 w-8 rounded-full bg-gray-300 flex items-center justify-center text-xs font-semibold text-gray-700">
+                          {(u.name?.charAt(0) || '?').toUpperCase()}
+                        </div>
+                      )}
+
+                      <div className="min-w-0">
+                        <div className="font-medium text-gray-900 truncate">{u.name || '(이름 없음)'}</div>
+                        {aff ? <div className="text-xs text-gray-500 truncate">{aff}</div> : null}
+                      </div>
+                    </div>
                   </button>
                 );
               })}
