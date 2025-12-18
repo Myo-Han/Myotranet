@@ -272,13 +272,20 @@ const ReactionBar: React.FC<Props> = ({ noticeId, limit = 5, currentUserId }) =>
               {/* hover tooltip */}
               {hover && hoverAnchorRect && (
                 <div
-                  className="absolute z-[80] left-0 top-full mt-2 min-w-[220px] max-w-[280px] rounded-lg border border-gray-200 bg-white shadow-lg p-3"
+                  className="fixed z-[80] min-w-[220px] max-w-[280px] rounded-lg border border-gray-200 bg-white shadow-lg p-3"
+                  style={{
+                    top: Math.min(window.innerHeight - 8, hoverAnchorRect.bottom + 8),
+                    left: Math.min(window.innerWidth - 288 - 8, Math.max(8, hoverAnchorRect.left)),
+                  }}
                   onMouseEnter={() => {
                     if (hoverCloseTimer.current) window.clearTimeout(hoverCloseTimer.current);
                   }}
                   onMouseLeave={() => {
                     if (hoverCloseTimer.current) window.clearTimeout(hoverCloseTimer.current);
-                    hoverCloseTimer.current = window.setTimeout(() => setHoverEmojiId(null), 150);
+                    hoverCloseTimer.current = window.setTimeout(() => {
+                      setHoverEmojiId(null);
+                      setHoverAnchorRect(null);
+                    }, 150);
                   }}
                 >
                   {!hoverData ? (
