@@ -49,7 +49,7 @@ const ReactionPickerPopover: React.FC<Props> = ({ open, onClose, anchorRect, emo
       <div
         ref={panelRef}
         className="absolute bg-white border border-gray-200 rounded-lg shadow-xl overflow-hidden"
-        style={{ top: pos.top, left: pos.left, width, height }}
+        style={{ top: pos.top, left: pos.left, width: 300, height: 240 }}
         onMouseDown={(e) => e.stopPropagation()}
       >
         <div className="px-4 py-3 border-b flex items-center justify-between">
