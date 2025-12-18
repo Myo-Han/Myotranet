@@ -70,6 +70,7 @@ const ReactionBar: React.FC<Props> = ({ noticeId, limit = 5, currentUserId }) =>
   const [hoverAnchorRect, setHoverAnchorRect] = useState<DOMRect | null>(null);
   const [hoverUsers, setHoverUsers] = useState<Record<string, { names: string[]; more: number }>>({});
   const hoverTimer = useRef<number | null>(null);
+  const hoverCloseTimer = useRef<number | null>(null);
 
   // popover
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -246,17 +247,18 @@ const ReactionBar: React.FC<Props> = ({ noticeId, limit = 5, currentUserId }) =>
               <button
                 type="button"
                 onClick={() => toggleReaction(a.emojiId, a.mine)}
-                onMouseEnter={(ev) => {
+                onMouseEnter={() => {
                   if (hoverTimer.current) window.clearTimeout(hoverTimer.current);
+                  if (hoverCloseTimer.current) window.clearTimeout(hoverCloseTimer.current);
                   setHoverEmojiId(a.emojiId);
-                  setHoverAnchorRect((ev.currentTarget as HTMLButtonElement).getBoundingClientRect());
                   hoverTimer.current = window.setTimeout(() => ensureHoverUsers(a.emojiId), 120);
                 }}
                 onMouseLeave={() => {
                   if (hoverTimer.current) window.clearTimeout(hoverTimer.current);
-                  setHoverEmojiId(null);
-                  setHoverAnchorRect(null);
+                  if (hoverCloseTimer.current) window.clearTimeout(hoverCloseTimer.current);
+                  hoverCloseTimer.current = window.setTimeout(() => setHoverEmojiId(null), 150);
                 }}
+
                 className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full border text-xs hover:bg-gray-50 ${a.mine ? 'border-indigo-300 bg-indigo-50 text-indigo-700' : 'border-gray-200 bg-white text-gray-700'
                   }`}
               >
@@ -267,10 +269,13 @@ const ReactionBar: React.FC<Props> = ({ noticeId, limit = 5, currentUserId }) =>
               {/* hover tooltip */}
               {hover && hoverAnchorRect && (
                 <div
-                  className="fixed z-[80] min-w-[220px] max-w-[280px] rounded-lg border border-gray-200 bg-white shadow-lg p-3"
-                  style={{
-                    top: Math.min(window.innerHeight - 8, hoverAnchorRect.bottom + 8),
-                    left: Math.min(window.innerWidth - 288 - 8, Math.max(8, hoverAnchorRect.left)),
+                  className="absolute z-[80] left-0 top-full mt-2 min-w-[220px] max-w-[280px] rounded-lg border border-gray-200 bg-white shadow-lg p-3"
+                  onMouseEnter={() => {
+                    if (hoverCloseTimer.current) window.clearTimeout(hoverCloseTimer.current);
+                  }}
+                  onMouseLeave={() => {
+                    if (hoverCloseTimer.current) window.clearTimeout(hoverCloseTimer.current);
+                    hoverCloseTimer.current = window.setTimeout(() => setHoverEmojiId(null), 150);
                   }}
                 >
                   {!hoverData ? (
