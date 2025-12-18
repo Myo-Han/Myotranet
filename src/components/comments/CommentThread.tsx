@@ -149,7 +149,6 @@ const CommentThread: React.FC<Props> = ({ noticeId }) => {
             )}
           </>
         )}
-
       </div>
     </div>
   );

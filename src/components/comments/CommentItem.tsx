@@ -24,33 +24,14 @@ const CommentItem: React.FC<Props> = ({ node, onChanged, onOpenThread }) => {
   const affiliation = buildAffiliation(node.author ?? {});
   const timeText = formatKoreanDateTimeYY(node.created_at);
 
-  const softDelete = async () => {
+  const hardDelete = async () => {
     if (!isMine) return;
     if (!window.confirm('삭제할까요?')) return;
 
-    const { count } = await supabase
+    await supabase
       .from('notice_comments')
-      .select('id', { count: 'exact', head: true })
-      .eq('parent_id', node.id);
-
-    const hasReplies = (count ?? 0) > 0;
-
-    if (hasReplies) {
-      await supabase
-        .from('notice_comments')
-        .update({
-          is_deleted: true,
-          deleted_at: new Date().toISOString(),
-          content: '',
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', node.id);
-    } else {
-      await supabase
-        .from('notice_comments')
-        .delete()
-        .eq('id', node.id);
-    }
+      .delete()
+      .eq('id', node.id);
 
     onChanged();
   };
@@ -113,7 +94,7 @@ const CommentItem: React.FC<Props> = ({ node, onChanged, onOpenThread }) => {
                   <button
                     type="button"
                     className="text-xs text-red-600 hover:text-red-700"
-                    onClick={softDelete}
+                    onClick={hardDelete}
                   >
                     삭제
                   </button>
