@@ -429,16 +429,16 @@ const Dashboard: React.FC = () => {
                 {new Date(selectedNotice.created_at).toLocaleDateString('ko-KR')}
               </span>
             </div>
-            <div className="px-6 py-3 flex-1 overflow-y-auto">
+            <div className="px-6 py-4 flex-1 overflow-y-auto">
               <p className="text-sm text-gray-700 whitespace-pre-line">
                 {selectedNotice.content}
               </p>
+            </div>
 
-              <div className="mt-2 pt-2 border-t">
-                <div className="bg-gray-50 rounded-md p-2">
-                  <div className="max-h-20 overflow-y-auto">
-                    <ReactionBar noticeId={selectedNotice.id} />
-                  </div>
+            <div className="px-6 py-3 border-t">
+              <div className="bg-gray-50 rounded-md p-2">
+                <div className="max-h-20 overflow-y-auto">
+                  <ReactionBar noticeId={selectedNotice.id} />
                 </div>
               </div>
             </div>
