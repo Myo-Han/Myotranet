@@ -176,7 +176,7 @@ const ReactionBar: React.FC<Props> = ({ noticeId, limit = 5, currentUserId }) =>
     if (!e.storage_path) return <span className="text-xs text-gray-400">N/A</span>;
 
     const url = supabase.storage.from('emoji-assets').getPublicUrl(e.storage_path).data.publicUrl;
-    return <img src={url} alt={e.key} className="w-10 h-10 object-contain" />;
+    return <img src={url} alt={e.key} className="w-7 h-7 object-contain" />;
   };
 
   return (
