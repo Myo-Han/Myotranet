@@ -445,11 +445,10 @@ const Dashboard: React.FC = () => {
             </div>
 
             <div className="px-6 py-3 border-t">
-              <div className="max-h-64 overflow-y-auto">
+              <div className="max-h-40 overflow-y-auto">
                 <CommentThread noticeId={selectedNotice.id} />
               </div>
             </div>
-
             <div className="px-6 py-2 border-t flex justify-end">
               <button
                 type="button"
