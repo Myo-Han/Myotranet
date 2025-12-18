@@ -27,27 +27,57 @@ type OrgConfig = {
   positions: OrgItem[];
 };
 
+type UserExtra = {
+  department: string | null;
+  project: string | null;
+  part: string | null;
+  position: string | null;
+  annual_leave_balance: number | null;
+  monthly_leave_balance: number | null;
+  current_status: string | null;
+};
+
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5분
+const NOTICES_CACHE_KEY = 'dashboard:notices:v1';
+const ORG_CACHE_KEY = 'dashboard:orgConfig:v1';
+const ME_CACHE_KEY = (userId: string) => `dashboard:me:${userId}:v1`;
+
+function loadCache<T>(key: string): T | null {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { ts: number; data: T };
+    if (!parsed?.ts) return null;
+    if (Date.now() - parsed.ts > CACHE_TTL_MS) return null;
+    return parsed.data ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function saveCache<T>(key: string, data: T) {
+  try {
+    localStorage.setItem(key, JSON.stringify({ ts: Date.now(), data }));
+  } catch { }
+}
+
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<User[]>([]);
   const [searching, setSearching] = useState(false);
-  const [notices, setNotices] = useState<Notice[]>([]);
+  const [notices, setNotices] = useState<Notice[]>(
+    () => loadCache<Notice[]>(NOTICES_CACHE_KEY) ?? []
+  );
   const [selectedNotice, setSelectedNotice] = useState<Notice | null>(null);
   const [isNoticeModalOpen, setIsNoticeModalOpen] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
 
-  const [orgConfig, setOrgConfig] = useState<OrgConfig | null>(null);
-  const [userExtra, setUserExtra] = useState<{
-    department: string | null;
-    project: string | null;
-    part: string | null;
-    position: string | null;
-    annual_leave_balance: number | null;
-    monthly_leave_balance: number | null;
-    current_status: string | null;
-  } | null>(null);
+  const [orgConfig, setOrgConfig] = useState<OrgConfig | null>(
+    () => loadCache<OrgConfig>(ORG_CACHE_KEY)
+  );
+  const [userExtra, setUserExtra] = useState<UserExtra | null>(null);
 
   useEffect(() => {
     const fetchNotices = async () => {
@@ -62,7 +92,9 @@ const Dashboard: React.FC = () => {
         .order('created_at', { ascending: false });
 
       if (!error && data) {
-        setNotices(data as Notice[]);
+        const next = data as Notice[];
+        setNotices(next);
+        saveCache(NOTICES_CACHE_KEY, next);
       }
     };
 
@@ -74,12 +106,14 @@ const Dashboard: React.FC = () => {
       const { data, error } = await supabase.from('org_settings').select('config').single();
       if (error) return;
 
-      setOrgConfig({
+      const next = {
         departments: data.config?.departments || [],
         projects: data.config?.projects || [],
         parts: data.config?.parts || [],
         positions: data.config?.positions || [],
-      });
+      };
+      setOrgConfig(next);
+      saveCache(ORG_CACHE_KEY, next);
     };
 
     fetchOrgConfig();
@@ -94,34 +128,39 @@ const Dashboard: React.FC = () => {
       return `${yyyy}-${mm}-${dd}`;
     };
 
+    if (!user?.id) return;
+
+    const cacheKey = ME_CACHE_KEY(user.id);
+    const cached = loadCache<UserExtra>(cacheKey);
+    if (cached) setUserExtra(cached);
+
     const fetchMe = async () => {
-      if (!user?.id) return;
-
-      const { data: userRow, error: userErr } = await supabase
-        .from('users')
-        .select('department, project, part, position, annual_leave_balance, monthly_leave_balance')
-        .eq('id', user.id)
-        .maybeSingle();
-
       const today = getTodayDate();
 
-      const { data: attendanceRow, error: attErr } = await supabase
-        .from('attendance')
-        .select('status')
-        .eq('user_id', user.id)
-        .eq('date', today)
-        .maybeSingle();
+      const [userRes, attRes] = await Promise.all([
+        supabase
+          .from('users')
+          .select('department, project, part, position, annual_leave_balance, monthly_leave_balance')
+          .eq('id', user.id)
+          .maybeSingle(),
+        supabase
+          .from('attendance')
+          .select('status')
+          .eq('user_id', user.id)
+          .eq('date', today)
+          .maybeSingle(),
+      ]);
 
-      if (userErr) return;
-      if (attErr) {
-        setUserExtra({ ...(userRow as any), current_status: null });
-        return;
-      }
+      const userRow = userRes.data;
+      if (userRes.error || !userRow) return;
 
-      setUserExtra({
+      const next: UserExtra = {
         ...(userRow as any),
-        current_status: (attendanceRow?.status ?? null) as any,
-      });
+        current_status: attRes.error ? null : ((attRes.data?.status ?? null) as any),
+      };
+
+      setUserExtra(next);
+      saveCache(cacheKey, next);
     };
 
     fetchMe();
