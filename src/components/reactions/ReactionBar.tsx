@@ -5,6 +5,50 @@ import type { ReactionAgg, ReactionEmoji } from './types';
 import ReactionPickerPopover from './ReactionPickerPopover';
 import ReactionDetailsModal from './ReactionDetailsModal';
 
+const EMOJI_CACHE_KEY = 'reaction_emojis_active_v1';
+const EMOJI_CACHE_TTL_MS = 1000 * 60 * 30; // 30분
+
+type EmojiCachePayload = { ts: number; data: ReactionEmoji[] };
+
+let inMemoryEmojiCache: EmojiCachePayload | null = null;
+
+function loadEmojiCache(): ReactionEmoji[] | null {
+  const now = Date.now();
+
+  if (inMemoryEmojiCache && now - inMemoryEmojiCache.ts < EMOJI_CACHE_TTL_MS) {
+    return inMemoryEmojiCache.data;
+  }
+
+  if (typeof window === 'undefined') return null;
+
+  try {
+    const raw = window.localStorage.getItem(EMOJI_CACHE_KEY);
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw) as EmojiCachePayload;
+    if (!parsed?.ts || !Array.isArray(parsed.data)) return null;
+    if (now - parsed.ts >= EMOJI_CACHE_TTL_MS) return null;
+
+    inMemoryEmojiCache = parsed;
+    return parsed.data;
+  } catch {
+    return null;
+  }
+}
+
+function saveEmojiCache(data: ReactionEmoji[]) {
+  const payload: EmojiCachePayload = { ts: Date.now(), data };
+  inMemoryEmojiCache = payload;
+
+  if (typeof window === 'undefined') return;
+
+  try {
+    window.localStorage.setItem(EMOJI_CACHE_KEY, JSON.stringify(payload));
+  } catch {
+    // ignore
+  }
+}
+
 type UserRow = { id: string; name: string | null };
 
 type Props = {
@@ -37,13 +81,20 @@ const ReactionBar: React.FC<Props> = ({ noticeId, limit = 5, currentUserId }) =>
   const fetchAll = async () => {
     setLoading(true);
 
-    const { data: eData } = await supabase
-      .from('reaction_emojis')
-      .select('id, key, kind, unicode, storage_path, mime_type, sort_order, is_active')
-      .eq('is_active', true)
-      .order('sort_order', { ascending: true });
+    const cachedEmojis = loadEmojiCache();
+    if (cachedEmojis) {
+      setEmojis(cachedEmojis);
+    } else {
+      const { data: eData } = await supabase
+        .from('reaction_emojis')
+        .select('id, key, kind, unicode, storage_path, mime_type, sort_order, is_active')
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true });
 
-    setEmojis((eData as ReactionEmoji[]) ?? []);
+      const list = (eData as ReactionEmoji[]) ?? [];
+      setEmojis(list);
+      saveEmojiCache(list);
+    }
 
     const { data: rData } = await supabase
       .from('notice_reactions')
@@ -203,9 +254,8 @@ const ReactionBar: React.FC<Props> = ({ noticeId, limit = 5, currentUserId }) =>
                   if (hoverTimer.current) window.clearTimeout(hoverTimer.current);
                   setHoverEmojiId(null);
                 }}
-                className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full border text-xs hover:bg-gray-50 ${
-                  a.mine ? 'border-indigo-300 bg-indigo-50 text-indigo-700' : 'border-gray-200 bg-white text-gray-700'
-                }`}
+                className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full border text-xs hover:bg-gray-50 ${a.mine ? 'border-indigo-300 bg-indigo-50 text-indigo-700' : 'border-gray-200 bg-white text-gray-700'
+                  }`}
               >
                 {renderEmojiIcon(e)}
                 <span className="tabular-nums">{a.count}</span>
