@@ -180,7 +180,7 @@ const ReactionBar: React.FC<Props> = ({ noticeId, limit = 5, currentUserId }) =>
   };
 
   return (
-    <div className="mt-3">
+    <div className="mt-0">
       <div className="flex items-center flex-wrap gap-2">
         {visibleAggs.map((a) => {
           const e = emojiById.get(a.emojiId);
