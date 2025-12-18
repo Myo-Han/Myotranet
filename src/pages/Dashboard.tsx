@@ -283,7 +283,7 @@ const Dashboard: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch h-[520px]">
         {/* User Profile Card */}
         <div className="bg-white shadow rounded-lg overflow-hidden h-full flex flex-col">
-          <div className="bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-4">
+          <div className="bg-gradient-to-r from-[#6D6F72] to-[#4A4D50] px-6 py-4">
             <h2 className="text-xl font-semibold text-white">프로필</h2>
           </div>
           <div className="p-6 flex-1">
@@ -378,7 +378,7 @@ const Dashboard: React.FC = () => {
 
         {/* Notice Container */}
         <div className="bg-white shadow rounded-lg overflow-hidden h-full flex flex-col">
-          <div className="bg-gradient-to-r from-yellow-400 to-yellow-500 px-6 py-4 flex items-center justify-between">
+          <div className="bg-gradient-to-r from-[#5C5E66] to-[#4B4E51] px-6 py-4 flex items-center justify-between">
             <h2 className="text-xl font-semibold text-white">공지</h2>
             {notices.length > 0 && (
               <span className="text-xs text-yellow-100">
