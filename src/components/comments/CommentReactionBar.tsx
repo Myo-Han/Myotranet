@@ -3,6 +3,7 @@ import { supabase } from '../../supabaseClient';
 import { useAuth } from '../../context/AuthContext';
 import type { ReactionAgg, ReactionEmoji } from './types';
 import CommentReactionDetailsModal from './CommentReactionDetailsModal';
+import ReactionPickerPopover from '../reactions/ReactionPickerPopover';
 
 const EMOJI_CACHE_KEY = 'reaction_emojis_active_v1';
 const EMOJI_CACHE_TTL_MS = 1000 * 60 * 30; // 30분
@@ -60,6 +61,17 @@ const CommentReactionBar: React.FC<Props> = ({ commentId, limit = 5 }) => {
 
   // details modal
   const [detailsEmoji, setDetailsEmoji] = useState<ReactionEmoji | null>(null);
+
+  // popover
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
+  const moreBtnRef = useRef<HTMLButtonElement | null>(null);
+
+  const openPicker = () => {
+    const rect = moreBtnRef.current?.getBoundingClientRect() ?? null;
+    setAnchorRect(rect);
+    setPickerOpen(true);
+  };
 
   const fetchAll = async () => {
     setLoading(true);
@@ -239,9 +251,8 @@ const CommentReactionBar: React.FC<Props> = ({ commentId, limit = 5 }) => {
                     setHoverAnchorRect(null);
                   }, 150);
                 }}
-                className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full border text-[11px] hover:bg-gray-50 ${
-                  a.mine ? 'border-indigo-300 bg-indigo-50 text-indigo-700' : 'border-gray-200 bg-white text-gray-700'
-                }`}
+                className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full border text-[11px] hover:bg-gray-50 ${a.mine ? 'border-indigo-300 bg-indigo-50 text-indigo-700' : 'border-gray-200 bg-white text-gray-700'
+                  }`}
               >
                 {renderEmojiIcon(e)}
                 <span className="tabular-nums">{a.count}</span>
@@ -297,16 +308,23 @@ const CommentReactionBar: React.FC<Props> = ({ commentId, limit = 5 }) => {
 
         {/* 간단형: overflow면 …, 아니면 + (전체 피커는 다음 단계에서 추가) */}
         <button
+          ref={moreBtnRef}
           type="button"
           disabled={loading}
-          onClick={() => {
-            // 여기서 전체 피커 붙이고 싶으면 ReactionPickerPopover 재사용하시면 됩니다.
-          }}
+          onClick={openPicker}
           className="inline-flex items-center justify-center px-2 py-1 rounded-full border border-gray-200 text-[11px] text-gray-700 hover:bg-gray-50 disabled:opacity-50"
           title={hasOverflow ? '더 보기' : '리액션 추가'}
         >
           {hasOverflow ? '…' : '+'}
         </button>
+        <ReactionPickerPopover
+          open={pickerOpen}
+          onClose={() => setPickerOpen(false)}
+          anchorRect={anchorRect}
+          emojis={emojis}
+          aggs={aggs}
+          onToggle={(emojiId, mine) => toggleReaction(emojiId, mine)}
+        />
       </div>
 
       {detailsEmoji && (
