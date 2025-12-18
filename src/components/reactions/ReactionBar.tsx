@@ -247,18 +247,21 @@ const ReactionBar: React.FC<Props> = ({ noticeId, limit = 5, currentUserId }) =>
               <button
                 type="button"
                 onClick={() => toggleReaction(a.emojiId, a.mine)}
-                onMouseEnter={() => {
+                onMouseEnter={(ev) => {
                   if (hoverTimer.current) window.clearTimeout(hoverTimer.current);
                   if (hoverCloseTimer.current) window.clearTimeout(hoverCloseTimer.current);
                   setHoverEmojiId(a.emojiId);
+                  setHoverAnchorRect((ev.currentTarget as HTMLButtonElement).getBoundingClientRect());
                   hoverTimer.current = window.setTimeout(() => ensureHoverUsers(a.emojiId), 120);
                 }}
                 onMouseLeave={() => {
                   if (hoverTimer.current) window.clearTimeout(hoverTimer.current);
                   if (hoverCloseTimer.current) window.clearTimeout(hoverCloseTimer.current);
-                  hoverCloseTimer.current = window.setTimeout(() => setHoverEmojiId(null), 150);
+                  hoverCloseTimer.current = window.setTimeout(() => {
+                    setHoverEmojiId(null);
+                    setHoverAnchorRect(null);
+                  }, 150);
                 }}
-
                 className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full border text-xs hover:bg-gray-50 ${a.mine ? 'border-indigo-300 bg-indigo-50 text-indigo-700' : 'border-gray-200 bg-white text-gray-700'
                   }`}
               >
