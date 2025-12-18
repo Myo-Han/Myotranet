@@ -436,7 +436,6 @@ const Dashboard: React.FC = () => {
 
               <div className="mt-4 pt-3 border-t">
                 <div className="bg-gray-50 rounded-md p-3">
-                  <div className="text-xs text-gray-500 mb-2">리액션</div>
                   <div className="max-h-24 overflow-y-auto">
                     <ReactionBar noticeId={selectedNotice.id} />
                   </div>
