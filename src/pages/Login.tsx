@@ -46,6 +46,9 @@ const Login: React.FC = () => {
               <li>• [관리자] 이모지 관리 기능 추가</li>
               <li>• [공지] 스레드 기능 추가</li>
               <li>• [공지] 이모지 기능 추가</li>
+              <li>• 해외 아이피 차단</li>
+              <li>• 브라우저 외 프로그램 차단</li>
+              <li>• AI 크롤러/스크래퍼 봇 차단</li>
             </ul>
 
             <p className="text-xs font-semibold text-blue-900 mb-1">버그 수정</p>
