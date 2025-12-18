@@ -253,7 +253,7 @@ const ReactionEmojiManager: React.FC = () => {
           <input
             value={newKey}
             onChange={e => setNewKey(e.target.value)}
-            placeholder="key (unique)"
+            placeholder="이모지 고유 이름"
             className="rounded-md border-gray-300 text-sm px-3 py-2 w-56"
           />
 
