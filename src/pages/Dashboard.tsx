@@ -37,7 +37,7 @@ type UserExtra = {
   current_status: string | null;
 };
 
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5분
+const CACHE_TTL_MS = 60 * 60 * 1000; // 60분
 const NOTICES_CACHE_KEY = 'dashboard:notices:v1';
 const ORG_CACHE_KEY = 'dashboard:orgConfig:v1';
 const ME_CACHE_KEY = (userId: string) => `dashboard:me:${userId}:v1`;
