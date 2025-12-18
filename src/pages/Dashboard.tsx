@@ -5,6 +5,7 @@ import { supabase } from '../supabaseClient';
 import { User } from '../types';
 import CalendarCard from '../components/CalendarCard';
 import ProfileModal from '../components/ProfileModal';
+import { ReactionBar } from '../components/reactions';
 
 type Notice = {
   id: number;
@@ -432,6 +433,8 @@ const Dashboard: React.FC = () => {
               <p className="text-sm text-gray-700 whitespace-pre-line">
                 {selectedNotice.content}
               </p>
+
+              <ReactionBar noticeId={selectedNotice.id} />
             </div>
             <div className="px-6 py-3 border-t flex justify-end">
               <button
