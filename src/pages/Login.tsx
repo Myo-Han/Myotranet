@@ -43,14 +43,14 @@ const Login: React.FC = () => {
 
             <p className="text-xs font-semibold text-blue-900 mb-1">기능 추가</p>
             <ul className="text-sm text-blue-700 space-y-1 mb-3">
-              <li>• [휴가 지급/차감] 추가</li>
-              <li>• [휴가 조회] 추가</li>
+              <li>• [관리자] 이모지 관리 기능 추가</li>
+              <li>• [공지] 스레드 기능 추가</li>
+              <li>• [공지] 이모지 기능 추가</li>
             </ul>
 
             <p className="text-xs font-semibold text-blue-900 mb-1">버그 수정</p>
             <ul className="text-sm text-blue-700 space-y-1">
-              <li>• [출퇴근관리] 다른 사람 누적 시간 갱신 문제 해결</li>
-              <li>• [출퇴근관리] 자정 넘어갈 시 중복 세션 문제 조치(확인 필요)</li>
+              <li>• [대시보드] 한박자 늦게 로드되는 문제 해결 (캐싱 적용)</li>
             </ul>
           </div>
 
