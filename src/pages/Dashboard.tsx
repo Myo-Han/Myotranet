@@ -476,7 +476,7 @@ const Dashboard: React.FC = () => {
           <p className="text-sm text-gray-500 mt-1">출근, 퇴근, 조퇴 기록</p>
         </button>
         <a
-          href="https://docs.google.com/spreadsheets/d/1Z6LvJechTBTPYlYImtyw_HjmaT37hf6xEr0ApWUgjxY/edit?gid=0#gid=0"
+          href="https://www.notion.so/2ce8b0cc5ed08039a648ecbcb2cb5ee8?source=copy_link"
           target="_blank"
           rel="noopener noreferrer"
           className="bg-white p-6 rounded-lg shadow hover:shadow-md transition duration-200 text-left block"
