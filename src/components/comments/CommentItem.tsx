@@ -8,15 +8,14 @@ import CommentReactionBar from './CommentReactionBar';
 
 type Props = {
   node: CommentNode;
-  depth?: number;
   onChanged: () => void;
+  onOpenThread?: () => void;
 };
 
-const CommentItem: React.FC<Props> = ({ node, depth = 0, onChanged }) => {
+const CommentItem: React.FC<Props> = ({ node, onChanged, onOpenThread }) => {
   const { user } = useAuth();
   const me = user?.id ?? null;
 
-  const [replying, setReplying] = useState(false);
   const [editing, setEditing] = useState(false);
 
   const isMine = useMemo(() => !!me && node.user_id === me, [me, node.user_id]);
@@ -29,10 +28,29 @@ const CommentItem: React.FC<Props> = ({ node, depth = 0, onChanged }) => {
     if (!isMine) return;
     if (!window.confirm('삭제할까요?')) return;
 
-    await supabase
+    const { count } = await supabase
       .from('notice_comments')
-      .update({ is_deleted: true, deleted_at: new Date().toISOString(), content: '', updated_at: new Date().toISOString() })
-      .eq('id', node.id);
+      .select('id', { count: 'exact', head: true })
+      .eq('parent_id', node.id);
+
+    const hasReplies = (count ?? 0) > 0;
+
+    if (hasReplies) {
+      await supabase
+        .from('notice_comments')
+        .update({
+          is_deleted: true,
+          deleted_at: new Date().toISOString(),
+          content: '',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', node.id);
+    } else {
+      await supabase
+        .from('notice_comments')
+        .delete()
+        .eq('id', node.id);
+    }
 
     onChanged();
   };
@@ -49,22 +67,8 @@ const CommentItem: React.FC<Props> = ({ node, depth = 0, onChanged }) => {
     onChanged();
   };
 
-  const addReply = async (content: string) => {
-    if (!me) return;
-
-    await supabase.from('notice_comments').insert({
-      notice_id: node.notice_id,
-      user_id: me,
-      parent_id: node.id,
-      content,
-    });
-
-    setReplying(false);
-    onChanged();
-  };
-
   return (
-    <div className="w-full" style={{ marginLeft: depth > 0 ? Math.min(depth * 18, 54) : 0 }}>
+    <div className="w-full">
       <div className="flex gap-3">
         <div className="w-9 flex justify-center">
           <div className="w-8 h-8 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center">
@@ -87,13 +91,13 @@ const CommentItem: React.FC<Props> = ({ node, depth = 0, onChanged }) => {
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
-              {!node.is_deleted && (
+              {!node.is_deleted && onOpenThread && (
                 <button
                   type="button"
                   className="text-xs text-gray-500 hover:text-gray-800"
-                  onClick={() => setReplying((v) => !v)}
+                  onClick={onOpenThread}
                 >
-                  답글
+                  답글 {node.children.length}개
                 </button>
               )}
 
@@ -139,28 +143,6 @@ const CommentItem: React.FC<Props> = ({ node, depth = 0, onChanged }) => {
                 onCancel={() => setEditing(false)}
                 onSubmit={update}
               />
-            </div>
-          )}
-
-          {/* 답글 작성 */}
-          {replying && !node.is_deleted && (
-            <div className="mt-2">
-              <CommentEditor
-                placeholder="답글을 입력하세요"
-                submitLabel="등록"
-                cancelLabel="취소"
-                onCancel={() => setReplying(false)}
-                onSubmit={addReply}
-              />
-            </div>
-          )}
-
-          {/* 자식(대댓글) */}
-          {node.children.length > 0 && (
-            <div className="mt-3 space-y-3">
-              {node.children.map((child) => (
-                <CommentItem key={child.id} node={child} depth={depth + 1} onChanged={onChanged} />
-              ))}
             </div>
           )}
         </div>

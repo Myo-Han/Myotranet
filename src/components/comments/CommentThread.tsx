@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import type { CommentNode, NoticeComment, UserMini } from './types';
 import CommentEditor from './CommentEditor';
 import CommentItem from './CommentItem';
+import CommentThreadPanel from './CommentThreadPanel';
 
 type Props = {
   noticeId: number;
@@ -41,6 +42,8 @@ const CommentThread: React.FC<Props> = ({ noticeId }) => {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [comments, setComments] = useState<CommentNode[]>([]);
+  const [threadRoot, setThreadRoot] = useState<CommentNode | null>(null);
+  const [threadOpen, setThreadOpen] = useState(false);
 
   const fetchComments = async () => {
     setLoading(true);
@@ -121,12 +124,32 @@ const CommentThread: React.FC<Props> = ({ noticeId }) => {
         ) : comments.length === 0 ? (
           <div className="text-sm text-gray-500">첫 댓글을 남겨보세요.</div>
         ) : (
-          <div className="space-y-4">
-            {comments.map((n) => (
-              <CommentItem key={n.id} node={n} onChanged={fetchComments} />
-            ))}
-          </div>
+          <>
+            <div className="space-y-4">
+              {comments.map((n) => (
+                <CommentItem
+                  key={n.id}
+                  node={n}
+                  onChanged={fetchComments}
+                  onOpenThread={() => {
+                    setThreadRoot(n);
+                    setThreadOpen(true);
+                  }}
+                />
+              ))}
+            </div>
+
+            {threadRoot && (
+              <CommentThreadPanel
+                open={threadOpen}
+                onClose={() => setThreadOpen(false)}
+                root={threadRoot}
+                onChanged={fetchComments}
+              />
+            )}
+          </>
         )}
+
       </div>
     </div>
   );
