@@ -420,8 +420,8 @@ const Dashboard: React.FC = () => {
       {/* Notice Modal */}
       {isNoticeModalOpen && selectedNotice && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4 max-h-[80vh] overflow-hidden flex flex-col">
-            <div className="px-6 py-4 border-b flex items-center justify-between">
+          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4 h-[80vh] overflow-hidden flex flex-col">
+            <div className="px-6 py-3 border-b flex items-center justify-between">
               <h2 className="text-lg font-semibold text-gray-900">
                 {selectedNotice.title}
               </h2>
@@ -429,20 +429,20 @@ const Dashboard: React.FC = () => {
                 {new Date(selectedNotice.created_at).toLocaleDateString('ko-KR')}
               </span>
             </div>
-            <div className="px-6 py-4 flex-1 overflow-y-auto">
+            <div className="px-6 py-3 flex-1 overflow-y-auto">
               <p className="text-sm text-gray-700 whitespace-pre-line">
                 {selectedNotice.content}
               </p>
 
-              <div className="mt-0 pt-3 border-t">
-                <div className="bg-gray-50 rounded-md p-3">
-                  <div className="max-h-24 overflow-y-auto">
+              <div className="mt-2 pt-2 border-t">
+                <div className="bg-gray-50 rounded-md p-2">
+                  <div className="max-h-20 overflow-y-auto">
                     <ReactionBar noticeId={selectedNotice.id} />
                   </div>
                 </div>
               </div>
             </div>
-            <div className="px-6 py-3 border-t flex justify-end">
+            <div className="px-6 py-2 border-t flex justify-end">
               <button
                 type="button"
                 onClick={() => setIsNoticeModalOpen(false)}
