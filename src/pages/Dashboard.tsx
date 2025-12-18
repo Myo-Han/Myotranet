@@ -420,7 +420,7 @@ const Dashboard: React.FC = () => {
       {/* Notice Modal */}
       {isNoticeModalOpen && selectedNotice && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4 max-h-[80vh] overflow-hidden flex flex-col">
             <div className="px-6 py-4 border-b flex items-center justify-between">
               <h2 className="text-lg font-semibold text-gray-900">
                 {selectedNotice.title}
@@ -429,7 +429,7 @@ const Dashboard: React.FC = () => {
                 {new Date(selectedNotice.created_at).toLocaleDateString('ko-KR')}
               </span>
             </div>
-            <div className="px-6 py-4">
+            <div className="px-6 py-4 flex-1 overflow-y-auto">
               <p className="text-sm text-gray-700 whitespace-pre-line">
                 {selectedNotice.content}
               </p>
