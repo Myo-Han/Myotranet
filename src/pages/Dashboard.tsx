@@ -5,7 +5,7 @@ import { supabase } from '../supabaseClient';
 import { User } from '../types';
 import CalendarCard from '../components/CalendarCard';
 import ProfileModal from '../components/ProfileModal';
-import { ReactionBar } from '../components/reactions';
+import { ReactionBar } from '../components/reactions/ReactionBar';
 
 type Notice = {
   id: number;
