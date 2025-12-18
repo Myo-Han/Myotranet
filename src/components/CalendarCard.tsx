@@ -32,9 +32,9 @@ const CalendarCard: React.FC<CalendarCardProps> = ({
   return (
     <div className={`bg-white shadow rounded-lg overflow-hidden flex flex-col ${className}`}>
       <div className="bg-gradient-to-r from-emerald-500 to-emerald-600 px-6 py-4 flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-semibold text-white">{title}</h2>
-          {viewTitle && <p className="text-xs text-emerald-100 mt-1">{viewTitle}</p>}
+        <div className="flex items-center gap-2 min-w-0">
+          <h2 className="text-xl font-semibold text-white shrink-0">{title}</h2>
+          {viewTitle && <span className="text-xs text-emerald-100 truncate">{viewTitle}</span>}
         </div>
 
         <div className="flex items-center gap-2">
