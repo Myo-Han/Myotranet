@@ -434,7 +434,7 @@ const Dashboard: React.FC = () => {
                 {selectedNotice.content}
               </p>
 
-              <div className="mt-4 pt-3 border-t">
+              <div className="mt-0 pt-3 border-t">
                 <div className="bg-gray-50 rounded-md p-3">
                   <div className="max-h-24 overflow-y-auto">
                     <ReactionBar noticeId={selectedNotice.id} />
