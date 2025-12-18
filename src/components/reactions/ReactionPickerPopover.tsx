@@ -23,8 +23,8 @@ const ReactionPickerPopover: React.FC<Props> = ({ open, onClose, anchorRect, emo
   const pos = useMemo(() => {
     if (!anchorRect) return { top: 0, left: 0 };
     const padding = 8;
-    const width = 320;
-    const height = 360;
+    const width = 300;
+    const height = 240;
 
     const left = Math.min(window.innerWidth - width - padding, Math.max(padding, anchorRect.left));
     const top = Math.min(window.innerHeight - height - padding, Math.max(padding, anchorRect.bottom + 8));
@@ -49,7 +49,7 @@ const ReactionPickerPopover: React.FC<Props> = ({ open, onClose, anchorRect, emo
       <div
         ref={panelRef}
         className="absolute bg-white border border-gray-200 rounded-lg shadow-xl overflow-hidden"
-        style={{ top: pos.top, left: pos.left, width: 320, height: 360 }}
+        style={{ top: pos.top, left: pos.left, width, height }}
         onMouseDown={(e) => e.stopPropagation()}
       >
         <div className="px-4 py-3 border-b flex items-center justify-between">
@@ -63,7 +63,7 @@ const ReactionPickerPopover: React.FC<Props> = ({ open, onClose, anchorRect, emo
           </button>
         </div>
 
-        <div className="p-3 overflow-y-auto h-[calc(360px-52px)]">
+        <div className="p-3 overflow-y-auto h-[calc(240px-52px)]">
           <div className="grid grid-cols-6 gap-2">
             {emojis.filter(e => e.is_active).map((e) => {
               const agg = aggById.get(e.id);
@@ -88,9 +88,8 @@ const ReactionPickerPopover: React.FC<Props> = ({ open, onClose, anchorRect, emo
                   key={e.id}
                   type="button"
                   onClick={() => onToggle(e.id, mine)}
-                  className={`relative w-12 h-12 rounded-md border flex items-center justify-center hover:bg-gray-50 ${
-                    mine ? 'border-indigo-300 bg-indigo-50' : 'border-gray-200 bg-white'
-                  }`}
+                  className={`relative w-12 h-12 rounded-md border flex items-center justify-center hover:bg-gray-50 ${mine ? 'border-indigo-300 bg-indigo-50' : 'border-gray-200 bg-white'
+                    }`}
                   title={e.key}
                 >
                   {icon}
