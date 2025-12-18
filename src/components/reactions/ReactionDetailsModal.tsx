@@ -77,7 +77,7 @@ const ReactionDetailsModal: React.FC<Props> = ({ open, onClose, noticeId, emoji 
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40">
+    <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/40">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 overflow-hidden">
         <div className="px-5 py-3 border-b flex items-center justify-between">
           <div className="flex items-center gap-2 min-w-0">

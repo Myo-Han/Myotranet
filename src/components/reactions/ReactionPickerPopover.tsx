@@ -45,7 +45,7 @@ const ReactionPickerPopover: React.FC<Props> = ({ open, onClose, anchorRect, emo
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[60]" onMouseDown={onClose}>
+    <div className="fixed inset-0 z-[120]" onMouseDown={onClose}>
       <div
         ref={panelRef}
         className="absolute bg-white border border-gray-200 rounded-lg shadow-xl overflow-hidden"
