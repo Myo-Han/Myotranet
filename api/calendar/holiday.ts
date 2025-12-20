@@ -1,4 +1,3 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { google } from 'googleapis';
 
 type GCalItem = {
@@ -44,7 +43,7 @@ function toFullCalendarEvent(item: GCalItem) {
   return { title, start, end, allDay: false };
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: any, res: any) {
   try {
     if (req.method !== 'GET') {
       res.status(405).json({ error: 'Method Not Allowed' });
