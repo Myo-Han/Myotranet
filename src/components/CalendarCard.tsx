@@ -156,6 +156,21 @@ const CalendarCard: React.FC<CalendarCardProps> = ({
               html: `<div style="font-size: ${fontSize}; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${title}</div>`
             };
           }}
+          eventDidMount={(info) => {
+            console.log('=== eventDidMount 디버깅 ===');
+            console.log('이벤트 제목:', info.event.title);
+            console.log('이벤트 엘리먼트:', info.el);
+            console.log('이벤트 엘리먼트 너비:', info.el.offsetWidth);
+
+            const cell = info.el.closest('.fc-daygrid-day');
+            console.log('부모 셀:', cell);
+            console.log('부모 셀 너비:', cell?.clientWidth);
+
+            const titleEl = info.el.querySelector('div');
+            console.log('타이틀 엘리먼트:', titleEl);
+            console.log('타이틀 실제 너비:', titleEl?.scrollWidth);
+            console.log('타이틀 표시 너비:', titleEl?.clientWidth);
+          }}
           dayMaxEvents={false}
           dayCellClassNames={(arg) => (holidayDateSet.has(arg.dateStr) ? ['fc-holiday'] : [])}
           dayCellDidMount={(arg) => {
