@@ -46,16 +46,13 @@ const CalendarCard: React.FC<CalendarCardProps> = ({
     };
 
     for (const e of holidayEvents) {
-      console.log('🔍 이벤트:', e);  // 이벤트 구조 확인
       const d = toDateStr(e.date) || toDateStr(e.start);
-      console.log('📅 추출된 날짜:', d);  // 날짜 추출 확인
       if (d) set.add(d);
     }
 
-    console.log('✅ holidayDateSet:', Array.from(set));  // 최종 Set 확인
     return set;
   }, [holidayEvents]);
-
+  
   useEffect(() => {
     const ac = new AbortController();
 
@@ -125,13 +122,11 @@ const CalendarCard: React.FC<CalendarCardProps> = ({
           dayCellClassNames={(arg) => (holidayDateSet.has(arg.dateStr) ? ['fc-holiday'] : [])}
           dayCellDidMount={(arg) => {
             const dateStr = arg.el.getAttribute('data-date');
-            console.log('🎯 dayCellDidMount dateStr:', dateStr, 'holidayDateSet.has:', holidayDateSet.has(dateStr || ''));
 
             const num = arg.el.querySelector('.fc-daygrid-day-number') as HTMLElement | null;
             if (!num) return;
 
             if (dateStr && holidayDateSet.has(dateStr)) {
-              console.log('🔴 공휴일 색상 적용:', dateStr);
               num.style.color = '#ef4444';
               num.style.fontWeight = '600';
               return;
