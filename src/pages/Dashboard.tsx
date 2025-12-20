@@ -4,7 +4,6 @@ import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabaseClient';
 import { User } from '../types';
 import CalendarCard from '../components/CalendarCard';
-import AttendanceActionButton from '../components/AttendanceActionButton';
 import ProfileModal from '../components/ProfileModal';
 import { ReactionBar } from '../components/reactions';
 import { CommentThread } from '../components/comments';
@@ -76,12 +75,128 @@ const Dashboard: React.FC = () => {
   const [selectedNotice, setSelectedNotice] = useState<Notice | null>(null);
   const [isNoticeModalOpen, setIsNoticeModalOpen] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
-  const [showWorkActionModal, setShowWorkActionModal] = useState(false);
+
+  // ✅ 상태 클릭 모달
+  const [workModal, setWorkModal] = useState<null | 'checkin' | 'pause' | 'resume'>(null);
+
+  // ✅ 업무중지 사유 (Attendance.tsx와 동일)  :contentReference[oaicite:3]{index=3}
+  const [pauseReason, setPauseReason] = useState<'휴게' | '외출' | '퇴근' | '기타' | ''>('');
+  const [pauseMemo, setPauseMemo] = useState('');
+  const [workModalError, setWorkModalError] = useState('');
+
+  // ✅ Logout 버튼과 동일 스타일(색상 포함)
+  const modalBtnClass =
+    'px-3 py-2 rounded-md text-sm font-medium text-white hover:opacity-80 transition duration-200';
+  const modalBtnStyle = { backgroundColor: '#4b4d51' };
 
   const [orgConfig, setOrgConfig] = useState<OrgConfig | null>(
     () => loadCache<OrgConfig>(ORG_CACHE_KEY)
   );
   const [userExtra, setUserExtra] = useState<UserExtra | null>(null);
+
+  const getTodayDate = () => {
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
+  const getYesterdayDate = () => {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+
+  const findOpenAttendance = async () => {
+    if (!user?.id) return null;
+    const today = getTodayDate();
+    const y = getYesterdayDate();
+
+    let { data: existing } = await supabase
+      .from('attendance')
+      .select('id, date, check_in')
+      .eq('user_id', user.id)
+      .eq('date', today)
+      .is('check_out', null)
+      .maybeSingle();
+
+    if (!existing) {
+      const r = await supabase
+        .from('attendance')
+        .select('id, date, check_in')
+        .eq('user_id', user.id)
+        .eq('date', y)
+        .is('check_out', null)
+        .maybeSingle();
+      existing = r.data as any;
+    }
+
+    return existing as any;
+  };
+
+  const handleDashboardCheckIn = async () => {
+    if (!user?.id) return;
+
+    const today = getTodayDate();
+    const nowIso = new Date().toISOString();
+
+    await supabase.from('attendance').insert({
+      user_id: user.id,
+      date: today,
+      check_in: nowIso,
+      status: 'working',
+      total_work_seconds: 0,
+    });
+
+    await supabase.from('users').update({ current_status: 'working' }).eq('id', user.id);
+
+    setUserExtra((prev) => (prev ? { ...prev, current_status: 'working' } : prev));
+  };
+
+  const handleDashboardPauseConfirm = async () => {
+    if (!pauseReason) throw new Error('사유를 선택해주세요');
+
+    const existing = await findOpenAttendance();
+    if (!existing) throw new Error('출근 기록이 없습니다');
+
+    const nowIso = new Date().toISOString();
+
+    await supabase.from('attendance_events').insert({
+      user_id: user!.id,
+      attendance_id: existing.id,
+      event_type: 'pause',
+      reason_category: pauseReason,
+      notes: pauseMemo || null,
+      occurred_at: nowIso,
+    });
+
+    await supabase.from('attendance').update({ status: 'paused' }).eq('id', existing.id);
+    await supabase.from('users').update({ current_status: 'paused' }).eq('id', user!.id);
+
+    setUserExtra((prev) => (prev ? { ...prev, current_status: 'paused' } : prev));
+  };
+
+  const handleDashboardResume = async () => {
+    const existing = await findOpenAttendance();
+    if (!existing) throw new Error('출근 기록이 없습니다');
+
+    const nowIso = new Date().toISOString();
+
+    await supabase.from('attendance_events').insert({
+      user_id: user!.id,
+      attendance_id: existing.id,
+      event_type: 'resume',
+      reason_category: null,
+      notes: null,
+      occurred_at: nowIso,
+    });
+
+    await supabase.from('attendance').update({ status: 'working' }).eq('id', existing.id);
+    await supabase.from('users').update({ current_status: 'working' }).eq('id', user!.id);
+
+    setUserExtra((prev) => (prev ? { ...prev, current_status: 'working' } : prev));
+  };
 
   useEffect(() => {
     const fetchNotices = async () => {
@@ -124,14 +239,6 @@ const Dashboard: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    const getTodayDate = () => {
-      const now = new Date();
-      const yyyy = now.getFullYear();
-      const mm = String(now.getMonth() + 1).padStart(2, '0');
-      const dd = String(now.getDate()).padStart(2, '0');
-      return `${yyyy}-${mm}-${dd}`;
-    };
-
     if (!user?.id) return;
 
     const cacheKey = ME_CACHE_KEY(user.id);
@@ -340,7 +447,29 @@ const Dashboard: React.FC = () => {
                 {/* ✅ 상태 */}
                 <button
                   type="button"
-                  onClick={() => setShowWorkActionModal(true)}
+                  onClick={() => {
+                    setWorkModalError('');
+
+                    if (statusMeta.label === '미출근') {
+                      setWorkModal('checkin');
+                      return;
+                    }
+
+                    if (statusMeta.label === '근무중') {
+                      setPauseReason('');
+                      setPauseMemo('');
+                      setWorkModal('pause');
+                      return;
+                    }
+
+                    if (statusMeta.label === '근무중단') {
+                      setWorkModal('resume');
+                      return;
+                    }
+
+                    // 퇴근/휴가 등은 무반응
+                  }}
+
                   className={`rounded-lg p-4 border ${statusMeta.wrap} w-full text-left hover:brightness-95 transition`}
                 >
                   <div className="flex items-center justify-between">
@@ -469,29 +598,129 @@ const Dashboard: React.FC = () => {
           </div>
         )
       }
-      {/* 출퇴근 Modal */}
-      {showWorkActionModal && (
+      {workModal === 'checkin' && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 overflow-hidden">
-            <div className="px-6 py-3 border-b flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-gray-900">상태 변경</h2>
-              <button
-                type="button"
-                onClick={() => setShowWorkActionModal(false)}
-                className="px-3 py-1.5 rounded-md bg-gray-800 text-white text-sm"
-              >
-                닫기
-              </button>
+            <div className="px-6 py-4 border-b">
+              <h2 className="text-lg font-semibold text-gray-900">출근</h2>
             </div>
 
-            <div className="p-6 flex gap-2">
-              <AttendanceActionButton label="출근" onClick={() => navigate('/attendance')} />
-              <AttendanceActionButton label="업무중지" onClick={() => navigate('/attendance')} />
-              <AttendanceActionButton label="업무재개" onClick={() => navigate('/attendance')} />
+            <div className="px-6 py-4">
+              <p className="text-sm text-gray-700">출근하시겠습니까?</p>
+              {workModalError && <p className="mt-2 text-sm text-red-600">{workModalError}</p>}
+            </div>
+
+            <div className="px-6 py-4 border-t flex justify-end gap-2">
+              <button type="button" className={modalBtnClass} style={modalBtnStyle} onClick={async () => {
+                try {
+                  await handleDashboardCheckIn(); // 아래 4)에서 추가
+                  setWorkModal(null);
+                } catch (e: any) {
+                  setWorkModalError(e?.message ?? '출근 처리 실패');
+                }
+              }}>예</button>
+
+              <button type="button" className={modalBtnClass} style={modalBtnStyle} onClick={() => setWorkModal(null)}>
+                아니오
+              </button>
             </div>
           </div>
         </div>
       )}
+      {workModal === 'pause' && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-xl font-semibold mb-4">업무 중지 사유 선택</h3>
+
+            <div className="space-y-4">
+              <div className="flex flex-wrap gap-2">
+                {['휴게', '외출', '퇴근', '기타'].map((reason) => (
+                  <button
+                    key={reason}
+                    type="button"
+                    onClick={() => setPauseReason(reason as any)}
+                    className={`px-3 py-1 rounded-full text-sm border ${pauseReason === reason
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'bg-gray-100 text-gray-700 border-gray-300'
+                      }`}
+                  >
+                    {reason}
+                  </button>
+                ))}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">사유 메모 (선택)</label>
+                <textarea
+                  value={pauseMemo}
+                  onChange={(e) => setPauseMemo(e.target.value)}
+                  rows={3}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2"
+                />
+              </div>
+
+              {workModalError && <p className="text-sm text-red-600">{workModalError}</p>}
+            </div>
+
+            <div className="mt-6 flex gap-2">
+              <button
+                type="button"
+                className={`flex-1 ${modalBtnClass}`}
+                style={modalBtnStyle}
+                onClick={async () => {
+                  try {
+                    await handleDashboardPauseConfirm(); // 아래 4)에서 추가
+                    setWorkModal(null);
+                  } catch (e: any) {
+                    setWorkModalError(e?.message ?? '업무중지 처리 실패');
+                  }
+                }}
+              >
+                확인
+              </button>
+
+              <button
+                type="button"
+                className={`flex-1 ${modalBtnClass}`}
+                style={modalBtnStyle}
+                onClick={() => setWorkModal(null)}
+              >
+                취소
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {workModal === 'resume' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 overflow-hidden">
+            <div className="px-6 py-4 border-b">
+              <h2 className="text-lg font-semibold text-gray-900">업무 재개</h2>
+            </div>
+
+            <div className="px-6 py-4">
+              <p className="text-sm text-gray-700">업무를 재개하시겠습니까?</p>
+              {workModalError && <p className="mt-2 text-sm text-red-600">{workModalError}</p>}
+            </div>
+
+            <div className="px-6 py-4 border-t flex justify-end gap-2">
+              <button type="button" className={modalBtnClass} style={modalBtnStyle} onClick={async () => {
+                try {
+                  await handleDashboardResume(); // 아래 4)에서 추가
+                  setWorkModal(null);
+                } catch (e: any) {
+                  setWorkModalError(e?.message ?? '업무재개 처리 실패');
+                }
+              }}>예</button>
+
+              <button type="button" className={modalBtnClass} style={modalBtnStyle} onClick={() => setWorkModal(null)}>
+                아니오
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <button
