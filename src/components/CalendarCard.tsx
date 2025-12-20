@@ -121,9 +121,26 @@ const CalendarCard: React.FC<CalendarCardProps> = ({
           dayMaxEvents={true}
           events={holidayEvents}
           dayCellClassNames={(arg) => (holidayDateSet.has(arg.dateStr) ? ['fc-holiday'] : [])}
+          dayCellDidMount={(arg) => {
+            const num = arg.el.querySelector('.fc-daygrid-day-number') as HTMLElement | null;
+            if (!num) return;
+
+            // 공휴일(빨강 우선)
+            if (holidayDateSet.has(arg.dateStr)) {
+              num.style.color = '#ef4444';
+              num.style.fontWeight = '600';
+              return;
+            }
+
+            // 주말
+            const dow = arg.date.getDay(); // 0=일, 6=토
+            if (dow === 0) num.style.color = '#ef4444';
+            if (dow === 6) num.style.color = '#2563eb';
+          }}
           datesSet={(arg) => setViewTitle(arg.view.title)}
           dateClick={(arg) => onDateClick?.(arg.dateStr)}
         />
+
       </div>
     </div>
   );
