@@ -21,17 +21,3 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
 }
 
-.fc .fc-day-sat .fc-daygrid-day-number { color: #2563eb; }
-
-/* 일요일 빨강 */
-.fc .fc-day-sun .fc-daygrid-day-number { color: #ef4444; }
-
-/* 공휴일: fc-holiday가 어디에 붙든 숫자는 빨강 */
-.fc .fc-holiday .fc-daygrid-day-number,
-.fc .fc-holiday a.fc-daygrid-day-number,
-.fc .fc-daygrid-day.fc-holiday a.fc-daygrid-day-number,
-.fc .fc-daygrid-day-frame.fc-holiday a.fc-daygrid-day-number {
-  color: #ef4444 !important;
-  font-weight: 600;
-}
-
