@@ -4,6 +4,7 @@ import { google } from 'googleapis';
 type GCalItem = {
   id?: string;
   summary?: string;
+  description?: string;
   start?: { date?: string; dateTime?: string; timeZone?: string };
   end?: { date?: string; dateTime?: string; timeZone?: string };
 };
@@ -81,8 +82,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
     const items = (r.data.items || []) as GCalItem[];
+
+    const isUnwanted = (it: GCalItem) => {
+      const s = (it.summary ?? '').replace(/\s+/g, ' ').trim();
+      const d = (it.description ?? '').replace(/\s+/g, ' ').trim().toLowerCase();
+
+      // ✅ 지역 공휴일 제거 (대부분 제목에 이렇게 들어옵니다)
+      if (s.includes('지역공휴일') || s.includes('지역 공휴일')) return true;
+
+      // ✅ 기타 기념일/관측일 제거 (제목/설명에 흔하게 들어옵니다)
+      if (s.includes('기념일')) return true;
+      if (d.includes('observance')) return true; // 영문 설명 들어오는 케이스
+      if (d.includes('기념일')) return true;
+
+      return false;
+    };
+
     const events = items
       .filter((it) => it.start?.date || it.start?.dateTime)
+      .filter((it) => !isUnwanted(it))
       .map(toFullCalendarEvent);
 
     res.status(200).json({ events });
