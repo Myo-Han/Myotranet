@@ -157,6 +157,95 @@ const Dashboard: React.FC = () => {
   const handleDashboardPauseConfirm = async () => {
     if (!pauseReason) throw new Error('사유를 선택해주세요');
 
+    // ✅ Attendance.tsx와 동일: "퇴근" 선택이면 pause 저장 금지 -> 진짜 퇴근 처리
+    if (pauseReason === '퇴근') {
+      await handleDashboardCheckOut('퇴근', pauseMemo || null);
+      return;
+    }
+
+    async function calcWorkSecondsUntil(attendanceId: string, checkInIso: string, nowIso: string) {
+      const { data: pauseEvents, error: pauseError } = await supabase
+        .from('attendance_events')
+        .select('event_type, occurred_at')
+        .eq('user_id', user!.id)
+        .eq('attendance_id', attendanceId)
+        .in('event_type', ['pause', 'resume'])
+        .order('occurred_at', { ascending: true });
+
+      if (pauseError) throw pauseError;
+
+      let totalPauseSeconds = 0;
+      let lastPauseTime: Date | null = null;
+
+      (pauseEvents || []).forEach((event: any) => {
+        if (event.event_type === 'pause') {
+          lastPauseTime = new Date(event.occurred_at);
+        } else if (event.event_type === 'resume' && lastPauseTime) {
+          const resumeTime = new Date(event.occurred_at);
+          totalPauseSeconds += (resumeTime.getTime() - lastPauseTime.getTime()) / 1000;
+          lastPauseTime = null;
+        }
+      });
+
+      if (lastPauseTime) {
+        totalPauseSeconds += (new Date(nowIso).getTime() - lastPauseTime.getTime()) / 1000;
+      }
+
+      const checkInTime = new Date(checkInIso).getTime();
+      const checkOutTime = new Date(nowIso).getTime();
+      const totalSeconds = Math.floor((checkOutTime - checkInTime) / 1000);
+      const workSeconds = Math.max(0, totalSeconds - Math.floor(totalPauseSeconds));
+
+      return workSeconds;
+    };
+
+    async function handleDashboardCheckOut(reasonCategory: string = '퇴근', notes?: string) {
+      const existing = await findOpenAttendance();
+      if (!existing) throw new Error('출근 기록이 없습니다');
+
+      const nowIso = new Date().toISOString();
+      const workSeconds = await calcWorkSecondsUntil(existing.id, existing.check_in, nowIso);
+
+      // ✅ 퇴근 이벤트 먼저 insert(롤백 대비)
+      const { data: insertedEvent, error: eventError } = await supabase
+        .from('attendance_events')
+        .insert({
+          user_id: user!.id,
+          attendance_id: existing.id,
+          event_type: 'check_out',
+          reason_category: reasonCategory || '퇴근',
+          notes: notes || null,
+          occurred_at: nowIso,
+        })
+        .select('id')
+        .single();
+
+      if (eventError) throw eventError;
+
+      const { error: updateError } = await supabase
+        .from('attendance')
+        .update({
+          check_out: nowIso,
+          status: 'off',
+          total_work_seconds: workSeconds,
+        })
+        .eq('id', existing.id);
+
+      if (updateError) {
+        if (insertedEvent?.id) {
+          await supabase.from('attendance_events').delete().eq('id', insertedEvent.id);
+        }
+        throw updateError;
+      }
+
+      // Attendance.tsx와 동일하게 users.current_status는 null 처리
+      await supabase.from('users').update({ current_status: null }).eq('id', user!.id);
+
+      // 대시보드는 즉시 "퇴근" 표시 되도록 로컬 상태만 off로 갱신(다음 fetchMe에서 DB status(off)로 동기화됨)
+      setUserExtra((prev) => (prev ? { ...prev, current_status: 'off' } : prev));
+    };
+
+
     const existing = await findOpenAttendance();
     if (!existing) throw new Error('출근 기록이 없습니다');
 
