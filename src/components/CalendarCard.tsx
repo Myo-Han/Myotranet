@@ -157,19 +157,26 @@ const CalendarCard: React.FC<CalendarCardProps> = ({
             };
           }}
           eventDidMount={(info) => {
-            console.log('=== eventDidMount 디버깅 ===');
-            console.log('이벤트 제목:', info.event.title);
-            console.log('이벤트 엘리먼트:', info.el);
-            console.log('이벤트 엘리먼트 너비:', info.el.offsetWidth);
-
-            const cell = info.el.closest('.fc-daygrid-day');
-            console.log('부모 셀:', cell);
-            console.log('부모 셀 너비:', cell?.clientWidth);
-
             const titleEl = info.el.querySelector('div');
-            console.log('타이틀 엘리먼트:', titleEl);
-            console.log('타이틀 실제 너비:', titleEl?.scrollWidth);
-            console.log('타이틀 표시 너비:', titleEl?.clientWidth);
+            const cell = info.el.closest('.fc-daygrid-day');
+
+            if (!titleEl || !cell) return;
+
+            const cellWidth = cell.clientWidth - 8; // 패딩 여유
+            const title = info.event.title;
+
+            // 한글 기준 대략적인 너비 계산 (1글자 ≈ 10px at 10px font)
+            let fontSize = 10;
+            const estimatedWidth = title.length * fontSize;
+
+            if (estimatedWidth > cellWidth) {
+              fontSize = Math.max(7, Math.floor(cellWidth / title.length));
+            }
+
+            titleEl.style.fontSize = `${fontSize}px`;
+            titleEl.style.whiteSpace = 'nowrap';
+            titleEl.style.overflow = 'hidden';
+            titleEl.style.textOverflow = 'ellipsis';
           }}
           dayMaxEvents={false}
           dayCellClassNames={(arg) => (holidayDateSet.has(arg.dateStr) ? ['fc-holiday'] : [])}
