@@ -1,8 +1,11 @@
 // 달력
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
+
+const HOLIDAY_API = '/api/calendar/holiday';
+
 
 type CalendarCardProps = {
   title?: string;
@@ -20,6 +23,10 @@ const CalendarCard: React.FC<CalendarCardProps> = ({
   const calRef = useRef<FullCalendar | null>(null);
   const [viewTitle, setViewTitle] = useState<string>('');
 
+  const [holidayEvents, setHolidayEvents] = useState<
+    Array<{ title: string; date?: string; start?: string; end?: string }>
+  >([]);
+
   const headerButtons = useMemo(
     () => ({
       prev: () => calRef.current?.getApi().prev(),
@@ -28,6 +35,25 @@ const CalendarCard: React.FC<CalendarCardProps> = ({
     }),
     []
   );
+
+  useEffect(() => {
+    const ac = new AbortController();
+
+    (async () => {
+      try {
+        const res = await fetch(HOLIDAY_API, { signal: ac.signal });
+        if (!res.ok) throw new Error(`holiday fetch failed: ${res.status}`);
+
+        const data = await res.json();
+        const list = Array.isArray(data) ? data : Array.isArray(data?.events) ? data.events : [];
+        setHolidayEvents(list);
+      } catch (e: any) {
+        if (e?.name !== 'AbortError') console.error(e);
+      }
+    })();
+
+    return () => ac.abort();
+  }, []);
 
   return (
     <div className={`bg-white shadow rounded-lg overflow-hidden flex flex-col ${className}`}>
@@ -76,7 +102,7 @@ const CalendarCard: React.FC<CalendarCardProps> = ({
           expandRows={true}
           height="100%"
           dayMaxEvents={true}
-          events={events}
+          events={holidayEvents}
           datesSet={(arg) => setViewTitle(arg.view.title)}
           dateClick={(arg) => onDateClick?.(arg.dateStr)}
         />
