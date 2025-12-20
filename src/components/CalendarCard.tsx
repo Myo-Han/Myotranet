@@ -46,10 +46,10 @@ const CalendarCard: React.FC<CalendarCardProps> = ({
       return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : undefined;
     };
 
-    for (const e of holidayEvents as any[]) {
-      const d = toDateStr(e.date) || toDateStr(e.start) || toDateStr(e.start?.dateTime) || toDateStr(e.start?.date);
-      if (d) set.add(d);
-    }
+    for (const e of holidayEvents) {
+    const d = toDateStr(e.date) || toDateStr(e.start);
+    if (d) set.add(d);
+  }
 
     return set;
   }, [holidayEvents]);
