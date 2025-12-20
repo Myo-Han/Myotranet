@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabaseClient';
 import { User } from '../types';
 import CalendarCard from '../components/CalendarCard';
+import AttendanceActionButton from '../components/AttendanceActionButton';
 import ProfileModal from '../components/ProfileModal';
 import { ReactionBar } from '../components/reactions';
 import { CommentThread } from '../components/comments';
@@ -353,188 +354,211 @@ const Dashboard: React.FC = () => {
                       </svg>
                     </div>
                   </div>
-              </button>
+                </button>
 
-              {/* ✅ 남은 휴가 */}
-              <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-blue-600">남은 휴가</p>
-                    <p className="text-lg font-semibold text-blue-700 mt-1">
-                      {remainingLeave}일
-                    </p>
-                  </div>
-                  <div className="text-blue-500">
-                    <svg className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                      />
-                    </svg>
+                {/* ✅ 남은 휴가 */}
+                <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-blue-600">남은 휴가</p>
+                      <p className="text-lg font-semibold text-blue-700 mt-1">
+                        {remainingLeave}일
+                      </p>
+                    </div>
+                    <div className="text-blue-500">
+                      <svg className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                        />
+                      </svg>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
+
+        {/* Notice Container */}
+        <div className="bg-white shadow rounded-lg overflow-hidden h-full flex flex-col">
+          <div className="bg-gradient-to-r from-[#5C5E66] to-[#4B4E51] px-6 py-4 flex items-center justify-between">
+            <h2 className="text-xl font-semibold text-white">공지</h2>
+            {notices.length > 0 && (
+              <span className="text-xs text-yellow-100">
+                최근 {notices.length}개 (7일 이내)
+              </span>
+            )}
+          </div>
+          <div className="p-6 space-y-3 flex-1 overflow-y-auto">
+            {notices.length === 0 ? (
+              <p className="text-gray-500 text-sm">최근 7일 이내 공지가 없습니다.</p>
+            ) : (
+              notices.map((notice) => (
+                <button
+                  key={notice.id}
+                  type="button"
+                  onClick={() => {
+                    setSelectedNotice(notice);
+                    setIsNoticeModalOpen(true);
+                  }}
+                  className="w-full text-left border-b last:border-b-0 pb-3 last:pb-0 hover:bg-yellow-50 rounded-md px-2 -mx-2"
+                >
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-semibold text-gray-900">
+                      {notice.title}
+                    </h3>
+                    <span className="text-xs text-gray-400">
+                      {new Date(notice.created_at).toLocaleDateString('ko-KR')}
+                    </span>
+                  </div>
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+
+        <CalendarCard title="캘린더" />
       </div>
 
-      {/* Notice Container */}
-      <div className="bg-white shadow rounded-lg overflow-hidden h-full flex flex-col">
-        <div className="bg-gradient-to-r from-[#5C5E66] to-[#4B4E51] px-6 py-4 flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-white">공지</h2>
-          {notices.length > 0 && (
-            <span className="text-xs text-yellow-100">
-              최근 {notices.length}개 (7일 이내)
-            </span>
-          )}
-        </div>
-        <div className="p-6 space-y-3 flex-1 overflow-y-auto">
-          {notices.length === 0 ? (
-            <p className="text-gray-500 text-sm">최근 7일 이내 공지가 없습니다.</p>
-          ) : (
-            notices.map((notice) => (
+      {/* Quick Actions */}
+      {/* Notice Modal */}
+      {
+        isNoticeModalOpen && selectedNotice && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+            <div className="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4 h-[60vh] overflow-hidden flex flex-col">
+              <div className="px-6 py-3 border-b flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-gray-900">
+                  {selectedNotice.title}
+                </h2>
+                <span className="text-xs text-gray-400">
+                  {new Date(selectedNotice.created_at).toLocaleDateString('ko-KR')}
+                </span>
+              </div>
+              <div className="px-6 py-4 flex-1 overflow-y-auto">
+                <p className="text-sm text-gray-700 whitespace-pre-line">
+                  {selectedNotice.content}
+                </p>
+              </div>
+
+              <div className="px-6 py-3 border-t">
+                <div className="bg-gray-50 rounded-md p-2">
+                  <div className="max-h-20 overflow-y-auto">
+                    <ReactionBar noticeId={selectedNotice.id} />
+                  </div>
+                </div>
+              </div>
+
+              <div className="px-6 py-3 border-t">
+                <div className="max-h-40 overflow-y-auto">
+                  <CommentThread noticeId={selectedNotice.id} />
+                </div>
+              </div>
+              <div className="px-6 py-2 border-t flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setIsNoticeModalOpen(false)}
+                  className="px-4 py-1.5 rounded-md bg-gray-800 text-white text-sm"
+                >
+                  닫기
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      }
+      {/* 출퇴근 Modal */}
+      {showWorkActionModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 overflow-hidden">
+            <div className="px-6 py-3 border-b flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-gray-900">상태 변경</h2>
               <button
-                key={notice.id}
                 type="button"
-                onClick={() => {
-                  setSelectedNotice(notice);
-                  setIsNoticeModalOpen(true);
-                }}
-                className="w-full text-left border-b last:border-b-0 pb-3 last:pb-0 hover:bg-yellow-50 rounded-md px-2 -mx-2"
+                onClick={() => setShowWorkActionModal(false)}
+                className="px-3 py-1.5 rounded-md bg-gray-800 text-white text-sm"
               >
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-gray-900">
-                    {notice.title}
-                  </h3>
-                  <span className="text-xs text-gray-400">
-                    {new Date(notice.created_at).toLocaleDateString('ko-KR')}
-                  </span>
-                </div>
+                닫기
               </button>
-            ))
-          )}
-        </div>
-      </div>
+            </div>
 
-      <CalendarCard title="캘린더" />
-    </div>
-
-      {/* Quick Actions */ }
-  {/* Notice Modal */ }
-  {
-    isNoticeModalOpen && selectedNotice && (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-        <div className="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4 h-[60vh] overflow-hidden flex flex-col">
-          <div className="px-6 py-3 border-b flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900">
-              {selectedNotice.title}
-            </h2>
-            <span className="text-xs text-gray-400">
-              {new Date(selectedNotice.created_at).toLocaleDateString('ko-KR')}
-            </span>
-          </div>
-          <div className="px-6 py-4 flex-1 overflow-y-auto">
-            <p className="text-sm text-gray-700 whitespace-pre-line">
-              {selectedNotice.content}
-            </p>
-          </div>
-
-          <div className="px-6 py-3 border-t">
-            <div className="bg-gray-50 rounded-md p-2">
-              <div className="max-h-20 overflow-y-auto">
-                <ReactionBar noticeId={selectedNotice.id} />
-              </div>
+            <div className="p-6 flex gap-2">
+              <AttendanceActionButton label="출근" onClick={() => navigate('/attendance')} />
+              <AttendanceActionButton label="업무중지" onClick={() => navigate('/attendance')} />
+              <AttendanceActionButton label="업무재개" onClick={() => navigate('/attendance')} />
             </div>
           </div>
-
-          <div className="px-6 py-3 border-t">
-            <div className="max-h-40 overflow-y-auto">
-              <CommentThread noticeId={selectedNotice.id} />
-            </div>
-          </div>
-          <div className="px-6 py-2 border-t flex justify-end">
-            <button
-              type="button"
-              onClick={() => setIsNoticeModalOpen(false)}
-              className="px-4 py-1.5 rounded-md bg-gray-800 text-white text-sm"
-            >
-              닫기
-            </button>
-          </div>
         </div>
-      </div>
-    )
-  }
+      )}
 
-  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-    <button
-      onClick={() => navigate('/attendance')}
-      className="bg-white p-6 rounded-lg shadow hover:shadow-md transition duration-200 text-left"
-    >
-      <div className="text-blue-600 mb-3">
-        <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-      </div>
-      <h3 className="text-lg font-semibold text-gray-900">출퇴근 관리</h3>
-      <p className="text-sm text-gray-500 mt-1">출근, 퇴근, 조퇴 기록</p>
-    </button>
-    <a
-      href="https://www.notion.so/2ce8b0cc5ed08039a648ecbcb2cb5ee8?source=copy_link"
-      target="_blank"
-      rel="noopener noreferrer"
-      className="bg-white p-6 rounded-lg shadow hover:shadow-md transition duration-200 text-left block"
-    >
-      <div className="text-orange-600 mb-3">
-        <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-        </svg>
-      </div>
-      <h3 className="text-lg font-semibold text-gray-900">운영툴 제안</h3>
-      <p className="text-sm text-gray-500 mt-1">버그 / 기능 개선 제안</p>
-    </a>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <button
+          onClick={() => navigate('/attendance')}
+          className="bg-white p-6 rounded-lg shadow hover:shadow-md transition duration-200 text-left"
+        >
+          <div className="text-blue-600 mb-3">
+            <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900">출퇴근 관리</h3>
+          <p className="text-sm text-gray-500 mt-1">출근, 퇴근, 조퇴 기록</p>
+        </button>
+        <a
+          href="https://www.notion.so/2ce8b0cc5ed08039a648ecbcb2cb5ee8?source=copy_link"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="bg-white p-6 rounded-lg shadow hover:shadow-md transition duration-200 text-left block"
+        >
+          <div className="text-orange-600 mb-3">
+            <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900">운영툴 제안</h3>
+          <p className="text-sm text-gray-500 mt-1">버그 / 기능 개선 제안</p>
+        </a>
 
-    <button
-      onClick={() => navigate('/letters')}
-      className="bg-white p-6 rounded-lg shadow hover:shadow-md transition duration-200 text-left"
-    >
-      <div className="text-purple-600 mb-3">
-        <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-        </svg>
-      </div>
-      <h3 className="text-lg font-semibold text-gray-900">마음의 편지</h3>
-      <p className="text-sm text-gray-500 mt-1">익명 또는 실명 편지</p>
-    </button>
+        <button
+          onClick={() => navigate('/letters')}
+          className="bg-white p-6 rounded-lg shadow hover:shadow-md transition duration-200 text-left"
+        >
+          <div className="text-purple-600 mb-3">
+            <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900">마음의 편지</h3>
+          <p className="text-sm text-gray-500 mt-1">익명 또는 실명 편지</p>
+        </button>
 
-    <button
-      onClick={() => navigate('/search')}
-      className="bg-white p-6 rounded-lg shadow hover:shadow-md transition duration-200 text-left"
-    >
-      <div className="text-indigo-600 mb-3">
-        <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-        </svg>
+        <button
+          onClick={() => navigate('/search')}
+          className="bg-white p-6 rounded-lg shadow hover:shadow-md transition duration-200 text-left"
+        >
+          <div className="text-indigo-600 mb-3">
+            <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900">직원 검색</h3>
+          <p className="text-sm text-gray-500 mt-1">상세 프로필 조회</p>
+        </button>
       </div>
-      <h3 className="text-lg font-semibold text-gray-900">직원 검색</h3>
-      <p className="text-sm text-gray-500 mt-1">상세 프로필 조회</p>
-    </button>
-  </div>
 
-  {/* 프로필 모달 */ }
-  {
-    user && (
-      <ProfileModal
-        isOpen={showProfileModal}
-        onClose={() => setShowProfileModal(false)}
-        userId={user.id}
-        currentUserId={user.id}
-      />
-    )
-  }
+      {/* 프로필 모달 */}
+      {
+        user && (
+          <ProfileModal
+            isOpen={showProfileModal}
+            onClose={() => setShowProfileModal(false)}
+            userId={user.id}
+            currentUserId={user.id}
+          />
+        )
+      }
     </div >
   );
 };
