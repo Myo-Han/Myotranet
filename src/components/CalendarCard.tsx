@@ -147,15 +147,6 @@ const CalendarCard: React.FC<CalendarCardProps> = ({
               textColor: '#000000'
             }))
           ]}
-          eventContent={(arg) => {
-            const title = arg.event.title;
-            const maxLength = 6;
-            const fontSize = title.length > maxLength ? '9px' : '10px';
-
-            return {
-              html: `<div style="font-size: ${fontSize}; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${title}</div>`
-            };
-          }}
           eventDidMount={(info) => {
             const titleEl = info.el.querySelector('div');
             const cell = info.el.closest('.fc-daygrid-day');
