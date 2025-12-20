@@ -124,13 +124,14 @@ const CalendarCard: React.FC<CalendarCardProps> = ({
           events={holidayEvents}
           dayCellClassNames={(arg) => (holidayDateSet.has(arg.dateStr) ? ['fc-holiday'] : [])}
           dayCellDidMount={(arg) => {
-            console.log('🎯 dayCellDidMount:', arg.dateStr, 'holidayDateSet.has:', holidayDateSet.has(arg.dateStr));
+            const dateStr = arg.el.getAttribute('data-date');
+            console.log('🎯 dayCellDidMount dateStr:', dateStr, 'holidayDateSet.has:', holidayDateSet.has(dateStr || ''));
 
             const num = arg.el.querySelector('.fc-daygrid-day-number') as HTMLElement | null;
             if (!num) return;
 
-            if (holidayDateSet.has(arg.dateStr)) {
-              console.log('🔴 공휴일 색상 적용:', arg.dateStr);
+            if (dateStr && holidayDateSet.has(dateStr)) {
+              console.log('🔴 공휴일 색상 적용:', dateStr);
               num.style.color = '#ef4444';
               num.style.fontWeight = '600';
               return;
