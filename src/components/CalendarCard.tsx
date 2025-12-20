@@ -131,12 +131,26 @@ const CalendarCard: React.FC<CalendarCardProps> = ({
           fixedWeekCount={true}
           expandRows={true}
           height="100%"
-          dayMaxEvents={false}
           eventDisplay="block"
           events={[
-            ...holidayEvents.map(e => ({ ...e, display: 'background', color: 'transparent', textColor: '#ef4444' })),
-            ...myohanEvents.map(e => ({ ...e, display: 'background', color: 'transparent', textColor: '#000000' }))
+            ...holidayEvents.map(e => ({
+              ...e,
+              display: 'list-item',
+              backgroundColor: 'transparent',
+              borderColor: 'transparent',
+              textColor: '#ef4444',
+              classNames: ['holiday-event']
+            })),
+            ...myohanEvents.map(e => ({
+              ...e,
+              display: 'list-item',
+              backgroundColor: 'transparent',
+              borderColor: 'transparent',
+              textColor: '#000000',
+              classNames: ['myohan-event']
+            }))
           ]}
+          dayMaxEvents={false}
           dayCellClassNames={(arg) => (holidayDateSet.has(arg.dateStr) ? ['fc-holiday'] : [])}
           dayCellDidMount={(arg) => {
             const dateStr = arg.el.getAttribute('data-date');
