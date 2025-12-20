@@ -36,14 +36,21 @@ const CalendarCard: React.FC<CalendarCardProps> = ({
     []
   );
 
-  const holidayDateSet = useMemo(() => {
+    const holidayDateSet = useMemo(() => {
     const set = new Set<string>();
-    for (const e of holidayEvents) {
-      const d =
-        (e as any).date ||
-        (typeof (e as any).start === 'string' ? (e as any).start.slice(0, 10) : undefined);
+
+    const toDateStr = (v?: string) => {
+      if (!v) return undefined;
+      // 2025-01-01 or 2025-01-01T00:00:00Z -> 2025-01-01
+      const s = v.slice(0, 10);
+      return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : undefined;
+    };
+
+    for (const e of holidayEvents as any[]) {
+      const d = toDateStr(e.date) || toDateStr(e.start) || toDateStr(e.start?.dateTime) || toDateStr(e.start?.date);
       if (d) set.add(d);
     }
+
     return set;
   }, [holidayEvents]);
 
