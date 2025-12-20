@@ -130,7 +130,8 @@ const CalendarCard: React.FC<CalendarCardProps> = ({
           headerToolbar={false}
           fixedWeekCount={true}
           expandRows={true}
-          height="100%"
+          height="auto"
+          contentHeight="auto"
           eventDisplay="block"
           events={[
             ...holidayEvents.map(e => ({
@@ -147,7 +148,13 @@ const CalendarCard: React.FC<CalendarCardProps> = ({
             }))
           ]}
           eventContent={(arg) => {
-            return { html: `<div style="font-size: 10px; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${arg.event.title}</div>` };
+            const title = arg.event.title;
+            const maxLength = 6;
+            const fontSize = title.length > maxLength ? '9px' : '10px';
+
+            return {
+              html: `<div style="font-size: ${fontSize}; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${title}</div>`
+            };
           }}
           dayMaxEvents={false}
           dayCellClassNames={(arg) => (holidayDateSet.has(arg.dateStr) ? ['fc-holiday'] : [])}
