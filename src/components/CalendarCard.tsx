@@ -36,7 +36,7 @@ const CalendarCard: React.FC<CalendarCardProps> = ({
     []
   );
 
-    const holidayDateSet = useMemo(() => {
+  const holidayDateSet = useMemo(() => {
     const set = new Set<string>();
 
     const toDateStr = (v?: string) => {
@@ -110,6 +110,7 @@ const CalendarCard: React.FC<CalendarCardProps> = ({
 
       <div className="p-4 flex-1 min-h-0">
         <FullCalendar
+          key={holidayEvents.length}
           ref={(r) => { calRef.current = r; }}
           plugins={[dayGridPlugin, interactionPlugin]}
           initialView="dayGridMonth"
