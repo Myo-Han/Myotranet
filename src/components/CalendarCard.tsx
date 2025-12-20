@@ -47,9 +47,9 @@ const CalendarCard: React.FC<CalendarCardProps> = ({
     };
 
     for (const e of holidayEvents) {
-    const d = toDateStr(e.date) || toDateStr(e.start);
-    if (d) set.add(d);
-  }
+      const d = toDateStr(e.date) || toDateStr(e.start);
+      if (d) set.add(d);
+    }
 
     return set;
   }, [holidayEvents]);
@@ -110,7 +110,7 @@ const CalendarCard: React.FC<CalendarCardProps> = ({
 
       <div className="p-4 flex-1 min-h-0">
         <FullCalendar
-          key={holidayEvents.length}
+          key={`cal-${holidayDateSet.size}`}
           ref={(r) => { calRef.current = r; }}
           plugins={[dayGridPlugin, interactionPlugin]}
           initialView="dayGridMonth"
