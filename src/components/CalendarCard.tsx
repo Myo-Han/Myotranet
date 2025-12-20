@@ -38,21 +38,12 @@ const CalendarCard: React.FC<CalendarCardProps> = ({
 
   const holidayDateSet = useMemo(() => {
     const set = new Set<string>();
-
-    const toDateStr = (v?: string) => {
-      if (!v) return undefined;
-      // 2025-01-01 or 2025-01-01T00:00:00Z -> 2025-01-01
-      const s = v.slice(0, 10);
-      return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : undefined;
-    };
-
-    for (const e of holidayEvents as any[]) {
-      const d = toDateStr(e.date) || toDateStr(e.start) || toDateStr(e.start?.dateTime) || toDateStr(e.start?.date);
-      if (d) set.add(d);
+    for (const e of events as any[]) {
+      const raw = e.date ?? e.start;
+      if (typeof raw === 'string' && raw.length >= 10) set.add(raw.slice(0, 10));
     }
-
     return set;
-  }, [holidayEvents]);
+  }, [events]);
 
   useEffect(() => {
     const ac = new AbortController();
@@ -110,8 +101,10 @@ const CalendarCard: React.FC<CalendarCardProps> = ({
 
       <div className="p-4 flex-1 min-h-0">
         <FullCalendar
-          key={holidayEvents.length}
-          ref={(r) => { calRef.current = r; }}
+          key={holidayDateSet.size}  // ✅ 휴일 데이터 로드 후 날짜색 반영 보장
+          ref={(r) => {
+            calRef.current = r;
+          }}
           plugins={[dayGridPlugin, interactionPlugin]}
           initialView="dayGridMonth"
           headerToolbar={false}
@@ -119,8 +112,23 @@ const CalendarCard: React.FC<CalendarCardProps> = ({
           expandRows={true}
           height="100%"
           dayMaxEvents={true}
-          events={holidayEvents}
-          dayCellClassNames={(arg) => (holidayDateSet.has(arg.dateStr) ? ['fc-holiday'] : [])}
+          events={events}
+          dayCellDidMount={(arg) => {
+            const num = arg.el.querySelector('.fc-daygrid-day-number') as HTMLElement | null;
+            if (!num) return;
+
+            // ✅ 공휴일은 무조건 빨강
+            if (holidayDateSet.has(arg.dateStr)) {
+              num.style.color = '#ef4444';
+              num.style.fontWeight = '600';
+              return;
+            }
+
+            // ✅ 토/일 색
+            const dow = arg.date.getDay(); // 0=일,6=토
+            if (dow === 6) num.style.color = '#2563eb';
+            if (dow === 0) num.style.color = '#ef4444';
+          }}
           datesSet={(arg) => setViewTitle(arg.view.title)}
           dateClick={(arg) => onDateClick?.(arg.dateStr)}
         />
