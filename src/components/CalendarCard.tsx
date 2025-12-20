@@ -36,6 +36,17 @@ const CalendarCard: React.FC<CalendarCardProps> = ({
     []
   );
 
+  const holidayDateSet = useMemo(() => {
+    const set = new Set<string>();
+    for (const e of holidayEvents) {
+      const d =
+        (e as any).date ||
+        (typeof (e as any).start === 'string' ? (e as any).start.slice(0, 10) : undefined);
+      if (d) set.add(d);
+    }
+    return set;
+  }, [holidayEvents]);
+
   useEffect(() => {
     const ac = new AbortController();
 
@@ -92,9 +103,7 @@ const CalendarCard: React.FC<CalendarCardProps> = ({
 
       <div className="p-4 flex-1 min-h-0">
         <FullCalendar
-          ref={(r) => {
-            calRef.current = r;
-          }}
+          ref={(r) => { calRef.current = r; }}
           plugins={[dayGridPlugin, interactionPlugin]}
           initialView="dayGridMonth"
           headerToolbar={false}
@@ -103,6 +112,7 @@ const CalendarCard: React.FC<CalendarCardProps> = ({
           height="100%"
           dayMaxEvents={true}
           events={holidayEvents}
+          dayCellClassNames={(arg) => (holidayDateSet.has(arg.dateStr) ? ['fc-holiday'] : [])}
           datesSet={(arg) => setViewTitle(arg.view.title)}
           dateClick={(arg) => onDateClick?.(arg.dateStr)}
         />

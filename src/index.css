@@ -21,4 +21,13 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
 }
 
+.fc .fc-day-sat .fc-daygrid-day-number { color: #2563eb; }
 
+/* 일요일 빨강 */
+.fc .fc-day-sun .fc-daygrid-day-number { color: #ef4444; }
+
+/* 공휴일은 빨강(토요일이어도 빨강 우선) */
+.fc .fc-daygrid-day.fc-holiday .fc-daygrid-day-number {
+  color: #ef4444;
+  font-weight: 600;
+}
