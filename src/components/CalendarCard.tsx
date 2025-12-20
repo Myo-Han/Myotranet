@@ -5,6 +5,7 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
 
 const HOLIDAY_API = '/api/calendar/holiday';
+const MYOHAN_API = '/api/calendar/myohancalendar';
 
 
 type CalendarCardProps = {
@@ -24,6 +25,10 @@ const CalendarCard: React.FC<CalendarCardProps> = ({
   const [viewTitle, setViewTitle] = useState<string>('');
 
   const [holidayEvents, setHolidayEvents] = useState<
+    Array<{ title: string; date?: string; start?: string; end?: string }>
+  >([]);
+
+  const [myohanEvents, setMyohanEvents] = useState<
     Array<{ title: string; date?: string; start?: string; end?: string }>
   >([]);
 
@@ -52,18 +57,27 @@ const CalendarCard: React.FC<CalendarCardProps> = ({
 
     return set;
   }, [holidayEvents]);
-  
+
   useEffect(() => {
     const ac = new AbortController();
 
     (async () => {
       try {
-        const res = await fetch(HOLIDAY_API, { signal: ac.signal });
-        if (!res.ok) throw new Error(`holiday fetch failed: ${res.status}`);
+        const [hRes, mRes] = await Promise.all([
+          fetch(HOLIDAY_API, { signal: ac.signal }),
+          fetch(MYOHAN_API, { signal: ac.signal }),
+        ]);
 
-        const data = await res.json();
-        const list = Array.isArray(data) ? data : Array.isArray(data?.events) ? data.events : [];
-        setHolidayEvents(list);
+        if (!hRes.ok) throw new Error(`holiday fetch failed: ${hRes.status}`);
+        if (!mRes.ok) throw new Error(`myohan fetch failed: ${mRes.status}`);
+
+        const hData = await hRes.json();
+        const hList = Array.isArray(hData) ? hData : Array.isArray(hData?.events) ? hData.events : [];
+        setHolidayEvents(hList);
+
+        const mData = await mRes.json();
+        const mList = Array.isArray(mData) ? mData : Array.isArray(mData?.events) ? mData.events : [];
+        setMyohanEvents(mList);
       } catch (e: any) {
         if (e?.name !== 'AbortError') console.error(e);
       }
@@ -118,7 +132,7 @@ const CalendarCard: React.FC<CalendarCardProps> = ({
           expandRows={true}
           height="100%"
           dayMaxEvents={true}
-          events={holidayEvents}
+          events={[...holidayEvents, ...myohanEvents]}
           dayCellClassNames={(arg) => (holidayDateSet.has(arg.dateStr) ? ['fc-holiday'] : [])}
           dayCellDidMount={(arg) => {
             const dateStr = arg.el.getAttribute('data-date');
