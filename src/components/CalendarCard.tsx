@@ -41,16 +41,18 @@ const CalendarCard: React.FC<CalendarCardProps> = ({
 
     const toDateStr = (v?: string) => {
       if (!v) return undefined;
-      // 2025-01-01 or 2025-01-01T00:00:00Z -> 2025-01-01
       const s = v.slice(0, 10);
       return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : undefined;
     };
 
     for (const e of holidayEvents) {
+      console.log('🔍 이벤트:', e);  // 이벤트 구조 확인
       const d = toDateStr(e.date) || toDateStr(e.start);
+      console.log('📅 추출된 날짜:', d);  // 날짜 추출 확인
       if (d) set.add(d);
     }
 
+    console.log('✅ holidayDateSet:', Array.from(set));  // 최종 Set 확인
     return set;
   }, [holidayEvents]);
 
@@ -122,18 +124,19 @@ const CalendarCard: React.FC<CalendarCardProps> = ({
           events={holidayEvents}
           dayCellClassNames={(arg) => (holidayDateSet.has(arg.dateStr) ? ['fc-holiday'] : [])}
           dayCellDidMount={(arg) => {
+            console.log('🎯 dayCellDidMount:', arg.dateStr, 'holidayDateSet.has:', holidayDateSet.has(arg.dateStr));
+
             const num = arg.el.querySelector('.fc-daygrid-day-number') as HTMLElement | null;
             if (!num) return;
 
-            // 공휴일(빨강 우선)
             if (holidayDateSet.has(arg.dateStr)) {
+              console.log('🔴 공휴일 색상 적용:', arg.dateStr);
               num.style.color = '#ef4444';
               num.style.fontWeight = '600';
               return;
             }
 
-            // 주말
-            const dow = arg.date.getDay(); // 0=일, 6=토
+            const dow = arg.date.getDay();
             if (dow === 0) num.style.color = '#ef4444';
             if (dow === 6) num.style.color = '#2563eb';
           }}
