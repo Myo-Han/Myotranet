@@ -11,16 +11,16 @@ interface LettersModalProps {
 
 const LettersModal: React.FC<LettersModalProps> = ({ isOpen, onClose }) => {
   const handleClose = () => {
-    setForm({ title: '', content: '', isAnonymous: true });
+    setForm({ title: '', body: '', isAnonymous: true });
     onClose();
   };
   const { user } = useAuth();
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [form, setForm] = useState({ title: '', content: '', isAnonymous: true });
+  const [form, setForm] = useState({ title: '', body: '', isAnonymous: true });
 
   const submitLetter = async () => {
-    if (!form.title || !form.content) return;
+    if (!form.title || !form.body) return;
     try {
       const { error } = await supabase.from('letters').insert([{
         ...form,
@@ -29,7 +29,7 @@ const LettersModal: React.FC<LettersModalProps> = ({ isOpen, onClose }) => {
       }]);
       if (error) throw error;
       setSuccess('편지가 전송되었습니다.');
-      setForm({ title: '', content: '', isAnonymous: false });
+      setForm({ title: '', body: '', isAnonymous: false });
     } catch (err: any) {
       setError(err.message);
     }
@@ -62,8 +62,8 @@ const LettersModal: React.FC<LettersModalProps> = ({ isOpen, onClose }) => {
           <textarea
             className="w-full mb-2 p-2 border rounded h-32"
             placeholder="내용"
-            value={form.content}
-            onChange={e => setForm({ ...form, content: e.target.value })}
+            value={form.body}
+            onChange={e => setForm({ ...form, body: e.target.value })}
           />
           <div className="flex items-center mb-4">
             <input
