@@ -13,6 +13,7 @@ import TodoManager from '../components/TodoManager';
 import MemoManager from '../components/MemoManager';
 import LeaveEmployeeOverview from '../components/LeaveEmployeeOverview';
 import LeaveBalanceAdjust from '../components/LeaveBalanceAdjust';
+import LettersInbox from '../components/LettersInbox';
 
 type WorkMenuItem = {
   id: string;
@@ -452,11 +453,15 @@ const Work: React.FC = () => {
           )}
 
           {selectedMenu === 'leave_adjust' && (
-              <LeaveBalanceAdjust />
+            <LeaveBalanceAdjust />
           )}
 
           {selectedMenu === 'leave_overview' && (
-              <LeaveEmployeeOverview />
+            <LeaveEmployeeOverview />
+          )}
+
+          {selectedMenu === 'letters-inbox' && (
+            <LettersInbox />
           )}
 
           {submitting && (
