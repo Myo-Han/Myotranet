@@ -19,8 +19,7 @@ const Login: React.FC = () => {
       <div className="max-w-md w-full space-y-8 p-8 bg-white rounded-xl shadow-2xl">
         <div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            {/*묘한 운영툴*/}
-            고장남 댕빡침
+            묘한 운영툴
           </h2>
         </div>
 
@@ -39,22 +38,25 @@ const Login: React.FC = () => {
         <div className="mt-8 space-y-6">
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 max-h-40 overflow-y-auto">
             <h3 className="text-sm font-medium text-blue-900 mb-2">
-              25.12.17 03:45 패치노트
+              25.12.21 20:31 패치노트
             </h3>
 
-            <p className="text-xs font-semibold text-blue-900 mb-1">기능 추가</p>
+            <p className="text-xs font-semibold text-blue-900 mb-1">변경 사항</p>
             <ul className="text-sm text-blue-700 space-y-1 mb-3">
-              <li>• [관리자] 이모지 관리 기능 추가</li>
-              <li>• [공지] 스레드 기능 추가</li>
-              <li>• [공지] 이모지 기능 추가</li>
-              <li>• 해외 아이피 차단</li>
-              <li>• 브라우저 외 프로그램 차단</li>
-              <li>• AI 크롤러/스크래퍼 봇 차단</li>
+              <li>• [대시보드] '운영툴 제안' 버튼 링크 변경</li>
+              <li>• [대시보드] 캘린터 헤더 컨테이너 크기 통일</li>
+              <li>• [대시보드] 헤더 컨테이너 색상 변경</li>
+              <li>• [대시보드] '상태' 출퇴근 기능 추가</li>
+              <li>• [대시보드] 구글 캘린더 연동 (공휴일, 회사 캘린더)</li>
+              <li>• [마음의 편지] 페이지 → 모달 방식 변경</li>
+              <li>• [업무] 마음의 편지 수신함 추가</li>
+              <li>• [직원 검색] 페이지 → 모달 방식 변경</li>
+              <li>• 테스트 개발 환경 구축</li>
             </ul>
 
             <p className="text-xs font-semibold text-blue-900 mb-1">버그 수정</p>
             <ul className="text-sm text-blue-700 space-y-1">
-              <li>• [대시보드] 한박자 늦게 로드되는 문제 해결 (캐싱 적용)</li>
+              <li>• [로그인] 세션 문제 해결</li>
             </ul>
           </div>
 
