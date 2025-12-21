@@ -14,6 +14,8 @@ import MemoManager from '../components/MemoManager';
 import LeaveEmployeeOverview from '../components/LeaveEmployeeOverview';
 import LeaveBalanceAdjust from '../components/LeaveBalanceAdjust';
 import LettersInbox from '../components/LettersInbox';
+import AttendanceRevisionInbox from '../components/AttendanceRevisionInbox';
+import AttendanceAdminEditor from '../components/AttendanceAdminEditor';
 
 type WorkMenuItem = {
   id: string;
@@ -462,6 +464,14 @@ const Work: React.FC = () => {
 
           {selectedMenu === 'letters-inbox' && (
             <LettersInbox />
+          )}
+
+          {selectedMenu === 'attendance-revision-inbox' && (
+            <AttendanceRevisionInbox />
+          )}
+
+          {selectedMenu === 'attendance-admin-editor' && (
+            <AttendanceAdminEditor />
           )}
 
           {submitting && (
