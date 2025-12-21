@@ -1,8 +1,10 @@
 // 마편수신함
 import React, { useEffect, useMemo, useState } from 'react';
+import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabaseClient';
 import Loading from './Loading';
 import ErrorMessage from './ErrorMessage';
+import ProfileModal from './ProfileModal';
 
 type LetterRow = {
   id: number | string;
@@ -12,9 +14,12 @@ type LetterRow = {
   is_anonymous: boolean;
   created_at: string;
   from_name: string | null;
+  from_profile_picture: string | null;
 };
 
 const LettersInbox: React.FC = () => {
+  const { user } = useAuth();
+
   const [letters, setLetters] = useState<LetterRow[]>([]);
   const [selected, setSelected] = useState<LetterRow | null>(null);
 
@@ -23,15 +28,30 @@ const LettersInbox: React.FC = () => {
 
   const [query, setQuery] = useState('');
 
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [selectedProfileUserId, setSelectedProfileUserId] = useState<string | null>(null);
+
+  const openProfileModal = (targetUserId: string) => {
+    setSelectedProfileUserId(targetUserId);
+    setShowProfileModal(true);
+  };
+
+  const closeProfileModal = () => {
+    setShowProfileModal(false);
+    setSelectedProfileUserId(null);
+  };
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return letters;
     return letters.filter((l) => {
-      const authorText = l.is_anonymous ? '익명' : (l.from_name || '');
+      const label = l.is_anonymous ? '익명' : '실명';
+      const name = l.from_name || '';
       return (
         (l.title || '').toLowerCase().includes(q) ||
         (l.body || '').toLowerCase().includes(q) ||
-        authorText.toLowerCase().includes(q)
+        label.toLowerCase().includes(q) ||
+        name.toLowerCase().includes(q)
       );
     });
   }, [letters, query]);
@@ -47,35 +67,46 @@ const LettersInbox: React.FC = () => {
 
       if (error) throw error;
 
-      const base = (data ?? []) as Omit<LetterRow, 'from_name'>[];
+      const base = (data ?? []) as Array<{
+        id: number | string;
+        title: string;
+        body: string;
+        from_user_id: string | null;
+        is_anonymous: boolean;
+        created_at: string;
+      }>;
 
       const userIds = Array.from(
-        new Set(
-          base
-            .map((x) => x.from_user_id)
-            .filter((v): v is string => !!v)
-        )
+        new Set(base.map((x) => x.from_user_id).filter((v): v is string => !!v))
       );
 
-      let nameMap = new Map<string, string>();
+      const nameMap = new Map<string, string>();
+      const picMap = new Map<string, string>();
 
       if (userIds.length > 0) {
-        const { data: profiles, error: pErr } = await supabase
+        const { data: usersData, error: usersError } = await supabase
           .from('users')
-          .select('id, name')
+          .select('id, name, profile_picture')
           .in('id', userIds);
 
-        if (pErr) throw pErr;
+        if (usersError) throw usersError;
 
-        (profiles ?? []).forEach((p: any) => {
-          if (p?.id) nameMap.set(String(p.id), String(p.name ?? ''));
+        (usersData ?? []).forEach((u: any) => {
+          const id = u?.id ? String(u.id) : '';
+          if (!id) return;
+          if (u?.name) nameMap.set(id, String(u.name));
+          if (u?.profile_picture) picMap.set(id, String(u.profile_picture));
         });
       }
 
-      const next: LetterRow[] = base.map((l) => ({
-        ...l,
-        from_name: l.from_user_id ? (nameMap.get(String(l.from_user_id)) ?? null) : null,
-      }));
+      const next: LetterRow[] = base.map((l) => {
+        const uid = l.from_user_id ? String(l.from_user_id) : '';
+        return {
+          ...l,
+          from_name: uid ? (nameMap.get(uid) ?? null) : null,
+          from_profile_picture: uid ? (picMap.get(uid) ?? null) : null,
+        };
+      });
 
       setLetters(next);
 
@@ -91,6 +122,7 @@ const LettersInbox: React.FC = () => {
       setLoading(false);
     }
   };
+
 
   useEffect(() => {
     fetchLetters();
@@ -157,9 +189,35 @@ const LettersInbox: React.FC = () => {
                           {new Date(l.created_at).toLocaleDateString('ko-KR')}
                         </div>
                       </div>
-                      <div className="mt-1 text-xs text-gray-500">
-                        From: {l.is_anonymous ? '익명' : (l.from_name || '이름없음')}
+                      <div className="mt-1 text-xs text-gray-500 flex items-center gap-2">
+                        <span>From:</span>
+                        {l.is_anonymous ? (
+                          <span>익명</span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (l.from_user_id) openProfileModal(l.from_user_id);
+                            }}
+                            className="flex items-center gap-2 bg-transparent p-0 border-0 cursor-pointer"
+                          >
+                            {l.from_profile_picture ? (
+                              <img
+                                src={l.from_profile_picture}
+                                className="h-6 w-6 rounded-full object-cover"
+                                alt="profile"
+                              />
+                            ) : (
+                              <div className="h-6 w-6 rounded-full bg-gray-300 flex items-center justify-center text-[10px] font-semibold text-gray-600">
+                                {l.from_name?.charAt(0).toUpperCase() || '?'}
+                              </div>
+                            )}
+                            <span className="underline underline-offset-2">{l.from_name || '이름없음'}</span>
+                          </button>
+                        )}
                       </div>
+
                       <div className="mt-2 text-sm text-gray-600 line-clamp-2">{l.body}</div>
                     </button>
                   );
@@ -181,9 +239,32 @@ const LettersInbox: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="text-sm text-gray-600">
-                  <span className="font-medium text-gray-800">From:</span>{' '}
-                  {selected.is_anonymous ? '익명' : (selected.from_name || '이름없음')}
+                <div className="text-sm text-gray-600 flex items-center gap-2">
+                  <span className="font-medium text-gray-800">From:</span>
+                  {selected.is_anonymous ? (
+                    <span>익명</span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (selected.from_user_id) openProfileModal(selected.from_user_id);
+                      }}
+                      className="flex items-center gap-2 bg-transparent p-0 border-0 cursor-pointer"
+                    >
+                      {selected.from_profile_picture ? (
+                        <img
+                          src={selected.from_profile_picture}
+                          className="h-7 w-7 rounded-full object-cover"
+                          alt="profile"
+                        />
+                      ) : (
+                        <div className="h-7 w-7 rounded-full bg-gray-300 flex items-center justify-center text-xs font-semibold text-gray-600">
+                          {selected.from_name?.charAt(0).toUpperCase() || '?'}
+                        </div>
+                      )}
+                      <span className="underline underline-offset-2">{selected.from_name || '이름없음'}</span>
+                    </button>
+                  )}
                 </div>
 
                 <div className="border rounded-lg p-4 bg-gray-50">
@@ -193,6 +274,15 @@ const LettersInbox: React.FC = () => {
             )}
           </div>
         </div>
+      )}
+      {user && showProfileModal && selectedProfileUserId && (
+        <ProfileModal
+          isOpen={showProfileModal}
+          onClose={closeProfileModal}
+          userId={selectedProfileUserId}
+          currentUserId={user.id}
+          readOnly
+        />
       )}
     </div>
   );
