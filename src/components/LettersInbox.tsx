@@ -8,7 +8,7 @@ type LetterRow = {
   id: number | string;
   title: string;
   body: string;
-  author_name: string | null;
+  to_user_id: string | null;
   created_at: string;
 };
 
@@ -28,7 +28,7 @@ const LettersInbox: React.FC = () => {
       return (
         (l.title || '').toLowerCase().includes(q) ||
         (l.body || '').toLowerCase().includes(q) ||
-        (l.author_name || '').toLowerCase().includes(q)
+        (l.to_user_id || '').toLowerCase().includes(q)
       );
     });
   }, [letters, query]);
@@ -39,7 +39,7 @@ const LettersInbox: React.FC = () => {
     try {
       const { data, error } = await supabase
         .from('letters')
-        .select('id, title, body, author_name, created_at')
+        .select('id, title, body, to_user_id, created_at')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -127,7 +127,7 @@ const LettersInbox: React.FC = () => {
                         </div>
                       </div>
                       <div className="mt-1 text-xs text-gray-500">
-                        From: {l.author_name || '익명'}
+                        From: {l.to_user_id || '익명'}
                       </div>
                       <div className="mt-2 text-sm text-gray-600 line-clamp-2">{l.body}</div>
                     </button>
@@ -152,7 +152,7 @@ const LettersInbox: React.FC = () => {
 
                 <div className="text-sm text-gray-600">
                   <span className="font-medium text-gray-800">From:</span>{' '}
-                  {selected.author_name || '익명'}
+                  {selected.to_user_id || '익명'}
                 </div>
 
                 <div className="border rounded-lg p-4 bg-gray-50">
