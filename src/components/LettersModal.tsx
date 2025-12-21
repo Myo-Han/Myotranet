@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabaseClient';
-import { Letter } from '../types';
-import Loading from './Loading';
 import ErrorMessage from './ErrorMessage';
 import SuccessMessage from './SuccessMessage';
 
@@ -17,31 +15,9 @@ const LettersModal: React.FC<LettersModalProps> = ({ isOpen, onClose }) => {
     onClose();
   };
   const { user } = useAuth();
-  const [letters, setLetters] = useState<Letter[]>([]);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [form, setForm] = useState({ title: '', content: '', isAnonymous: true });
-
-  useEffect(() => {
-    if (isOpen) fetchLetters();
-  }, [isOpen]);
-
-  const fetchLetters = async () => {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('letters')
-        .select('*')
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      setLetters(data || []);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const submitLetter = async () => {
     if (!form.title || !form.content) return;
@@ -54,7 +30,6 @@ const LettersModal: React.FC<LettersModalProps> = ({ isOpen, onClose }) => {
       if (error) throw error;
       setSuccess('편지가 전송되었습니다.');
       setForm({ title: '', content: '', isAnonymous: false });
-      fetchLetters();
     } catch (err: any) {
       setError(err.message);
     }
@@ -109,20 +84,6 @@ const LettersModal: React.FC<LettersModalProps> = ({ isOpen, onClose }) => {
               보내기
             </button>
           </div>
-        </div>
-
-        {/* 하단에 목록 표시 */}
-        <div className="space-y-4">
-          {loading ? <Loading /> : letters.map(letter => (
-            <div key={letter.id} className="p-4 border rounded-lg shadow-sm bg-white">
-              <div className="flex justify-between mb-2">
-                <span className="font-bold text-gray-800">{letter.title}</span>
-                <span className="text-xs text-gray-400">{new Date(letter.created_at).toLocaleDateString()}</span>
-              </div>
-              <p className="text-gray-600 text-sm line-clamp-2">{letter.content}</p>
-              <div className="mt-2 text-xs text-purple-600 font-medium">From: {letter.author_name}</div>
-            </div>
-          ))}
         </div>
       </div>
     </div>
