@@ -3,55 +3,51 @@ import { User } from '../types';
 import axios from 'axios';
 import { supabase } from "../supabaseClient";
 
-const INACTIVITY_TIMEOUT = 15 * 60 * 1000;
-const WARNING_TIME = 5 * 60 * 1000;
-
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   login: () => void;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
-  timeRemaining: number;
-  showWarning: boolean;
-  extendSession: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-axios.defaults.baseURL = import.meta.env.VITE_API_URL || 'http://localhost:5173';
-axios.defaults.withCredentials = true;
-
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [lastActivity, setLastActivity] = useState<number>(Date.now());
-  const [timeRemaining, setTimeRemaining] = useState<number>(INACTIVITY_TIMEOUT);
-  const [showWarning, setShowWarning] = useState(false);
 
-  const fetchUser = async () => {
+  const fetchUser = useCallback(async () => {
+    console.log("=== [DEBUG] Step 1: 세션 체크 시작 ===");
     try {
-      // 1. 현재 세션 강제 로드
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
-      if (sessionError) throw sessionError;
+      if (sessionError) {
+        console.error("=== [DEBUG] Step 1-E: 세션 가져오기 에러 ===", sessionError);
+        throw sessionError;
+      }
 
       if (session?.user) {
-        // 2. DB 유저 정보 대조
+        console.log("=== [DEBUG] Step 2: 세션 발견, DB 대조 시작 ===", session.user.id);
         const { data: existing, error: dbError } = await supabase
           .from("users")
-          .select("id, name, profile_picture, role, is_active, created_at")
+          .select("*")
           .eq("id", session.user.id)
           .maybeSingle();
 
-        if (dbError) throw dbError;
+        if (dbError) {
+          console.error("=== [DEBUG] Step 2-E: DB 조회 실패 ===", dbError);
+          throw dbError;
+        }
 
         if (!existing || !existing.is_active) {
+          console.warn("=== [DEBUG] Step 3: 미승인 유저 혹은 프로필 없음 ===");
           await supabase.auth.signOut();
           setUser(null);
           return;
         }
 
+        console.log("=== [DEBUG] Step 4: 로그인 성공 ===");
         setUser({
           id: session.user.id,
           email: session.user.email || "",
@@ -62,44 +58,54 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           created_at: existing.created_at,
         });
       } else {
+        console.log("=== [DEBUG] Step 1-F: 활성화된 세션 없음 ===");
         setUser(null);
       }
     } catch (err) {
-      console.error("Auth System Error:", err);
-      setUser(null);
+      console.error("=== [DEBUG] CRITICAL ERROR ===", err);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
+    // 1. URL 에러 감지 및 즉시 상세 출력
+    const params = new URLSearchParams(window.location.search);
+    const error = params.get('error');
+    const errorCode = params.get('error_code');
+    const errorDesc = params.get('error_description');
+
+    if (error) {
+      console.error("=== [AUTH ERROR DETECTED] ===");
+      console.error("Error:", error);
+      console.error("Code:", errorCode);
+      console.error("Desc:", errorDesc);
+      console.log("Current LocalStorage Keys:", Object.keys(localStorage));
+      // 에러 파라미터가 있으면 URL 정리
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
     fetchUser();
 
-    // 3. 인증 상태 변화 실시간 감지 (PKCE 대응)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        await fetchUser();
-      }
-      if (event === 'SIGNED_OUT') {
-        setUser(null);
-        setLoading(false);
-      }
+      console.log("=== [DEBUG] Auth Event 발생 ===", event);
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') await fetchUser();
+      if (event === 'SIGNED_OUT') setUser(null);
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [fetchUser]);
 
   const login = async () => {
-    await supabase.auth.signInWithOAuth({
+    console.log("=== [DEBUG] Login 시도 (Google) ===");
+    const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
         redirectTo: window.location.origin,
-        queryParams: {
-          access_type: 'offline',
-          prompt: 'consent'
-        }
+        queryParams: { access_type: 'offline', prompt: 'consent' }
       }
     });
+    if (error) console.error("=== [DEBUG] Login 함수 에러 ===", error);
   };
 
   const logout = async () => {
@@ -108,24 +114,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     window.location.href = '/login';
   };
 
-  const updateActivity = useCallback(() => {
-    setLastActivity(Date.now());
-    setShowWarning(false);
-  }, []);
-
-  useEffect(() => {
-    if (!user) return;
-    const events = ['mousedown', 'keydown', 'click', 'scroll'];
-    events.forEach(e => document.addEventListener(e, updateActivity));
-    return () => events.forEach(e => document.removeEventListener(e, updateActivity));
-  }, [user, updateActivity]);
-
   return (
-    <AuthContext.Provider value={{ 
-      user, loading, login, logout, 
-      refreshUser: fetchUser, timeRemaining, showWarning, 
-      extendSession: updateActivity 
-    }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, refreshUser: fetchUser }}>
       {children}
     </AuthContext.Provider>
   );
