@@ -25,7 +25,7 @@ const LettersModal: React.FC<LettersModalProps> = ({ isOpen, onClose }) => {
       const { error } = await supabase.from('letters').insert([{
         ...form,
         user_id: user?.id,
-        author_name: form.isAnonymous ? '익명' : user?.name
+        to_use_id: form.isAnonymous ? '익명' : user?.name
       }]);
       if (error) throw error;
       setSuccess('편지가 전송되었습니다.');
