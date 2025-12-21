@@ -30,130 +30,76 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [showWarning, setShowWarning] = useState(false);
 
   const fetchUser = async () => {
-    console.log('--- Fetching User Start ---');
-    console.log('Current URL:', window.location.href);
-
     try {
-      const { data, error } = await supabase.auth.getUser();
+      // 1. 현재 세션 강제 로드
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) throw sessionError;
 
-      if (error) {
-        console.error('Supabase Auth Error Detail:');
-        console.dir(error); // 에러 객체 전체 구조 파악용
-        
-        // 특정 에러 코드 발생 시 상세 메시지
-        if (error.message.includes('exchange')) {
-          console.error('CRITICAL: Code exchange failed. Check if PKCE verifier exists in storage.');
-        }
-      }
-
-      if (data?.user) {
-        console.log('Auth User Found:', data.user.email);
+      if (session?.user) {
+        // 2. DB 유저 정보 대조
         const { data: existing, error: dbError } = await supabase
           .from("users")
           .select("id, name, profile_picture, role, is_active, created_at")
-          .eq("id", data.user.id)
+          .eq("id", session.user.id)
           .maybeSingle();
 
-        if (dbError) {
-          console.error('Database Profile Fetch Error:');
-          console.dir(dbError);
-        }
-
-        if (!dbError && !existing) {
-          console.warn('No profile found in users table for this ID');
-          alert("관리자에게 권한을 요청하세요.");
-          await supabase.auth.signOut();
-          setUser(null);
-          setLoading(false);
-          return;
-        }
+        if (dbError) throw dbError;
 
         if (!existing || !existing.is_active) {
-          alert("관리자에게 권한을 요청하세요.");
           await supabase.auth.signOut();
           setUser(null);
-          setLoading(false);
           return;
         }
 
         setUser({
-          id: data.user.id,
-          email: data.user.email || "",
-          name: existing?.name || (data.user.user_metadata as any)?.full_name || "",
-          profile_picture: existing?.profile_picture || (data.user.user_metadata as any)?.avatar_url || null,
-          role: (existing?.role as "Admin" | "Manager" | "User") || "User",
-          is_active: existing?.is_active ?? false,
-          created_at: existing?.created_at || undefined,
+          id: session.user.id,
+          email: session.user.email || "",
+          name: existing.name || (session.user.user_metadata as any)?.full_name || "",
+          profile_picture: existing.profile_picture || (session.user.user_metadata as any)?.avatar_url || null,
+          role: existing.role as any,
+          is_active: existing.is_active,
+          created_at: existing.created_at,
         });
       } else {
-        console.log('No active session found.');
         setUser(null);
       }
     } catch (err) {
-      console.error('Unexpected Global Error in fetchUser:');
-      console.dir(err);
+      console.error("Auth System Error:", err);
+      setUser(null);
     } finally {
       setLoading(false);
-      console.log('--- Fetching User End ---');
     }
   };
 
   useEffect(() => {
     fetchUser();
+
+    // 3. 인증 상태 변화 실시간 감지 (PKCE 대응)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        await fetchUser();
+      }
+      if (event === 'SIGNED_OUT') {
+        setUser(null);
+        setLoading(false);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
-
-  const updateActivity = useCallback(() => {
-    setLastActivity(Date.now());
-    setShowWarning(false);
-  }, []);
-
-  const extendSession = useCallback(() => {
-    updateActivity();
-  }, [updateActivity]);
-
-  useEffect(() => {
-    if (!user) return;
-    const events = ['mousedown', 'keydown', 'scroll', 'touchstart', 'click'];
-    events.forEach(event => document.addEventListener(event, updateActivity));
-    return () => events.forEach(event => document.removeEventListener(event, updateActivity));
-  }, [user, updateActivity]);
-
-  useEffect(() => {
-    if (!user) return;
-    const interval = setInterval(() => {
-      const elapsed = Date.now() - lastActivity;
-      const remaining = INACTIVITY_TIMEOUT - elapsed;
-      setTimeRemaining(remaining);
-      if (remaining <= WARNING_TIME && remaining > 0) setShowWarning(true);
-      if (remaining <= 0) logout();
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [user, lastActivity]);
 
   const login = async () => {
-    console.log('--- Login Triggered ---');
-    try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: window.location.origin,
-          queryParams: {
-            access_type: 'offline',
-            prompt: 'consent',
-          }
+    await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: window.location.origin,
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent'
         }
-      });
-
-      if (error) {
-        console.error('OAuth Sign-In Error:');
-        console.dir(error);
-        alert('로그인 오류: ' + error.message);
       }
-      console.log('OAuth Redirect Data:', data);
-    } catch (err) {
-      console.error('Login Unexpected Error:');
-      console.dir(err);
-    }
+    });
   };
 
   const logout = async () => {
@@ -162,12 +108,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     window.location.href = '/login';
   };
 
-  const refreshUser = async () => {
-    await fetchUser();
-  };
+  const updateActivity = useCallback(() => {
+    setLastActivity(Date.now());
+    setShowWarning(false);
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    const events = ['mousedown', 'keydown', 'click', 'scroll'];
+    events.forEach(e => document.addEventListener(e, updateActivity));
+    return () => events.forEach(e => document.removeEventListener(e, updateActivity));
+  }, [user, updateActivity]);
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, refreshUser, timeRemaining, showWarning, extendSession }}>
+    <AuthContext.Provider value={{ 
+      user, loading, login, logout, 
+      refreshUser: fetchUser, timeRemaining, showWarning, 
+      extendSession: updateActivity 
+    }}>
       {children}
     </AuthContext.Provider>
   );
@@ -175,6 +133,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (context === undefined) throw new Error('useAuth must be used within an AuthProvider');
+  if (!context) throw new Error('useAuth Error');
   return context;
 };
