@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabaseClient';
-import { Attendance as AttendanceType, AttendanceRevisionRequest } from '../types';
+import { Attendance as AttendanceType } from '../types';
 import Loading from '../components/Loading';
 import ErrorMessage from '../components/ErrorMessage';
 import SuccessMessage from '../components/SuccessMessage';
@@ -22,7 +22,6 @@ const shiftDate = (yyyyMMdd: string, deltaDays: number) => {
 const Attendance: React.FC = () => {
   const { user } = useAuth();
   const [records, setRecords] = useState<AttendanceType[]>([]);
-  const [revisionRequests, setRevisionRequests] = useState<AttendanceRevisionRequest[]>([]);
   const [selectedDate, setSelectedDate] = useState<string>(getTodayDate());
   const [allEmployees, setAllEmployees] = useState<any[]>([]);
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -206,49 +205,6 @@ const Attendance: React.FC = () => {
         }
       }
 
-      const { data: revisionsData, error: revisionsError } = await supabase
-        .from('attendance_revision_requests')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (revisionsError) throw revisionsError;
-
-      const employeeById = new Map((employeesData || []).map((e: any) => [String(e.id), e]));
-
-      const attendanceIdsForReq = Array.from(
-        new Set(
-          (revisionsData || [])
-            .map((r: any) => r.attendance_id)
-            .filter(Boolean)
-            .map(String)
-        )
-      );
-
-      let dateByAttendanceId = new Map<string, string>();
-      if (attendanceIdsForReq.length > 0) {
-        const { data: attForReqs, error: attForReqsError } = await supabase
-          .from('attendance')
-          .select('id, date')
-          .in('id', attendanceIdsForReq);
-
-        if (attForReqsError) throw attForReqsError;
-
-        dateByAttendanceId = new Map((attForReqs || []).map((a: any) => [String(a.id), a.date]));
-      }
-
-      const enrichedRevisions = (revisionsData || []).map((r: any) => {
-        const emp = employeeById.get(String(r.user_id));
-        return {
-          ...r,
-          user_name: emp?.name || '이름 없음',
-          user_profile_picture: emp?.profile_picture || null,
-          requested_date: dateByAttendanceId.get(String(r.attendance_id)) || null,
-        };
-      });
-
-      setRevisionRequests(enrichedRevisions);
-
-      // 🔹 오늘 내 상태 + 휴가 여부 계산
       const today = getTodayDate();
 
       if (user) {
@@ -581,33 +537,7 @@ const Attendance: React.FC = () => {
     }
   };
 
-  const reviewRevisionRequest = async (
-    requestId: string,
-    status: 'approved' | 'rejected'
-  ) => {
-    if (!user) return;
-
-    try {
-      const { error } = await supabase
-        .from('attendance_revision_requests')
-        .update({
-          status,
-          reviewed_at: new Date().toISOString(),
-          reviewer_id: user.id,
-        })
-        .eq('id', requestId);
-
-      if (error) throw error;
-
-      setSuccess(`수정 요청이 ${status === 'approved' ? '승인' : '반려'}되었습니다`);
-      fetchData();
-      setTimeout(() => setSuccess(''), 3000);
-    } catch (err: any) {
-      setError(err.message || 'Failed to review request');
-    }
-  };
-
-  const formatTime = (dateString: string | null) => {
+    const formatTime = (dateString: string | null) => {
     if (!dateString) return '-';
     const date = new Date(dateString);
     return date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
@@ -1274,57 +1204,6 @@ const Attendance: React.FC = () => {
           </table>
         </div>
       </div>
-
-      {/* Revision requests for Manager/Admin */}
-      {(user?.role === 'Manager' || user?.role === 'Admin') && revisionRequests.length > 0 && (
-        <div className="bg-white shadow rounded-lg overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-xl font-semibold">출퇴근 수정 요청</h2>
-          </div>
-          <div className="divide-y divide-gray-200">
-            {revisionRequests.map((request) => (
-              <div key={request.id} className="p-6">
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <p className="font-medium">{request.user_name}</p>
-                    <p className="text-sm text-gray-600">
-                      날짜: {request.requested_date ? new Date(request.requested_date).toLocaleDateString('ko-KR') : '-'}
-                    </p>
-                    <p className="text-sm text-gray-600 mt-2">사유: {request.reason}</p>
-                    <div className="mt-2 text-sm">
-                      <p>요청 출근: {formatTime(request.requested_check_in_at)}</p>
-                      <p>요청 퇴근: {formatTime(request.requested_check_out_at)}</p>
-                    </div>
-                  </div>
-                  {request.status === 'pending' && (
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => reviewRevisionRequest(request.id, 'approved')}
-                        className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-                      >
-                        승인
-                      </button>
-                      <button
-                        onClick={() => reviewRevisionRequest(request.id, 'rejected')}
-                        className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-                      >
-                        반려
-                      </button>
-                    </div>
-                  )}
-                  {request.status !== 'pending' && (
-                    <span className={`px-3 py-1 rounded-full text-sm ${request.status === 'approved' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                      }`}>
-                      {request.status === 'approved' ? '승인됨' : '반려됨'}
-                    </span>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* 업무중지 사유 선택 모달 */}
       {showPauseModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40">
