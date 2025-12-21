@@ -11,6 +11,7 @@ type LetterRow = {
   from_user_id: string | null;
   is_anonymous: boolean;
   created_at: string;
+  from_name: string | null;
 };
 
 const LettersInbox: React.FC = () => {
@@ -26,11 +27,11 @@ const LettersInbox: React.FC = () => {
     const q = query.trim().toLowerCase();
     if (!q) return letters;
     return letters.filter((l) => {
-      const authorLabel = l.is_anonymous ? '익명' : '실명';
+      const authorText = l.is_anonymous ? '익명' : (l.from_name || '');
       return (
         (l.title || '').toLowerCase().includes(q) ||
         (l.body || '').toLowerCase().includes(q) ||
-        authorLabel.toLowerCase().includes(q)
+        authorText.toLowerCase().includes(q)
       );
     });
   }, [letters, query]);
@@ -46,7 +47,36 @@ const LettersInbox: React.FC = () => {
 
       if (error) throw error;
 
-      const next = (data ?? []) as LetterRow[];
+      const base = (data ?? []) as Omit<LetterRow, 'from_name'>[];
+
+      const userIds = Array.from(
+        new Set(
+          base
+            .map((x) => x.from_user_id)
+            .filter((v): v is string => !!v)
+        )
+      );
+
+      let nameMap = new Map<string, string>();
+
+      if (userIds.length > 0) {
+        const { data: profiles, error: pErr } = await supabase
+          .from('profiles')
+          .select('id, name')
+          .in('id', userIds);
+
+        if (pErr) throw pErr;
+
+        (profiles ?? []).forEach((p: any) => {
+          if (p?.id) nameMap.set(String(p.id), String(p.name ?? ''));
+        });
+      }
+
+      const next: LetterRow[] = base.map((l) => ({
+        ...l,
+        from_name: l.from_user_id ? (nameMap.get(String(l.from_user_id)) ?? null) : null,
+      }));
+
       setLetters(next);
 
       // 선택 유지(가능하면)
@@ -128,7 +158,7 @@ const LettersInbox: React.FC = () => {
                         </div>
                       </div>
                       <div className="mt-1 text-xs text-gray-500">
-                        From: {l.is_anonymous ? '익명' : '실명'}
+                        From: {l.is_anonymous ? '익명' : (l.from_name || '이름없음')}
                       </div>
                       <div className="mt-2 text-sm text-gray-600 line-clamp-2">{l.body}</div>
                     </button>
@@ -153,7 +183,7 @@ const LettersInbox: React.FC = () => {
 
                 <div className="text-sm text-gray-600">
                   <span className="font-medium text-gray-800">From:</span>{' '}
-                  {selected.is_anonymous ? '익명' : '실명'}
+                  {selected.is_anonymous ? '익명' : (selected.from_name || '이름없음')}
                 </div>
 
                 <div className="border rounded-lg p-4 bg-gray-50">
