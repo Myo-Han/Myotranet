@@ -7,8 +7,6 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Attendance from './pages/Attendance';
 import Leave from './pages/Leave';
-import Letters from './pages/Letters';
-import Search from './pages/Search';
 import Admin from './pages/Admin';
 import Works from './pages/Works';
 
@@ -31,8 +29,6 @@ function App() {
             <Route path="works" element={<Works />} />
             <Route path="attendance" element={<Attendance />} />
             <Route path="leave" element={<Leave />} />
-            <Route path="letters" element={<Letters />} />
-            <Route path="search" element={<Search />} />
             <Route
               path="admin/*"
               element={

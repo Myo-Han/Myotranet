@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabaseClient';
 import { User } from '../types';
@@ -7,6 +6,8 @@ import CalendarCard from '../components/CalendarCard';
 import ProfileModal from '../components/ProfileModal';
 import { ReactionBar } from '../components/reactions';
 import { CommentThread } from '../components/comments';
+import SearchModal from '../components/SearchModal';
+import LettersModal from '../components/LettersModal';
 
 type Notice = {
   id: number;
@@ -65,7 +66,8 @@ function saveCache<T>(key: string, data: T) {
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
-  const navigate = useNavigate();
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isLettersOpen, setIsLettersOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<User[]>([]);
   const [searching, setSearching] = useState(false);
@@ -840,7 +842,7 @@ const Dashboard: React.FC = () => {
         </a>
 
         <button
-          onClick={() => navigate('/letters')}
+          onClick={() => setIsLettersOpen(true)}
           className="bg-white p-6 rounded-lg shadow hover:shadow-md transition duration-200 text-left"
         >
           <div className="text-purple-600 mb-3">
@@ -853,7 +855,7 @@ const Dashboard: React.FC = () => {
         </button>
 
         <button
-          onClick={() => navigate('/search')}
+          onClick={() => setIsSearchOpen(true)}
           className="bg-white p-6 rounded-lg shadow hover:shadow-md transition duration-200 text-left"
         >
           <div className="text-indigo-600 mb-3">
@@ -877,6 +879,14 @@ const Dashboard: React.FC = () => {
           />
         )
       }
+      <SearchModal 
+        isOpen={isSearchOpen} 
+        onClose={() => setIsSearchOpen(false)} 
+      />
+      <LettersModal 
+        isOpen={isLettersOpen} 
+        onClose={() => setIsLettersOpen(false)} 
+      />
     </div >
   );
 };
