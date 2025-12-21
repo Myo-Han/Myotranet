@@ -166,9 +166,9 @@ const LettersInbox: React.FC = () => {
           <Loading />
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 min-h-[520px]">
+        <div className="flex flex-col lg:flex-row min-h-[520px]">
           {/* 리스트 */}
-          <div className="border-r">
+          <div className="border-r lg:w-[30%]">
             {filtered.length === 0 ? (
               <div className="p-6 text-sm text-gray-500">표시할 편지가 없습니다.</div>
             ) : (
@@ -184,7 +184,9 @@ const LettersInbox: React.FC = () => {
                         }`}
                     >
                       <div className="flex items-center justify-between gap-3">
-                        <div className="font-semibold text-gray-900 truncate">{l.title}</div>
+                        <div className="min-w-0 flex-1">
+                          <div className="font-semibold text-gray-900 truncate">{l.title}</div>
+                        </div>
                         <div className="text-xs text-gray-400 shrink-0">
                           {new Date(l.created_at).toLocaleDateString('ko-KR')}
                         </div>
@@ -217,8 +219,7 @@ const LettersInbox: React.FC = () => {
                           </button>
                         )}
                       </div>
-
-                      <div className="mt-2 text-sm text-gray-600 line-clamp-2">{l.body}</div>
+                      <div className="mt-2 text-sm text-gray-600 line-clamp-1">{l.body}</div>
                     </button>
                   );
                 })}
@@ -227,7 +228,7 @@ const LettersInbox: React.FC = () => {
           </div>
 
           {/* 상세 */}
-          <div className="p-6">
+          <div className="p-6 lg:w-[70%]">
             {!selected ? (
               <div className="text-sm text-gray-500">왼쪽에서 편지를 선택하세요.</div>
             ) : (
