@@ -213,7 +213,40 @@ const Attendance: React.FC = () => {
 
       if (revisionsError) throw revisionsError;
 
-      setRevisionRequests(revisionsData || []);
+      const employeeById = new Map((employeesData || []).map((e: any) => [String(e.id), e]));
+
+      const attendanceIdsForReq = Array.from(
+        new Set(
+          (revisionsData || [])
+            .map((r: any) => r.attendance_id)
+            .filter(Boolean)
+            .map(String)
+        )
+      );
+
+      let dateByAttendanceId = new Map<string, string>();
+      if (attendanceIdsForReq.length > 0) {
+        const { data: attForReqs, error: attForReqsError } = await supabase
+          .from('attendance')
+          .select('id, date')
+          .in('id', attendanceIdsForReq);
+
+        if (attForReqsError) throw attForReqsError;
+
+        dateByAttendanceId = new Map((attForReqs || []).map((a: any) => [String(a.id), a.date]));
+      }
+
+      const enrichedRevisions = (revisionsData || []).map((r: any) => {
+        const emp = employeeById.get(String(r.user_id));
+        return {
+          ...r,
+          user_name: emp?.name || '이름 없음',
+          user_profile_picture: emp?.profile_picture || null,
+          requested_date: dateByAttendanceId.get(String(r.attendance_id)) || null,
+        };
+      });
+
+      setRevisionRequests(enrichedRevisions);
 
       // 🔹 오늘 내 상태 + 휴가 여부 계산
       const today = getTodayDate();
@@ -531,7 +564,6 @@ const Attendance: React.FC = () => {
       const { error } = await supabase.from('attendance_revision_requests').insert({
         attendance_id: selectedRecord.id,
         user_id: user.id,
-        requested_date: selectedRecord.date,
         requested_check_in_at: revisionForm.requestedCheckIn || null,
         requested_check_out_at: revisionForm.requestedCheckOut || null,
         reason: revisionForm.reason,
@@ -551,8 +583,7 @@ const Attendance: React.FC = () => {
 
   const reviewRevisionRequest = async (
     requestId: string,
-    status: 'approved' | 'rejected',
-    notes: string
+    status: 'approved' | 'rejected'
   ) => {
     if (!user) return;
 
@@ -561,7 +592,6 @@ const Attendance: React.FC = () => {
         .from('attendance_revision_requests')
         .update({
           status,
-          review_notes: notes,
           reviewed_at: new Date().toISOString(),
           reviewer_id: user.id,
         })
@@ -1257,7 +1287,9 @@ const Attendance: React.FC = () => {
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
                     <p className="font-medium">{request.user_name}</p>
-                    <p className="text-sm text-gray-600">날짜: {new Date(request.requested_date).toLocaleDateString('ko-KR')}</p>
+                    <p className="text-sm text-gray-600">
+                      날짜: {request.requested_date ? new Date(request.requested_date).toLocaleDateString('ko-KR') : '-'}
+                    </p>
                     <p className="text-sm text-gray-600 mt-2">사유: {request.reason}</p>
                     <div className="mt-2 text-sm">
                       <p>요청 출근: {formatTime(request.requested_check_in_at)}</p>
@@ -1267,13 +1299,13 @@ const Attendance: React.FC = () => {
                   {request.status === 'pending' && (
                     <div className="flex space-x-2">
                       <button
-                        onClick={() => reviewRevisionRequest(request.id, 'approved', '승인됨')}
+                        onClick={() => reviewRevisionRequest(request.id, 'approved')}
                         className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
                       >
                         승인
                       </button>
                       <button
-                        onClick={() => reviewRevisionRequest(request.id, 'rejected', '반려됨')}
+                        onClick={() => reviewRevisionRequest(request.id, 'rejected')}
                         className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
                       >
                         반려
