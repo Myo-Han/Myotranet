@@ -3,109 +3,157 @@ import { User } from '../types';
 import axios from 'axios';
 import { supabase } from "../supabaseClient";
 
+const INACTIVITY_TIMEOUT = 15 * 60 * 1000;
+const WARNING_TIME = 5 * 60 * 1000;
+
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   login: () => void;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  timeRemaining: number;
+  showWarning: boolean;
+  extendSession: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+axios.defaults.baseURL = import.meta.env.VITE_API_URL || 'http://localhost:5173';
+axios.defaults.withCredentials = true;
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [lastActivity, setLastActivity] = useState<number>(Date.now());
+  const [timeRemaining, setTimeRemaining] = useState<number>(INACTIVITY_TIMEOUT);
+  const [showWarning, setShowWarning] = useState(false);
 
-  const fetchUser = useCallback(async () => {
-    console.log("=== [DEBUG] Step 1: 세션 체크 시작 ===");
+  const fetchUser = async () => {
+    console.log('--- Fetching User Start ---');
+    console.log('Current URL:', window.location.href);
+
     try {
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      
-      if (sessionError) {
-        console.error("=== [DEBUG] Step 1-E: 세션 가져오기 에러 ===", sessionError);
-        throw sessionError;
+      const { data, error } = await supabase.auth.getUser();
+
+      if (error) {
+        console.error('Supabase Auth Error Detail:');
+        console.dir(error); // 에러 객체 전체 구조 파악용
+        
+        // 특정 에러 코드 발생 시 상세 메시지
+        if (error.message.includes('exchange')) {
+          console.error('CRITICAL: Code exchange failed. Check if PKCE verifier exists in storage.');
+        }
       }
 
-      if (session?.user) {
-        console.log("=== [DEBUG] Step 2: 세션 발견, DB 대조 시작 ===", session.user.id);
+      if (data?.user) {
+        console.log('Auth User Found:', data.user.email);
         const { data: existing, error: dbError } = await supabase
           .from("users")
-          .select("*")
-          .eq("id", session.user.id)
+          .select("id, name, profile_picture, role, is_active, created_at")
+          .eq("id", data.user.id)
           .maybeSingle();
 
         if (dbError) {
-          console.error("=== [DEBUG] Step 2-E: DB 조회 실패 ===", dbError);
-          throw dbError;
+          console.error('Database Profile Fetch Error:');
+          console.dir(dbError);
         }
 
-        if (!existing || !existing.is_active) {
-          console.warn("=== [DEBUG] Step 3: 미승인 유저 혹은 프로필 없음 ===");
+        if (!dbError && !existing) {
+          console.warn('No profile found in users table for this ID');
+          alert("관리자에게 권한을 요청하세요.");
           await supabase.auth.signOut();
           setUser(null);
+          setLoading(false);
           return;
         }
 
-        console.log("=== [DEBUG] Step 4: 로그인 성공 ===");
+        if (!existing || !existing.is_active) {
+          alert("관리자에게 권한을 요청하세요.");
+          await supabase.auth.signOut();
+          setUser(null);
+          setLoading(false);
+          return;
+        }
+
         setUser({
-          id: session.user.id,
-          email: session.user.email || "",
-          name: existing.name || (session.user.user_metadata as any)?.full_name || "",
-          profile_picture: existing.profile_picture || (session.user.user_metadata as any)?.avatar_url || null,
-          role: existing.role as any,
-          is_active: existing.is_active,
-          created_at: existing.created_at,
+          id: data.user.id,
+          email: data.user.email || "",
+          name: existing?.name || (data.user.user_metadata as any)?.full_name || "",
+          profile_picture: existing?.profile_picture || (data.user.user_metadata as any)?.avatar_url || null,
+          role: (existing?.role as "Admin" | "Manager" | "User") || "User",
+          is_active: existing?.is_active ?? false,
+          created_at: existing?.created_at || undefined,
         });
       } else {
-        console.log("=== [DEBUG] Step 1-F: 활성화된 세션 없음 ===");
+        console.log('No active session found.');
         setUser(null);
       }
     } catch (err) {
-      console.error("=== [DEBUG] CRITICAL ERROR ===", err);
+      console.error('Unexpected Global Error in fetchUser:');
+      console.dir(err);
     } finally {
       setLoading(false);
+      console.log('--- Fetching User End ---');
     }
-  }, []);
+  };
 
   useEffect(() => {
-    // 1. URL 에러 감지 및 즉시 상세 출력
-    const params = new URLSearchParams(window.location.search);
-    const error = params.get('error');
-    const errorCode = params.get('error_code');
-    const errorDesc = params.get('error_description');
-
-    if (error) {
-      console.error("=== [AUTH ERROR DETECTED] ===");
-      console.error("Error:", error);
-      console.error("Code:", errorCode);
-      console.error("Desc:", errorDesc);
-      console.log("Current LocalStorage Keys:", Object.keys(localStorage));
-      // 에러 파라미터가 있으면 URL 정리
-      window.history.replaceState({}, document.title, window.location.pathname);
-    }
-
     fetchUser();
+  }, []);
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("=== [DEBUG] Auth Event 발생 ===", event);
-      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') await fetchUser();
-      if (event === 'SIGNED_OUT') setUser(null);
-    });
+  const updateActivity = useCallback(() => {
+    setLastActivity(Date.now());
+    setShowWarning(false);
+  }, []);
 
-    return () => subscription.unsubscribe();
-  }, [fetchUser]);
+  const extendSession = useCallback(() => {
+    updateActivity();
+  }, [updateActivity]);
+
+  useEffect(() => {
+    if (!user) return;
+    const events = ['mousedown', 'keydown', 'scroll', 'touchstart', 'click'];
+    events.forEach(event => document.addEventListener(event, updateActivity));
+    return () => events.forEach(event => document.removeEventListener(event, updateActivity));
+  }, [user, updateActivity]);
+
+  useEffect(() => {
+    if (!user) return;
+    const interval = setInterval(() => {
+      const elapsed = Date.now() - lastActivity;
+      const remaining = INACTIVITY_TIMEOUT - elapsed;
+      setTimeRemaining(remaining);
+      if (remaining <= WARNING_TIME && remaining > 0) setShowWarning(true);
+      if (remaining <= 0) logout();
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [user, lastActivity]);
 
   const login = async () => {
-    console.log("=== [DEBUG] Login 시도 (Google) ===");
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: window.location.origin,
-        queryParams: { access_type: 'offline', prompt: 'consent' }
+    console.log('--- Login Triggered ---');
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: window.location.origin,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          }
+        }
+      });
+
+      if (error) {
+        console.error('OAuth Sign-In Error:');
+        console.dir(error);
+        alert('로그인 오류: ' + error.message);
       }
-    });
-    if (error) console.error("=== [DEBUG] Login 함수 에러 ===", error);
+      console.log('OAuth Redirect Data:', data);
+    } catch (err) {
+      console.error('Login Unexpected Error:');
+      console.dir(err);
+    }
   };
 
   const logout = async () => {
@@ -114,8 +162,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     window.location.href = '/login';
   };
 
+  const refreshUser = async () => {
+    await fetchUser();
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, refreshUser: fetchUser }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, refreshUser, timeRemaining, showWarning, extendSession }}>
       {children}
     </AuthContext.Provider>
   );
@@ -123,6 +175,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) throw new Error('useAuth Error');
+  if (context === undefined) throw new Error('useAuth must be used within an AuthProvider');
   return context;
 };

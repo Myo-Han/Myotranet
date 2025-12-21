@@ -1,6 +1,10 @@
 import { createClient } from "@supabase/supabase-js";
 
-// storageKey 옵션을 아예 삭제해서 Supabase 기본값을 사용하게 합니다.
+// 배포 환경 변수 디버깅 로그
+console.log('--- Supabase Client Initialization ---');
+console.log('URL Check:', import.meta.env.VITE_SUPABASE_URL ? 'Loaded' : 'MISSING');
+console.log('Anon Key Check:', import.meta.env.VITE_SUPABASE_ANON_KEY ? 'Loaded' : 'MISSING');
+
 export const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL!,
   import.meta.env.VITE_SUPABASE_ANON_KEY!,
