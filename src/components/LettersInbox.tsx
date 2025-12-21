@@ -8,7 +8,8 @@ type LetterRow = {
   id: number | string;
   title: string;
   body: string;
-  to_user_id: string | null;
+  from_user_id: string | null;
+  is_anonymous: boolean;
   created_at: string;
 };
 
@@ -25,10 +26,11 @@ const LettersInbox: React.FC = () => {
     const q = query.trim().toLowerCase();
     if (!q) return letters;
     return letters.filter((l) => {
+      const authorLabel = l.is_anonymous ? '익명' : '실명';
       return (
         (l.title || '').toLowerCase().includes(q) ||
         (l.body || '').toLowerCase().includes(q) ||
-        (l.to_user_id || '').toLowerCase().includes(q)
+        authorLabel.toLowerCase().includes(q)
       );
     });
   }, [letters, query]);
@@ -39,7 +41,7 @@ const LettersInbox: React.FC = () => {
     try {
       const { data, error } = await supabase
         .from('letters')
-        .select('id, title, body, to_user_id, created_at')
+        .select('id, title, body, from_user_id, is_anonymous, created_at')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -116,9 +118,8 @@ const LettersInbox: React.FC = () => {
                       key={String(l.id)}
                       type="button"
                       onClick={() => setSelected(l)}
-                      className={`w-full text-left px-6 py-4 border-b hover:bg-gray-50 ${
-                        isActive ? 'bg-blue-50' : ''
-                      }`}
+                      className={`w-full text-left px-6 py-4 border-b hover:bg-gray-50 ${isActive ? 'bg-blue-50' : ''
+                        }`}
                     >
                       <div className="flex items-center justify-between gap-3">
                         <div className="font-semibold text-gray-900 truncate">{l.title}</div>
@@ -127,7 +128,7 @@ const LettersInbox: React.FC = () => {
                         </div>
                       </div>
                       <div className="mt-1 text-xs text-gray-500">
-                        From: {l.to_user_id || '익명'}
+                        From: {l.is_anonymous ? '익명' : '실명'}
                       </div>
                       <div className="mt-2 text-sm text-gray-600 line-clamp-2">{l.body}</div>
                     </button>
@@ -152,7 +153,7 @@ const LettersInbox: React.FC = () => {
 
                 <div className="text-sm text-gray-600">
                   <span className="font-medium text-gray-800">From:</span>{' '}
-                  {selected.to_user_id || '익명'}
+                  {selected.is_anonymous ? '익명' : '실명'}
                 </div>
 
                 <div className="border rounded-lg p-4 bg-gray-50">
