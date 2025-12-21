@@ -61,7 +61,7 @@ const LettersInbox: React.FC = () => {
 
       if (userIds.length > 0) {
         const { data: profiles, error: pErr } = await supabase
-          .from('profiles')
+          .from('users')
           .select('id, name')
           .in('id', userIds);
 
