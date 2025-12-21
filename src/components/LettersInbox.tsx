@@ -7,7 +7,7 @@ import ErrorMessage from './ErrorMessage';
 type LetterRow = {
   id: number | string;
   title: string;
-  content: string;
+  body: string;
   author_name: string | null;
   created_at: string;
 };
@@ -27,7 +27,7 @@ const LettersInbox: React.FC = () => {
     return letters.filter((l) => {
       return (
         (l.title || '').toLowerCase().includes(q) ||
-        (l.content || '').toLowerCase().includes(q) ||
+        (l.body || '').toLowerCase().includes(q) ||
         (l.author_name || '').toLowerCase().includes(q)
       );
     });
@@ -39,7 +39,7 @@ const LettersInbox: React.FC = () => {
     try {
       const { data, error } = await supabase
         .from('letters')
-        .select('id, title, content, author_name, created_at')
+        .select('id, title, body, author_name, created_at')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -129,7 +129,7 @@ const LettersInbox: React.FC = () => {
                       <div className="mt-1 text-xs text-gray-500">
                         From: {l.author_name || '익명'}
                       </div>
-                      <div className="mt-2 text-sm text-gray-600 line-clamp-2">{l.content}</div>
+                      <div className="mt-2 text-sm text-gray-600 line-clamp-2">{l.body}</div>
                     </button>
                   );
                 })}
@@ -156,7 +156,7 @@ const LettersInbox: React.FC = () => {
                 </div>
 
                 <div className="border rounded-lg p-4 bg-gray-50">
-                  <p className="text-sm text-gray-800 whitespace-pre-line">{selected.content}</p>
+                  <p className="text-sm text-gray-800 whitespace-pre-line">{selected.body}</p>
                 </div>
               </div>
             )}
