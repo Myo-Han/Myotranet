@@ -40,75 +40,54 @@ const EvidenceIssueModal: React.FC<Props> = ({ isOpen, onClose }) => {
     >
       <style>{`
   @media print {
-  @page { size: A4; margin: 10mm; }
+    @page { size: A4; margin: 10mm; }
 
-  /* ✅ 1) 모달 제외 전부 제거(레이아웃도 제거) */
-body > :not(.evidence-modal-overlay) {
-  display: none !important;
-}
+    /* 페이지 전체 설정 */
+    html, body {
+      height: auto !important;
+      overflow: visible !important;
+      background: #fff !important;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
 
-/* ✅ 2) 모달은 출력되게 */
-.evidence-modal-overlay {
-  display: block !important;
-  position: static !important;
-  background: transparent !important;
-}
+    /* 모달 외 모든 요소 숨김 */
+    body > :not(.evidence-modal-overlay) {
+      display: none !important;
+    }
 
-/* ✅ 3) 상단바/좌측탭 숨김 */
-.evidence-modal-chrome { display: none !important; }
+    /* 모달 오버레이 - 일반 문서처럼 */
+    .evidence-modal-overlay {
+      position: static !important;
+      display: block !important;
+      background: transparent !important;
+      inset: unset !important;
+    }
 
-/* ✅ 4) 내용은 스크롤 없이 */
-.evidence-modal-shell,
-.evidence-modal-content {
-  height: auto !important;
-  max-height: none !important;
-  overflow: visible !important;
-  box-shadow: none !important;
-  border: none !important;
-  border-radius: 0 !important;
-}
+    /* 모달 쉘 - 화면 제약 제거 */
+    .evidence-modal-shell {
+      max-width: none !important;
+      max-height: none !important;
+      height: auto !important;
+      width: 100% !important;
+      margin: 0 !important;
+      overflow: visible !important;
+      box-shadow: none !important;
+      border: none !important;
+      border-radius: 0 !important;
+    }
 
-  /* ✅ 3) 모달을 출력 시작 위치로 고정 */
-  .evidence-modal-overlay {
-    position: absolute !important;
-    left: 0 !important;
-    top: 0 !important;
-    right: 0 !important;
-    bottom: auto !important;
-    inset: auto !important;
-    background: transparent !important;
-    display: block !important;
+    /* 크롬(상단바/좌측탭) 숨김 */
+    .evidence-modal-chrome {
+      display: none !important;
+    }
+
+    /* 콘텐츠 영역 - 스크롤 제거 */
+    .evidence-modal-content {
+      max-height: none !important;
+      overflow: visible !important;
+    }
   }
-
-  html, body {
-    height: auto !important;
-    overflow: visible !important;
-    background: #fff !important;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-  }
-
-  .evidence-modal-shell {
-    max-height: none !important;
-    height: auto !important;
-    overflow: visible !important;
-    box-shadow: none !important;
-    border: none !important;
-    border-radius: 0 !important;
-    max-width: none !important;
-    width: 100% !important;
-    margin: 0 !important;
-  }
-
-  .evidence-modal-chrome {
-    display: none !important;
-  }
-
-  .evidence-modal-content {
-    max-height: none !important;
-    overflow: visible !important;
-  }
-}
 `}</style>
 
       <div className="evidence-modal-shell bg-white rounded-lg shadow-xl w-full max-w-6xl mx-4 h-[85vh] overflow-hidden border border-gray-200 flex flex-col">
