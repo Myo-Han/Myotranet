@@ -13,6 +13,7 @@ type UserRow = {
   profile_picture: string | null;
   role?: string | null;
   is_active?: boolean | null;
+  current_status?: string | null;
 };
 
 type AttendanceRow = {
@@ -167,10 +168,40 @@ const AttendanceAdminEditor: React.FC = () => {
     return users.find((u) => u.id === selectedUserId) ?? null;
   }, [users, selectedUserId]);
 
+  const [currentStatusEdit, setCurrentStatusEdit] = useState<string>('');
+
+  useEffect(() => {
+    setCurrentStatusEdit(selectedUser?.current_status ?? '');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedUserId, selectedUser?.current_status]);
+
+  const saveCurrentStatus = async () => {
+    if (!selectedUserId) return;
+
+    setError('');
+    setSuccess('');
+
+    try {
+      const { error } = await supabase
+        .from('users')
+        .update({ current_status: currentStatusEdit || null })
+        .eq('id', selectedUserId);
+
+      if (error) throw error;
+
+      setSuccess('현재상태가 변경되었습니다.');
+      await fetchUsers();
+      setTimeout(() => setSuccess(''), 2000);
+    } catch (e: any) {
+      setError(e?.message || '현재상태 변경 실패');
+    }
+  };
+
   const openProfile = (uid: string) => {
     setSelectedProfileUserId(uid);
     setShowProfileModal(true);
   };
+
   const closeProfile = () => {
     setShowProfileModal(false);
     setSelectedProfileUserId(null);
@@ -179,7 +210,7 @@ const AttendanceAdminEditor: React.FC = () => {
   const fetchUsers = async () => {
     const { data, error } = await supabase
       .from('users')
-      .select('id, name, profile_picture, role, is_active')
+      .select('id, name, profile_picture, role, is_active, current_status')
       .order('name', { ascending: true });
 
     if (error) throw error;
@@ -312,6 +343,42 @@ const AttendanceAdminEditor: React.FC = () => {
       setTimeout(() => setSuccess(''), 3000);
     } catch (e: any) {
       setError(e?.message || '저장 실패');
+    }
+  };
+
+  const createAttendance = async () => {
+    if (!selectedUserId) return;
+
+    setError('');
+    setSuccess('');
+
+    try {
+      const check_in = localInputToIso(form.checkInLocal);
+      const check_out = localInputToIso(form.checkOutLocal);
+
+      const sec = hhmmToSeconds(form.totalHhmm);
+      if (sec === null) {
+        setError('누적시간 형식이 올바르지 않습니다. (예: 08:30)');
+        return;
+      }
+
+      const payload: any = {
+        user_id: selectedUserId,
+        date: selectedDate,
+        status: form.status || null,
+        total_work_seconds: sec,
+        check_in,
+        check_out,
+      };
+
+      const { error: insErr } = await supabase.from('attendance').insert(payload);
+      if (insErr) throw insErr;
+
+      setSuccess('attendance 레코드가 생성되었습니다.');
+      await fetchAttendanceAndEvents(selectedUserId, selectedDate);
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (e: any) {
+      setError(e?.message || '생성 실패');
     }
   };
 
@@ -512,9 +579,97 @@ const AttendanceAdminEditor: React.FC = () => {
               대상: <span className="font-semibold">{selectedUser?.name || '선택 안 됨'}</span>
             </div>
 
+            <div className="border rounded-lg p-4 space-y-3">
+              <div className="text-sm font-semibold text-gray-800">현재상태(users.current_status)</div>
+
+              <select
+                value={currentStatusEdit}
+                onChange={(e) => setCurrentStatusEdit(e.target.value)}
+                className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+              >
+                <option value="">(null)</option>
+                <option value="working">working</option>
+                <option value="paused">paused</option>
+                <option value="off">off</option>
+                <option value="vacation">vacation</option>
+              </select>
+
+              <div className="text-xs text-gray-500">현재 DB: {selectedUser?.current_status ?? '(null)'}</div>
+
+              <button
+                type="button"
+                onClick={saveCurrentStatus}
+                className="w-full px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm"
+              >
+                현재상태 저장
+              </button>
+            </div>
+
             {!attendance ? (
-              <div className="border rounded-lg p-4 text-sm text-gray-600">
-                해당 날짜에 attendance 레코드가 없습니다. (생성 기능은 아직 추가하지 않았습니다.)
+              <div className="border rounded-lg p-4 space-y-4">
+                <div className="text-sm text-gray-600">해당 날짜에 attendance 레코드가 없습니다.</div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="border rounded-lg p-4 space-y-3">
+                    <div className="text-sm font-semibold text-gray-800">생성: 출퇴근/상태</div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">출근</label>
+                      <input
+                        type="datetime-local"
+                        value={form.checkInLocal}
+                        onChange={(e) => setForm((p) => ({ ...p, checkInLocal: e.target.value }))}
+                        className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">퇴근</label>
+                      <input
+                        type="datetime-local"
+                        value={form.checkOutLocal}
+                        onChange={(e) => setForm((p) => ({ ...p, checkOutLocal: e.target.value }))}
+                        className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">상태</label>
+                      <select
+                        value={form.status}
+                        onChange={(e) => setForm((p) => ({ ...p, status: e.target.value }))}
+                        className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                      >
+                        <option value="working">working</option>
+                        <option value="paused">paused</option>
+                        <option value="off">off</option>
+                        <option value="vacation">vacation</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="border rounded-lg p-4 space-y-3">
+                    <div className="text-sm font-semibold text-gray-800">생성: 누적시간</div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">누적 (HH:MM)</label>
+                      <input
+                        value={form.totalHhmm}
+                        onChange={(e) => setForm((p) => ({ ...p, totalHhmm: e.target.value }))}
+                        placeholder="예: 08:30"
+                        className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                      />
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={createAttendance}
+                      className="w-full px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+                    >
+                      attendance 생성
+                    </button>
+                  </div>
+                </div>
               </div>
             ) : (
               <>
@@ -550,9 +705,9 @@ const AttendanceAdminEditor: React.FC = () => {
                         className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
                       >
                         <option value="working">working</option>
+                        <option value="paused">paused</option>
                         <option value="off">off</option>
-                        <option value="leave">leave</option>
-                        <option value="pause">pause</option>
+                        <option value="vacation">vacation</option>
                       </select>
                     </div>
                   </div>
