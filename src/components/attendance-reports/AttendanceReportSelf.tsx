@@ -4,10 +4,22 @@ import Loading from '../Loading';
 import ErrorMessage from '../ErrorMessage';
 import SuccessMessage from '../SuccessMessage';
 import type { ReportMode } from './reportTypes';
-import { clampDateRangeMax31Days, getRangeForMode, getTodayKey } from './reportUtils';
+import {
+  buildDateKeyList,
+  calcPauseSecondsInRange,
+  clampDateRangeMax31Days,
+  ensureCheckInOutEvents,
+  formatDurationHhMm,
+  formatTimeHHMM,
+  getRangeForMode,
+  getTodayKey,
+  groupEventsByAttendanceId,
+} from './reportUtils';
 import ReportControls from './ReportControls';
 import ReportPreview from './ReportPreview';
 import { fetchAttendanceWithEvents, fetchUserName } from './supabaseReports';
+import AttendanceDailyDetailTemplate, { type AttendanceDailyDetailRow, } from '../../pages/document-template/AttendanceDailyDetailTemplate';
+import { getEventTypeLabel } from '../../utils/attendanceLabels';
 
 const AttendanceReportSelf: React.FC = () => {
   const { user } = useAuth();
@@ -34,6 +46,86 @@ const AttendanceReportSelf: React.FC = () => {
 
   const [attendance, setAttendance] = useState<any[]>([]);
   const [events, setEvents] = useState<any[]>([]);
+
+  const dailyDetailRows = useMemo<AttendanceDailyDetailRow[]>(() => {
+    if (mode !== 'date_detail') return [];
+
+    const keys = buildDateKeyList(loadedStartKey, loadedEndKey);
+
+    const attByDate: Record<string, any> = {};
+    for (const a of attendance) attByDate[String(a.date)] = a;
+
+    const evByAttId = groupEventsByAttendanceId(events as any[]);
+
+    const out: AttendanceDailyDetailRow[] = [];
+
+    for (const key of keys) {
+      const att = attByDate[key];
+      if (!att) {
+        out.push({ date: key, timeText: '', eventText: '미출근', memo: '' });
+        continue;
+      }
+
+      const ev = ensureCheckInOutEvents(att, evByAttId[String(att.id)] || []);
+      if (!ev.length) {
+        out.push({ date: key, timeText: '', eventText: '미출근', memo: '' });
+        continue;
+      }
+
+      for (const e of ev) {
+        const memo =
+          (e.reason_category || e.notes) ? [e.reason_category, e.notes].filter(Boolean).join(' / ') : '';
+
+        out.push({
+          date: key,
+          timeText: formatTimeHHMM(e.occurred_at),
+          eventText: getEventTypeLabel(e.event_type),
+          memo,
+        });
+      }
+    }
+
+    return out;
+  }, [attendance, events, loadedEndKey, loadedStartKey, mode]);
+
+  const dailyTotals = useMemo(() => {
+    if (mode !== 'date_detail') {
+      return { totalText: '', breakText: '', netText: '' };
+    }
+
+    const evByAttId = groupEventsByAttendanceId(events as any[]);
+
+    let totalSecondsSum = 0;
+    let pauseSecondsSum = 0;
+    let netSecondsSum = 0;
+
+    for (const att of attendance as any[]) {
+      if (!att?.check_in || !att?.check_out) continue;
+
+      const totalSeconds = Math.max(
+        0,
+        Math.floor((new Date(att.check_out).getTime() - new Date(att.check_in).getTime()) / 1000)
+      );
+
+      const ev = ensureCheckInOutEvents(att, evByAttId[String(att.id)] || []);
+      const pauseSeconds = calcPauseSecondsInRange(ev, att.check_in, att.check_out);
+
+      const netSeconds =
+        typeof att.total_work_seconds === 'number'
+          ? Math.max(0, Math.floor(att.total_work_seconds))
+          : Math.max(0, totalSeconds - pauseSeconds);
+
+      totalSecondsSum += totalSeconds;
+      pauseSecondsSum += pauseSeconds;
+      netSecondsSum += netSeconds;
+    }
+
+    return {
+      totalText: formatDurationHhMm(totalSecondsSum),
+      breakText: formatDurationHhMm(pauseSecondsSum),
+      netText: formatDurationHhMm(netSecondsSum),
+    };
+  }, [attendance, events, mode]);
 
   const canLoad = useMemo(() => {
     if (!user?.id) return false;
@@ -120,15 +212,29 @@ const AttendanceReportSelf: React.FC = () => {
       {success && <SuccessMessage message={success} />}
 
       <div className="print:break-inside-avoid">
-        <ReportPreview
-          mode={mode}
-          userName={userName}
-          startKey={loadedStartKey}
-          endKey={loadedEndKey}
-          month={month}
-          attendance={attendance}
-          events={events}
-        />
+        {mode === 'date_detail' ? (
+          <AttendanceDailyDetailTemplate
+            issueDate={getTodayKey()}
+            periodText={`${loadedStartKey} - ${loadedEndKey}`}
+            departmentText="-"
+            nameText={userName}
+            rows={dailyDetailRows}
+            totalWorkText={dailyTotals.totalText}
+            breakText={dailyTotals.breakText}
+            netWorkText={dailyTotals.netText}
+            noteText=""
+          />
+        ) : (
+          <ReportPreview
+            mode={mode}
+            userName={userName}
+            startKey={loadedStartKey}
+            endKey={loadedEndKey}
+            month={month}
+            attendance={attendance}
+            events={events}
+          />
+        )}
       </div>
     </div>
   );
