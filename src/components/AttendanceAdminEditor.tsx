@@ -6,6 +6,7 @@ import Loading from './Loading';
 import ErrorMessage from './ErrorMessage';
 import SuccessMessage from './SuccessMessage';
 import ProfileModal from './ProfileModal';
+import { ATTENDANCE_STATUS_OPTIONS, CURRENT_STATUS_OPTIONS, EVENT_TYPE_OPTIONS, getEventTypeLabel, } from '../utils/attendanceLabels';
 
 type UserRow = {
   id: string;
@@ -580,21 +581,19 @@ const AttendanceAdminEditor: React.FC = () => {
             </div>
 
             <div className="border rounded-lg p-4 space-y-3">
-              <div className="text-sm font-semibold text-gray-800">현재상태(users.current_status)</div>
+              <div className="text-sm font-semibold text-gray-800">현재상태</div>
 
               <select
                 value={currentStatusEdit}
                 onChange={(e) => setCurrentStatusEdit(e.target.value)}
                 className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
               >
-                <option value="">(null)</option>
-                <option value="working">working</option>
-                <option value="paused">paused</option>
-                <option value="off">off</option>
-                <option value="vacation">vacation</option>
+                {CURRENT_STATUS_OPTIONS.map((opt) => (
+                  <option key={opt.value || '__empty__'} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
               </select>
-
-              <div className="text-xs text-gray-500">현재 DB: {selectedUser?.current_status ?? '(null)'}</div>
 
               <button
                 type="button"
@@ -640,10 +639,11 @@ const AttendanceAdminEditor: React.FC = () => {
                         onChange={(e) => setForm((p) => ({ ...p, status: e.target.value }))}
                         className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
                       >
-                        <option value="working">working</option>
-                        <option value="paused">paused</option>
-                        <option value="off">off</option>
-                        <option value="vacation">vacation</option>
+                        {ATTENDANCE_STATUS_OPTIONS.map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
                       </select>
                     </div>
                   </div>
@@ -704,10 +704,11 @@ const AttendanceAdminEditor: React.FC = () => {
                         onChange={(e) => setForm((p) => ({ ...p, status: e.target.value }))}
                         className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
                       >
-                        <option value="working">working</option>
-                        <option value="paused">paused</option>
-                        <option value="off">off</option>
-                        <option value="vacation">vacation</option>
+                        {ATTENDANCE_STATUS_OPTIONS.map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
                       </select>
                     </div>
                   </div>
@@ -723,9 +724,6 @@ const AttendanceAdminEditor: React.FC = () => {
                         placeholder="예: 08:30"
                         className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
                       />
-                      <div className="text-xs text-gray-500 mt-1">
-                        현재 DB: {secondsToHhmm(attendance.total_work_seconds ?? 0)} ({attendance.total_work_seconds ?? 0}초)
-                      </div>
                     </div>
 
                     <div className="flex gap-2">
@@ -765,10 +763,11 @@ const AttendanceAdminEditor: React.FC = () => {
                           onChange={(e) => setNewEvent((p) => ({ ...p, event_type: e.target.value }))}
                           className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
                         >
-                          <option value="pause">pause</option>
-                          <option value="resume">resume</option>
-                          <option value="check_in">check_in</option>
-                          <option value="check_out">check_out</option>
+                          {EVENT_TYPE_OPTIONS.map((opt) => (
+                            <option key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </option>
+                          ))}
                         </select>
                       </div>
 
@@ -825,7 +824,7 @@ const AttendanceAdminEditor: React.FC = () => {
                               <div className="flex items-start justify-between gap-4">
                                 <div className="min-w-0">
                                   <div className="text-sm font-semibold text-gray-900">
-                                    {ev.event_type}{' '}
+                                    {getEventTypeLabel(ev.event_type)}{' '}
                                     <span className="text-xs text-gray-500 ml-2">
                                       {new Date(ev.occurred_at).toLocaleString('ko-KR')}
                                     </span>
@@ -861,10 +860,11 @@ const AttendanceAdminEditor: React.FC = () => {
                                     onChange={(e) => setEventEdit((p) => ({ ...p, event_type: e.target.value }))}
                                     className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
                                   >
-                                    <option value="pause">pause</option>
-                                    <option value="resume">resume</option>
-                                    <option value="check_in">check_in</option>
-                                    <option value="check_out">check_out</option>
+                                    {EVENT_TYPE_OPTIONS.map((opt) => (
+                                      <option key={opt.value} value={opt.value}>
+                                        {opt.label}
+                                      </option>
+                                    ))}
                                   </select>
                                 </div>
 
