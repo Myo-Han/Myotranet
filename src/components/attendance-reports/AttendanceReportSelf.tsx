@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import Loading from '../Loading';
 import ErrorMessage from '../ErrorMessage';
@@ -167,6 +167,9 @@ const AttendanceReportSelf: React.FC = () => {
       setAttendance(a);
       setEvents(e);
 
+      // ✅ 미리보기 누르면 PDF까지 생성해서 아래 뷰어에 바로 뜨게
+      await handleBuildPdf(startKey, endKey);
+
       setSuccess('미리보기가 준비되었습니다');
       setTimeout(() => setSuccess(''), 2000);
     } catch (err: any) {
@@ -176,8 +179,46 @@ const AttendanceReportSelf: React.FC = () => {
     }
   };
 
-  const handlePrint = () => {
-    window.print();
+  const [pdfUrl, setPdfUrl] = useState<string>('');
+  const [pdfLoading, setPdfLoading] = useState(false);
+
+  useEffect(() => {
+    return () => {
+      if (pdfUrl) URL.revokeObjectURL(pdfUrl);
+    };
+  }, [pdfUrl]);
+
+  const handleBuildPdf = async (startKey: string, endKey: string) => {
+    if (!user?.id) return;
+
+    setPdfLoading(true);
+    setError('');
+
+    try {
+      if (pdfUrl) URL.revokeObjectURL(pdfUrl);
+
+      // ✅ TODO: 서버 PDF 생성 API 붙이기 (blob/pdf 반환)
+      const res = await fetch('/api/documents/attendance/daily-detail', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.id,
+          mode,
+          startKey,
+          endKey,
+          month,
+        }),
+      });
+
+      if (!res.ok) throw new Error('PDF 생성에 실패했습니다');
+
+      const blob = await res.blob();
+      setPdfUrl(URL.createObjectURL(blob));
+    } catch (e: any) {
+      setError(e?.message || 'PDF 생성에 실패했습니다');
+    } finally {
+      setPdfLoading(false);
+    }
   };
 
   if (!user) return <ErrorMessage message="로그인이 필요합니다" />;
@@ -189,7 +230,12 @@ const AttendanceReportSelf: React.FC = () => {
         <p className="text-sm text-gray-600 mt-1">본인 증명서만 출력할 수 있습니다.</p>
       </div>
 
-      <div className="print:hidden">
+      <div className="print:hidden ars-controls">
+        <style>{`
+    /* ReportControls 안의 "마지막 버튼(PDF 출력)" 숨김 */
+    .ars-controls button:last-child { display: none !important; }
+  `}</style>
+
         <ReportControls
           mode={mode}
           setMode={setMode}
@@ -202,7 +248,7 @@ const AttendanceReportSelf: React.FC = () => {
           canLoad={canLoad}
           hint={hint}
           onLoad={handleLoad}
-          onPrint={handlePrint}
+          onPrint={() => { }}
           loading={loading}
         />
       </div>
@@ -212,28 +258,55 @@ const AttendanceReportSelf: React.FC = () => {
       {success && <SuccessMessage message={success} />}
 
       <div className="print:break-inside-avoid">
-        {mode === 'date_detail' ? (
-          <AttendanceDailyDetailTemplate
-            issueDate={getTodayKey()}
-            periodText={`${loadedStartKey} - ${loadedEndKey}`}
-            departmentText="-"
-            nameText={userName}
-            rows={dailyDetailRows}
-            totalWorkText={dailyTotals.totalText}
-            breakText={dailyTotals.breakText}
-            netWorkText={dailyTotals.netText}
-            noteText=""
-          />
+        {pdfUrl ? (
+          <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+            <div className="px-4 py-3 border-b flex items-center justify-between">
+              <div className="text-sm font-semibold">PDF 미리보기</div>
+
+              <a
+                href={pdfUrl}
+                download={`출퇴근_증명서_${loadedStartKey}_${loadedEndKey}.pdf`}
+                className="px-3 py-2 text-sm rounded-md bg-gray-900 text-white hover:bg-gray-800"
+              >
+                PDF 다운로드
+              </a>
+            </div>
+
+            <div className="w-full h-[75vh]">
+              <iframe title="pdf-preview" src={pdfUrl} className="w-full h-full" />
+            </div>
+
+            {pdfLoading && (
+              <div className="px-4 py-2 text-xs text-gray-500">PDF 생성 중...</div>
+            )}
+          </div>
         ) : (
-          <ReportPreview
-            mode={mode}
-            userName={userName}
-            startKey={loadedStartKey}
-            endKey={loadedEndKey}
-            month={month}
-            attendance={attendance}
-            events={events}
-          />
+          // PDF 아직 없으면 기존 HTML 미리보기 유지
+          <>
+            {mode === 'date_detail' ? (
+              <AttendanceDailyDetailTemplate
+                issueDate={getTodayKey()}
+                periodText={`${loadedStartKey} - ${loadedEndKey}`}
+                departmentText="-"
+                nameText={userName}
+                rows={dailyDetailRows}
+                totalWorkText={dailyTotals.totalText}
+                breakText={dailyTotals.breakText}
+                netWorkText={dailyTotals.netText}
+                noteText=""
+              />
+            ) : (
+              <ReportPreview
+                mode={mode}
+                userName={userName}
+                startKey={loadedStartKey}
+                endKey={loadedEndKey}
+                month={month}
+                attendance={attendance}
+                events={events}
+              />
+            )}
+          </>
         )}
       </div>
     </div>
