@@ -20,7 +20,7 @@ type UserRow = {
   is_active?: boolean | null;
 };
 
-type TargetScope = 'single' | 'selected' | 'all';
+type TargetScope = 'selected' | 'all';
 
 type PreviewItem = {
   userId: string;
@@ -49,7 +49,6 @@ const AttendanceReportAdmin: React.FC = () => {
   const [scope, setScope] = useState<TargetScope>('single');
   const [users, setUsers] = useState<UserRow[]>([]);
   const [query, setQuery] = useState('');
-  const [singleUserId, setSingleUserId] = useState<string>('');
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
 
   // 로드/미리보기 상태
@@ -81,10 +80,6 @@ const AttendanceReportAdmin: React.FC = () => {
 
         const list = (data ?? []) as any as UserRow[];
         setUsers(list);
-
-        if (!singleUserId && list.length) {
-          setSingleUserId(list[0].id);
-        }
       } catch (e: any) {
         setError(e?.message || '사용자 목록 로드 실패');
       } finally {
@@ -104,10 +99,6 @@ const AttendanceReportAdmin: React.FC = () => {
 
   const selectedUsersLabel = useMemo(() => {
     if (scope === 'all') return '전체';
-    if (scope === 'single') {
-      const u = users.find((x) => x.id === singleUserId);
-      return u?.name || '선택 안 됨';
-    }
     // selected
     const names = users
       .filter((u) => selectedUserIds.includes(u.id))
@@ -120,10 +111,7 @@ const AttendanceReportAdmin: React.FC = () => {
   const canLoad = useMemo(() => {
     if (!canUse) return false;
 
-    // 대상 조건
-    if (scope === 'single') {
-      if (!singleUserId) return false;
-    } else if (scope === 'selected') {
+    if (scope === 'selected') {
       if (selectedUserIds.length === 0) return false;
     }
 
@@ -175,7 +163,6 @@ const AttendanceReportAdmin: React.FC = () => {
 
       let targetIds: string[] = [];
       if (scope === 'all') targetIds = users.map((u) => u.id);
-      else if (scope === 'single') targetIds = singleUserId ? [singleUserId] : [];
       else targetIds = selectedUserIds;
 
       // 안전장치: 너무 많으면 미리보기만이라도 제한 (원하면 나중에 “전체 엑셀”은 서버로)
@@ -228,12 +215,6 @@ const AttendanceReportAdmin: React.FC = () => {
       <div className="no-print bg-white shadow rounded-lg p-4 space-y-3">
         <div className="flex flex-wrap items-center gap-3">
           <div className="text-sm font-semibold text-gray-800">대상</div>
-
-          <label className="inline-flex items-center gap-2 text-sm">
-            <input type="radio" checked={scope === 'single'} onChange={() => setScope('single')} />
-            특정 개인
-          </label>
-
           <label className="inline-flex items-center gap-2 text-sm">
             <input type="radio" checked={scope === 'selected'} onChange={() => setScope('selected')} />
             선택한 사원들
@@ -246,24 +227,6 @@ const AttendanceReportAdmin: React.FC = () => {
 
           <div className="ml-auto text-xs text-gray-500">현재 선택: {selectedUsersLabel}</div>
         </div>
-
-        {/* single */}
-        {scope === 'single' && (
-          <div className="flex flex-wrap items-center gap-3">
-            <label className="text-xs text-gray-600">사원 선택</label>
-            <select
-              value={singleUserId}
-              onChange={(e) => setSingleUserId(e.target.value)}
-              className="border border-gray-300 rounded px-3 py-2 text-sm"
-            >
-              {users.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.name || '이름없음'} {u.role ? `(${u.role})` : ''}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
 
         {/* selected */}
         {scope === 'selected' && (
