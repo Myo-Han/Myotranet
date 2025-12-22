@@ -42,16 +42,31 @@ const EvidenceIssueModal: React.FC<Props> = ({ isOpen, onClose }) => {
   @media print {
   @page { size: A4; margin: 10mm; }
 
-  /* ✅ 1) 기본: 페이지 전부 숨김 */
-  body * {
-    visibility: hidden !important;
-  }
+  /* ✅ 1) 모달 제외 전부 제거(레이아웃도 제거) */
+body > :not(.evidence-modal-overlay) {
+  display: none !important;
+}
 
-  /* ✅ 2) 모달만 보이게 */
-  .evidence-modal-overlay,
-  .evidence-modal-overlay * {
-    visibility: visible !important;
-  }
+/* ✅ 2) 모달은 출력되게 */
+.evidence-modal-overlay {
+  display: block !important;
+  position: static !important;
+  background: transparent !important;
+}
+
+/* ✅ 3) 상단바/좌측탭 숨김 */
+.evidence-modal-chrome { display: none !important; }
+
+/* ✅ 4) 내용은 스크롤 없이 */
+.evidence-modal-shell,
+.evidence-modal-content {
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+  box-shadow: none !important;
+  border: none !important;
+  border-radius: 0 !important;
+}
 
   /* ✅ 3) 모달을 출력 시작 위치로 고정 */
   .evidence-modal-overlay {
