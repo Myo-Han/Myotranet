@@ -350,7 +350,7 @@ const AttendanceReportAdmin: React.FC = () => {
       </div>
 
       <div className="no-print text-xs text-gray-500">
-        * 엑셀 다운로드는 다음 단계에서 붙이면 됩니다. (관리자 페이지에서만 제공)
+        {/* * 엑셀 다운로드는 다음 단계에서 붙이면 됩니다. (관리자 페이지에서만 제공) */}
       </div>
     </div>
   );
