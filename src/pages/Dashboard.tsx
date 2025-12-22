@@ -8,7 +8,7 @@ import { ReactionBar } from '../components/reactions';
 import { CommentThread } from '../components/comments';
 import SearchModal from '../components/SearchModal';
 import LettersModal from '../components/LettersModal';
-import { getStatusLabel } from './utils/attendanceLabels';
+import { getStatusLabel } from '../utils/attendanceLabels';
 
 type Notice = {
   id: number;
