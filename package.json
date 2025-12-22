@@ -19,6 +19,7 @@
     "express": "^4.22.1",
     "express-session": "^1.17.3",
     "googleapis": "^169.0.0",
+    "html2pdf.js": "^0.12.1",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
     "pg": "^8.11.3",
