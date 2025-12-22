@@ -52,9 +52,14 @@ const EvidenceIssueModal: React.FC<Props> = ({ isOpen, onClose }) => {
     }
 
     /* 모달 외 모든 요소 숨김 */
-    body > :not(.evidence-modal-overlay) {
-      display: none !important;
-    }
+    body * {
+  display: none !important;
+}
+
+.evidence-modal-overlay,
+.evidence-modal-overlay * {
+  display: block !important;
+}
 
     /* 모달 오버레이 - 일반 문서처럼 */
     .evidence-modal-overlay {
