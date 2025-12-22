@@ -164,15 +164,22 @@ const ReportPreview: React.FC<Props> = ({ mode, userName, startKey, endKey, mont
     <div className="bg-white shadow rounded-lg p-6">
       <style>{`
   @media print {
-    .no-print { display: none !important; }
-    body { background: #fff !important; }
-    .print-page { box-shadow: none !important; padding: 0 !important; }
+  body { background: #fff !important; }
+  .print-page { box-shadow: none !important; padding: 0 !important; }
 
-    thead { display: table-header-group; }
-    tfoot { display: table-footer-group; }
-    tr { page-break-inside: avoid; }
-    table { page-break-inside: auto; }
+  thead { display: table-header-group; }
+  tfoot { display: table-footer-group; }
+  tr { page-break-inside: avoid; }
+  
+  /* 일별은 페이지 넘어가도 OK */
+  table { page-break-inside: auto; }
+  
+  /* 월별 상세/요약은 한 페이지에 */
+  .print\:break-inside-avoid { 
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
+}
 `}</style>
 
       <div className="print-page">
@@ -216,7 +223,7 @@ const ReportPreview: React.FC<Props> = ({ mode, userName, startKey, endKey, mont
         )}
 
         {mode === 'month_detail' && (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto print:break-inside-avoid">
             <table className="min-w-full border border-gray-200 text-sm">
               <thead className="bg-gray-50">
                 <tr>
@@ -247,7 +254,7 @@ const ReportPreview: React.FC<Props> = ({ mode, userName, startKey, endKey, mont
         )}
 
         {mode === 'month_summary' && (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto print:break-inside-avoid">
             <table className="min-w-full border border-gray-200 text-[9px] table-fixed">
               <thead className="bg-gray-50">
                 <tr>

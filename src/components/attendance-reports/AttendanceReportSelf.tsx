@@ -92,42 +92,45 @@ const AttendanceReportSelf: React.FC = () => {
 
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-4">
-      <div className="no-print">
+      <div className="print:hidden">
         <h1 className="text-2xl font-bold">출퇴근 증명서 출력</h1>
         <p className="text-sm text-gray-600 mt-1">본인 증명서만 출력할 수 있습니다.</p>
       </div>
 
-      <ReportControls
-        mode={mode}
-        setMode={setMode}
-        dateStart={dateStart}
-        dateEnd={dateEnd}
-        setDateStart={setDateStart}
-        setDateEnd={setDateEnd}
-        month={month}
-        setMonth={setMonth}
-        canLoad={canLoad}
-        hint={hint}
-        onLoad={handleLoad}
-        onPrint={handlePrint}
-        loading={loading}
-      />
+      <div className="print:hidden">
+        <ReportControls
+          mode={mode}
+          setMode={setMode}
+          dateStart={dateStart}
+          dateEnd={dateEnd}
+          setDateStart={setDateStart}
+          setDateEnd={setDateEnd}
+          month={month}
+          setMonth={setMonth}
+          canLoad={canLoad}
+          hint={hint}
+          onLoad={handleLoad}
+          onPrint={handlePrint}
+          loading={loading}
+        />
+      </div>
 
       {loading && <Loading />}
       {error && <ErrorMessage message={error} />}
       {success && <SuccessMessage message={success} />}
 
-      <ReportPreview
-        mode={mode}
-        userName={userName}
-        startKey={loadedStartKey}
-        endKey={loadedEndKey}
-        month={month}
-        attendance={attendance}
-        events={events}
-      />
-    </div>
-  );
+      <div className="print:break-inside-avoid">
+        <ReportPreview
+          mode={mode}
+          userName={userName}
+          startKey={loadedStartKey}
+          endKey={loadedEndKey}
+          month={month}
+          attendance={attendance}
+          events={events}
+        />
+      </div>
+      );
 };
 
-export default AttendanceReportSelf;
+      export default AttendanceReportSelf;
