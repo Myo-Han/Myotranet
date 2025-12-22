@@ -8,6 +8,7 @@ import { ReactionBar } from '../components/reactions';
 import { CommentThread } from '../components/comments';
 import SearchModal from '../components/SearchModal';
 import LettersModal from '../components/LettersModal';
+import { getStatusLabel } from './utils/attendanceLabels';
 
 type Notice = {
   id: number;
@@ -391,63 +392,20 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  const viewProfile = (userId: string) => {
-    navigate(`/search?userId=${userId}`);
-  };
-
-  const normalizedStatus = String(userExtra?.current_status ?? '').trim() || 'none';
+  const statusLabel = getStatusLabel(userExtra?.current_status ?? null, null, true);
 
   const statusMeta = (() => {
-    switch (normalizedStatus) {
-      case 'working':
-        return {
-          label: '근무중',
-          wrap: 'bg-green-50 border-green-200',
-          title: 'text-green-600',
-          value: 'text-green-700',
-          icon: 'text-green-500',
-          iconPath: 'M5 13l4 4L19 7',
-        };
-
-      case 'paused':
-        return {
-          label: '근무중단',
-          wrap: 'bg-orange-50 border-orange-200',
-          title: 'text-orange-600',
-          value: 'text-orange-700',
-          icon: 'text-orange-500',
-          iconPath: 'M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
-        };
-
-      case 'off':
-        return {
-          label: '퇴근',
-          wrap: 'bg-gray-50 border-gray-200',
-          title: 'text-gray-600',
-          value: 'text-gray-700',
-          icon: 'text-gray-500',
-          iconPath: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',
-        };
-
-      case 'vacation':
-        return {
-          label: '휴가',
-          wrap: 'bg-blue-50 border-blue-200',
-          title: 'text-blue-600',
-          value: 'text-blue-700',
-          icon: 'text-blue-500',
-          iconPath: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z',
-        };
-
+    switch (statusLabel) {
+      case '근무중':
+        return { label: statusLabel, wrap: 'bg-green-50 border-green-200', title: 'text-green-600', value: 'text-green-700', icon: 'text-green-500', iconPath: 'M5 13l4 4L19 7' };
+      case '근무중단':
+        return { label: statusLabel, wrap: 'bg-orange-50 border-orange-200', title: 'text-orange-600', value: 'text-orange-700', icon: 'text-orange-500', iconPath: 'M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z' };
+      case '퇴근':
+        return { label: statusLabel, wrap: 'bg-gray-50 border-gray-200', title: 'text-gray-600', value: 'text-gray-700', icon: 'text-gray-500', iconPath: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' };
+      case '휴가':
+        return { label: statusLabel, wrap: 'bg-blue-50 border-blue-200', title: 'text-blue-600', value: 'text-blue-700', icon: 'text-blue-500', iconPath: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' };
       default:
-        return {
-          label: '미출근',
-          wrap: 'bg-red-50 border-red-200',
-          title: 'text-red-600',
-          value: 'text-red-700',
-          icon: 'text-red-500',
-          iconPath: 'M12 8v4m0 4h.01M12 2a10 10 0 100 20 10 10 0 000-20z',
-        };
+        return { label: '미출근', wrap: 'bg-red-50 border-red-200', title: 'text-red-600', value: 'text-red-700', icon: 'text-red-500', iconPath: 'M12 8v4m0 4h.01M12 2a10 10 0 100 20 10 10 0 000-20z' };
     }
   })();
 
@@ -879,13 +837,13 @@ const Dashboard: React.FC = () => {
           />
         )
       }
-      <SearchModal 
-        isOpen={isSearchOpen} 
-        onClose={() => setIsSearchOpen(false)} 
+      <SearchModal
+        isOpen={isSearchOpen}
+        onClose={() => setIsSearchOpen(false)}
       />
-      <LettersModal 
-        isOpen={isLettersOpen} 
-        onClose={() => setIsLettersOpen(false)} 
+      <LettersModal
+        isOpen={isLettersOpen}
+        onClose={() => setIsLettersOpen(false)}
       />
     </div >
   );
