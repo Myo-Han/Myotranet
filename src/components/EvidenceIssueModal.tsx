@@ -39,29 +39,43 @@ const EvidenceIssueModal: React.FC<Props> = ({ isOpen, onClose }) => {
       }}
     >
       <style>{`
-        @media print {
-          .evidence-modal-overlay {
-            position: static !important;
-            inset: auto !important;
-            background: transparent !important;
-            display: block !important;
-          }
-          .evidence-modal-shell {
-            max-height: none !important;
-            height: auto !important;
-            box-shadow: none !important;
-            border: none !important;
-            border-radius: 0 !important;
-          }
-          .evidence-modal-chrome {
-            display: none !important;
-          }
-          .evidence-modal-content {
-            max-height: none !important;
-            overflow: visible !important;
-          }
-        }
-      `}</style>
+  @media print {
+    @page { size: A4; margin: 10mm; }
+
+    html, body {
+      height: auto !important;
+      overflow: visible !important;
+      background: #fff !important;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    .evidence-modal-overlay {
+      position: static !important;
+      inset: auto !important;
+      background: transparent !important;
+      display: block !important;
+    }
+    .evidence-modal-shell {
+      max-height: none !important;
+      height: auto !important;
+      overflow: visible !important;
+      box-shadow: none !important;
+      border: none !important;
+      border-radius: 0 !important;
+      max-width: none !important;
+      width: auto !important;
+      margin: 0 !important;
+    }
+    .evidence-modal-chrome {
+      display: none !important;
+    }
+    .evidence-modal-content {
+      max-height: none !important;
+      overflow: visible !important;
+    }
+  }
+`}</style>
 
       <div className="evidence-modal-shell bg-white rounded-lg shadow-xl w-full max-w-6xl mx-4 h-[85vh] overflow-hidden border border-gray-200 flex flex-col">
         {/* 상단바 */}
@@ -88,11 +102,10 @@ const EvidenceIssueModal: React.FC<Props> = ({ isOpen, onClose }) => {
               <button
                 type="button"
                 onClick={() => setTab('attendance')}
-                className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium ${
-                  tab === 'attendance'
-                    ? 'bg-white border border-gray-200 shadow-sm'
-                    : 'hover:bg-white/70'
-                }`}
+                className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium ${tab === 'attendance'
+                  ? 'bg-white border border-gray-200 shadow-sm'
+                  : 'hover:bg-white/70'
+                  }`}
               >
                 출퇴근
               </button>
@@ -100,11 +113,10 @@ const EvidenceIssueModal: React.FC<Props> = ({ isOpen, onClose }) => {
               <button
                 type="button"
                 onClick={() => setTab('coming_soon')}
-                className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium ${
-                  tab === 'coming_soon'
-                    ? 'bg-white border border-gray-200 shadow-sm'
-                    : 'hover:bg-white/70'
-                }`}
+                className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium ${tab === 'coming_soon'
+                  ? 'bg-white border border-gray-200 shadow-sm'
+                  : 'hover:bg-white/70'
+                  }`}
               >
                 기타 서류(추가 예정)
               </button>

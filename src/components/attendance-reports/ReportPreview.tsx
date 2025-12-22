@@ -163,13 +163,17 @@ const ReportPreview: React.FC<Props> = ({ mode, userName, startKey, endKey, mont
   return (
     <div className="bg-white shadow rounded-lg p-6">
       <style>{`
-        @media print {
-          .no-print { display: none !important; }
-          body { background: #fff !important; }
-          .print-page { box-shadow: none !important; padding: 0 !important; }
-          table { page-break-inside: avoid; }
-        }
-      `}</style>
+  @media print {
+    .no-print { display: none !important; }
+    body { background: #fff !important; }
+    .print-page { box-shadow: none !important; padding: 0 !important; }
+
+    thead { display: table-header-group; }
+    tfoot { display: table-footer-group; }
+    tr { page-break-inside: avoid; }
+    table { page-break-inside: auto; }
+  }
+`}</style>
 
       <div className="print-page">
         <div className="mb-4">
@@ -244,7 +248,7 @@ const ReportPreview: React.FC<Props> = ({ mode, userName, startKey, endKey, mont
 
         {mode === 'month_summary' && (
           <div className="overflow-x-auto">
-            <table className="min-w-full border border-gray-200 text-xs">
+            <table className="min-w-full border border-gray-200 text-[9px] table-fixed">
               <thead className="bg-gray-50">
                 <tr>
                   <th className="border px-2 py-2 text-left w-20">월</th>
