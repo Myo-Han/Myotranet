@@ -1,6 +1,6 @@
 // 서류발급
 import React, { useEffect, useState } from 'react';
-import { AttendanceReportSelf } from './attendance-reports/AttendanceReportSelf';
+import AttendanceReportSelf from './attendance-reports/AttendanceReportSelf';
 
 type Props = {
   isOpen: boolean;
