@@ -206,13 +206,29 @@ const AttendanceReportSelf: React.FC = () => {
         month,
       }).toString();
 
-      const res = await fetch(`/api/documents/attendance/daily-detail?${qs}`, {
-        method: 'GET',
+      const res = await fetch('/api/documents/attendance/daily-detail', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/pdf',
+        },
+        body: JSON.stringify({ userId: user.id, mode, startKey, endKey, month }),
       });
 
-      if (!res.ok) throw new Error('PDF 생성에 실패했습니다');
+      if (!res.ok) {
+        const t = await res.text().catch(() => '');
+        throw new Error(`PDF 생성 실패 (${res.status}) ${t ? `: ${t.slice(0, 120)}` : ''}`);
+      }
+
+      const contentType = res.headers.get('content-type') || '';
+      if (!contentType.includes('application/pdf')) {
+        const t = await res.text().catch(() => '');
+        throw new Error(`PDF 응답이 아닙니다 (${contentType || 'no content-type'}) ${t ? `: ${t.slice(0, 120)}` : ''}`);
+      }
 
       const blob = await res.blob();
+      if (!blob || blob.size < 1000) throw new Error('PDF 파일이 비어있습니다');
+
       setPdfUrl(URL.createObjectURL(blob));
     } catch (e: any) {
       setError(e?.message || 'PDF 생성에 실패했습니다');
@@ -258,56 +274,24 @@ const AttendanceReportSelf: React.FC = () => {
       {success && <SuccessMessage message={success} />}
 
       <div className="print:break-inside-avoid">
-        {pdfUrl ? (
-          <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-            <div className="px-4 py-3 border-b flex items-center justify-between">
-              <div className="text-sm font-semibold">PDF 미리보기</div>
+        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+          <div className="px-4 py-3 border-b flex items-center justify-between">
+            <div className="text-sm font-semibold">PDF 미리보기</div>
+            {/* ✅ PDF 다운로드 버튼 제거 */}
+          </div>
 
-              <a
-                href={pdfUrl}
-                download={`출퇴근_증명서_${loadedStartKey}_${loadedEndKey}.pdf`}
-                className="px-3 py-2 text-sm rounded-md bg-gray-900 text-white hover:bg-gray-800"
-              >
-                PDF 다운로드
-              </a>
-            </div>
-
-            <div className="w-full h-[75vh]">
-              <iframe title="pdf-preview" src={pdfUrl} className="w-full h-full" />
-            </div>
-
-            {pdfLoading && (
-              <div className="px-4 py-2 text-xs text-gray-500">PDF 생성 중...</div>
+          <div className="w-full h-[75vh]">
+            {pdfUrl ? (
+              <iframe key={pdfUrl} title="pdf-preview" src={pdfUrl} className="w-full h-full" />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-sm text-gray-500">
+                미리보기를 누르면 PDF가 생성되어 여기에 표시됩니다.
+              </div>
             )}
           </div>
-        ) : (
-          // PDF 아직 없으면 기존 HTML 미리보기 유지
-          <>
-            {mode === 'date_detail' ? (
-              <AttendanceDailyDetailTemplate
-                issueDate={getTodayKey()}
-                periodText={`${loadedStartKey} - ${loadedEndKey}`}
-                departmentText="-"
-                nameText={userName}
-                rows={dailyDetailRows}
-                totalWorkText={dailyTotals.totalText}
-                breakText={dailyTotals.breakText}
-                netWorkText={dailyTotals.netText}
-                noteText=""
-              />
-            ) : (
-              <ReportPreview
-                mode={mode}
-                userName={userName}
-                startKey={loadedStartKey}
-                endKey={loadedEndKey}
-                month={month}
-                attendance={attendance}
-                events={events}
-              />
-            )}
-          </>
-        )}
+
+          {pdfLoading && <div className="px-4 py-2 text-xs text-gray-500">PDF 생성 중...</div>}
+        </div>
       </div>
     </div>
   );
