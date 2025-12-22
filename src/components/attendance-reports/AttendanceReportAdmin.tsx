@@ -46,7 +46,7 @@ const AttendanceReportAdmin: React.FC = () => {
   });
 
   // 대상 선택
-  const [scope, setScope] = useState<TargetScope>('single');
+  const [scope, setScope] = useState<TargetScope>('selected');
   const [users, setUsers] = useState<UserRow[]>([]);
   const [query, setQuery] = useState('');
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
@@ -106,7 +106,7 @@ const AttendanceReportAdmin: React.FC = () => {
     if (names.length === 0) return '선택 안 됨';
     if (names.length <= 3) return names.join(', ');
     return `${names.slice(0, 3).join(', ')} 외 ${names.length - 3}명`;
-  }, [scope, users, singleUserId, selectedUserIds]);
+  }, [scope, users, selectedUserIds]);
 
   const canLoad = useMemo(() => {
     if (!canUse) return false;
@@ -123,7 +123,7 @@ const AttendanceReportAdmin: React.FC = () => {
     }
 
     return !!month;
-  }, [canUse, scope, singleUserId, selectedUserIds, mode, dateStart, dateEnd, month]);
+  }, [canUse, scope, selectedUserIds, mode, dateStart, dateEnd, month]);
 
   const hint = useMemo(() => {
     if (mode !== 'date_detail') return '';
