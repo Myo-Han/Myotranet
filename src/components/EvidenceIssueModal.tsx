@@ -39,9 +39,9 @@ const EvidenceIssueModal: React.FC<Props> = ({ isOpen, onClose }) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="evidence-modal-shell bg-white rounded-lg shadow-xl w-full max-w-6xl mx-4 h-[85vh] overflow-hidden border border-gray-200 flex flex-col">
+      <div className="evidence-modal-shell bg-white rounded-lg shadow-xl w-full max-w-6xl mx-4 h-[85vh] overflow-hidden border border-gray-200 flex flex-col print:border-0 print:shadow-none print:h-auto print:max-w-none">
         {/* 상단바 */}
-        <div className="evidence-modal-chrome px-6 py-4 border-b flex items-center justify-between">
+        <div className="evidence-modal-chrome px-6 py-4 border-b flex items-center justify-between print:hidden">
           <div>
             <h2 className="text-lg font-semibold text-gray-900">증빙서 발급</h2>
             <p className="text-xs text-gray-500 mt-1">필요한 서류를 선택해서 출력/발급하세요.</p>
@@ -59,7 +59,7 @@ const EvidenceIssueModal: React.FC<Props> = ({ isOpen, onClose }) => {
         {/* 본문 */}
         <div className="flex flex-1 min-h-0">
           {/* 좌측 탭 */}
-          <div className="evidence-modal-chrome w-52 border-r bg-gray-50 p-3">
+          <div className="evidence-modal-chrome w-52 border-r bg-gray-50 p-3 print:hidden">
             <div className="space-y-2">
               <button
                 type="button"
@@ -86,7 +86,7 @@ const EvidenceIssueModal: React.FC<Props> = ({ isOpen, onClose }) => {
           </div>
 
           {/* 우측 내용 */}
-          <div className="evidence-modal-content flex-1 min-h-0 overflow-y-auto bg-white">
+          <div className="evidence-modal-content flex-1 min-h-0 overflow-y-auto bg-white print:overflow-visible">
             {tab === 'attendance' && (
               <div className="p-4">
                 <div id="print-area">
