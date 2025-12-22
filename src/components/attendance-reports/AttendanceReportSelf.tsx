@@ -130,7 +130,8 @@ const AttendanceReportSelf: React.FC = () => {
           events={events}
         />
       </div>
-      );
+    </div>
+  );
 };
 
-      export default AttendanceReportSelf;
+export default AttendanceReportSelf;
