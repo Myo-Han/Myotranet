@@ -1,6 +1,7 @@
 // 서류발급
 import React, { useEffect, useState } from 'react';
 import AttendanceReportSelf from './attendance-reports/AttendanceReportSelf';
+import html2pdf from 'html2pdf.js';
 
 type Props = {
   isOpen: boolean;
@@ -38,63 +39,6 @@ const EvidenceIssueModal: React.FC<Props> = ({ isOpen, onClose }) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <style>{`
-  @media print {
-    @page { size: A4; margin: 10mm; }
-
-    /* 페이지 전체 설정 */
-    html, body {
-      height: auto !important;
-      overflow: visible !important;
-      background: #fff !important;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
-    }
-
-    /* 모달 외 모든 요소 숨김 */
-    body * {
-  display: none !important;
-}
-
-.evidence-modal-overlay,
-.evidence-modal-overlay * {
-  display: block !important;
-}
-
-    /* 모달 오버레이 - 일반 문서처럼 */
-    .evidence-modal-overlay {
-      position: static !important;
-      display: block !important;
-      background: transparent !important;
-      inset: unset !important;
-    }
-
-    /* 모달 쉘 - 화면 제약 제거 */
-    .evidence-modal-shell {
-      max-width: none !important;
-      max-height: none !important;
-      height: auto !important;
-      width: 100% !important;
-      margin: 0 !important;
-      overflow: visible !important;
-      box-shadow: none !important;
-      border: none !important;
-      border-radius: 0 !important;
-    }
-
-    /* 크롬(상단바/좌측탭) 숨김 */
-    .evidence-modal-chrome {
-      display: none !important;
-    }
-
-    /* 콘텐츠 영역 - 스크롤 제거 */
-    .evidence-modal-content {
-      max-height: none !important;
-      overflow: visible !important;
-    }
-  }
-`}</style>
-
       <div className="evidence-modal-shell bg-white rounded-lg shadow-xl w-full max-w-6xl mx-4 h-[85vh] overflow-hidden border border-gray-200 flex flex-col">
         {/* 상단바 */}
         <div className="evidence-modal-chrome px-6 py-4 border-b flex items-center justify-between">
@@ -145,7 +89,18 @@ const EvidenceIssueModal: React.FC<Props> = ({ isOpen, onClose }) => {
           <div className="evidence-modal-content flex-1 min-h-0 overflow-y-auto bg-white">
             {tab === 'attendance' && (
               <div className="p-4">
-                <AttendanceReportSelf />
+                <div id="print-area">
+                  <AttendanceReportSelf />
+                </div>
+                <button
+                  onClick={() => {
+                    const element = document.getElementById('print-area');
+                    html2pdf().from(element).save('출퇴근증명서.pdf');
+                  }}
+                  className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                >
+                  PDF 다운로드
+                </button>
               </div>
             )}
 
