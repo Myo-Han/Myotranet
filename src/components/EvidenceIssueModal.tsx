@@ -40,41 +40,60 @@ const EvidenceIssueModal: React.FC<Props> = ({ isOpen, onClose }) => {
     >
       <style>{`
   @media print {
-    @page { size: A4; margin: 10mm; }
+  @page { size: A4; margin: 10mm; }
 
-    html, body {
-      height: auto !important;
-      overflow: visible !important;
-      background: #fff !important;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
-    }
-
-    .evidence-modal-overlay {
-      position: static !important;
-      inset: auto !important;
-      background: transparent !important;
-      display: block !important;
-    }
-    .evidence-modal-shell {
-      max-height: none !important;
-      height: auto !important;
-      overflow: visible !important;
-      box-shadow: none !important;
-      border: none !important;
-      border-radius: 0 !important;
-      max-width: none !important;
-      width: auto !important;
-      margin: 0 !important;
-    }
-    .evidence-modal-chrome {
-      display: none !important;
-    }
-    .evidence-modal-content {
-      max-height: none !important;
-      overflow: visible !important;
-    }
+  /* ✅ 1) 기본: 페이지 전부 숨김 */
+  body * {
+    visibility: hidden !important;
   }
+
+  /* ✅ 2) 모달만 보이게 */
+  .evidence-modal-overlay,
+  .evidence-modal-overlay * {
+    visibility: visible !important;
+  }
+
+  /* ✅ 3) 모달을 출력 시작 위치로 고정 */
+  .evidence-modal-overlay {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    right: 0 !important;
+    bottom: auto !important;
+    inset: auto !important;
+    background: transparent !important;
+    display: block !important;
+  }
+
+  html, body {
+    height: auto !important;
+    overflow: visible !important;
+    background: #fff !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .evidence-modal-shell {
+    max-height: none !important;
+    height: auto !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    max-width: none !important;
+    width: 100% !important;
+    margin: 0 !important;
+  }
+
+  .evidence-modal-chrome {
+    display: none !important;
+  }
+
+  .evidence-modal-content {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+}
 `}</style>
 
       <div className="evidence-modal-shell bg-white rounded-lg shadow-xl w-full max-w-6xl mx-4 h-[85vh] overflow-hidden border border-gray-200 flex flex-col">
