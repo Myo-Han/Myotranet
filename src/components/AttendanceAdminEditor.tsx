@@ -311,6 +311,74 @@ const AttendanceAdminEditor: React.FC = () => {
     setTimeout(() => setSuccess(''), 2000);
   };
 
+  const syncCheckInOutEvents = async (params: {
+    attendanceId: string;
+    userId: string;
+    checkInIso: string | null;
+    checkOutIso: string | null;
+  }) => {
+    const { attendanceId, userId, checkInIso, checkOutIso } = params;
+
+    const { data: existing, error: selErr } = await supabase
+      .from('attendance_events')
+      .select('id, event_type')
+      .eq('attendance_id', attendanceId)
+      .in('event_type', ['check_in', 'check_out']);
+
+    if (selErr) throw selErr;
+
+    const checkInRow = (existing ?? []).find((e: any) => e.event_type === 'check_in');
+    const checkOutRow = (existing ?? []).find((e: any) => e.event_type === 'check_out');
+
+    // check_in
+    if (checkInIso) {
+      if (checkInRow) {
+        const { error } = await supabase
+          .from('attendance_events')
+          .update({ occurred_at: checkInIso })
+          .eq('id', checkInRow.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('attendance_events').insert({
+          attendance_id: attendanceId,
+          user_id: userId,
+          event_type: 'check_in',
+          occurred_at: checkInIso,
+          reason_category: null,
+          notes: null,
+        });
+        if (error) throw error;
+      }
+    } else if (checkInRow) {
+      const { error } = await supabase.from('attendance_events').delete().eq('id', checkInRow.id);
+      if (error) throw error;
+    }
+
+    // check_out
+    if (checkOutIso) {
+      if (checkOutRow) {
+        const { error } = await supabase
+          .from('attendance_events')
+          .update({ occurred_at: checkOutIso })
+          .eq('id', checkOutRow.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('attendance_events').insert({
+          attendance_id: attendanceId,
+          user_id: userId,
+          event_type: 'check_out',
+          occurred_at: checkOutIso,
+          reason_category: null,
+          notes: null,
+        });
+        if (error) throw error;
+      }
+    } else if (checkOutRow) {
+      const { error } = await supabase.from('attendance_events').delete().eq('id', checkOutRow.id);
+      if (error) throw error;
+    }
+  };
+
   const saveAttendance = async () => {
     if (!attendance) {
       setError('attendance 레코드가 없습니다.');
@@ -338,6 +406,13 @@ const AttendanceAdminEditor: React.FC = () => {
 
       const { error: updErr } = await supabase.from('attendance').update(patch).eq('id', attendance.id);
       if (updErr) throw updErr;
+
+      await syncCheckInOutEvents({
+        attendanceId: attendance.id,
+        userId: attendance.user_id,
+        checkInIso: check_in,
+        checkOutIso: check_out,
+      });
 
       setSuccess('저장되었습니다.');
       await fetchAttendanceAndEvents(attendance.user_id, attendance.date);
@@ -372,12 +447,25 @@ const AttendanceAdminEditor: React.FC = () => {
         check_out,
       };
 
-      const { error: insErr } = await supabase.from('attendance').insert(payload);
+      const { data: created, error: insErr } = await supabase
+        .from('attendance')
+        .insert(payload)
+        .select('id')
+        .single();
+
       if (insErr) throw insErr;
+
+      await syncCheckInOutEvents({
+        attendanceId: created.id,
+        userId: selectedUserId,
+        checkInIso: check_in,
+        checkOutIso: check_out,
+      });
 
       setSuccess('attendance 레코드가 생성되었습니다.');
       await fetchAttendanceAndEvents(selectedUserId, selectedDate);
       setTimeout(() => setSuccess(''), 3000);
+
     } catch (e: any) {
       setError(e?.message || '생성 실패');
     }
