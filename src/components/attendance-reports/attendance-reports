@@ -1,0 +1,1 @@
+export type ReportMode = 'date_detail' | 'month_detail' | 'month_summary';

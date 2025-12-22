@@ -9,6 +9,7 @@ import { CommentThread } from '../components/comments';
 import SearchModal from '../components/SearchModal';
 import LettersModal from '../components/LettersModal';
 import { getStatusLabel } from '../utils/attendanceLabels';
+import EvidenceIssueModal from '../components/EvidenceIssueModal';
 
 type Notice = {
   id: number;
@@ -69,6 +70,7 @@ const Dashboard: React.FC = () => {
   const { user } = useAuth();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isLettersOpen, setIsLettersOpen] = useState(false);
+  const [isEvidenceIssueOpen, setIsEvidenceIssueOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<User[]>([]);
   const [searching, setSearching] = useState(false);
@@ -773,7 +775,7 @@ const Dashboard: React.FC = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <button
-          onClick={() => navigate('/attendance')}
+          onClick={() => setIsEvidenceIssueOpen(true)}
           className="bg-white p-6 rounded-lg shadow hover:shadow-md transition duration-200 text-left"
         >
           <div className="text-blue-600 mb-3">
@@ -781,8 +783,8 @@ const Dashboard: React.FC = () => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
-          <h3 className="text-lg font-semibold text-gray-900">출퇴근 관리</h3>
-          <p className="text-sm text-gray-500 mt-1">출근, 퇴근, 조퇴 기록</p>
+          <h3 className="text-lg font-semibold text-gray-900">증빙서 발급</h3>
+          <p className="text-sm text-gray-500 mt-1">출퇴근 등 서류 발급</p>
         </button>
         <a
           href="https://www.notion.so/2ce8b0cc5ed08039a648ecbcb2cb5ee8?source=copy_link"
@@ -844,6 +846,10 @@ const Dashboard: React.FC = () => {
       <LettersModal
         isOpen={isLettersOpen}
         onClose={() => setIsLettersOpen(false)}
+      />
+      <EvidenceIssueModal
+        isOpen={isEvidenceIssueOpen}
+        onClose={() => setIsEvidenceIssueOpen(false)}
       />
     </div >
   );
