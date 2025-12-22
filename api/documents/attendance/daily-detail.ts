@@ -320,7 +320,7 @@ function drawRows(doc: PDFKit.PDFDocument, x: number, y: number, colWs: number[]
 }
 
 function drawFooter(doc: PDFKit.PDFDocument, pageNo: number, totalPages: number) {
-  doc.fontSize(11).text(`페이지 ${pageNo}/${totalPages}`, 0, 800, { width: 595.28, align: 'center' }); // A4 width in pt
+  doc.fontSize(11).text(`페이지 ${pageNo}/${totalPages}`, 0, 798, { width: 595.28, align: 'center' });
 }
 
 function setKoreanFontIfExists(doc: PDFKit.PDFDocument) {
@@ -409,7 +409,7 @@ export default async function handler(req: any, res: any) {
     // A4 in points: 595.28 x 841.89
     const pageW = 595.28;
     const marginX = 40; // ~14mm
-    const topY = 48; // 상단 여백
+    const topY = 40;
 
     // 1) 데이터 페이지들
     for (let p = 0; p < pagesData.length; p++) {
@@ -421,23 +421,23 @@ export default async function handler(req: any, res: any) {
       let cursorY = topY;
 
       if (isFirst) {
-        doc.fontSize(20).text('묘한 출퇴근 증빙서 (일일 상세)', 0, cursorY, { width: pageW, align: 'center' });
-        cursorY += 36;
+        doc.fontSize(18).text('묘한 출퇴근 증빙서 (일일 상세)', 0, cursorY, { width: pageW, align: 'center' });
+        cursorY += 28;
 
         const leftX = marginX;
         const rightW = 180;
         const leftW = pageW - marginX * 2 - 16 - rightW;
         const rightX = leftX + leftW + 16;
 
-        drawBoxTable(doc, leftX, cursorY, leftW, 28, [
+        drawBoxTable(doc, leftX, cursorY, leftW, 24, [
           ['발급일', issueDateText],
           ['조회기간', periodText],
           ['소속', built.meta.departmentText],
           ['성명', built.meta.nameText],
         ]);
 
-        drawApprovalBox(doc, rightX, cursorY, rightW, 28 * 2); // 대략 2행 높이로
-        cursorY += 28 * 4 + 18;
+        drawApprovalBox(doc, rightX, cursorY, rightW, 24 * 2);
+        cursorY += 24 * 4 + 14;
       } else {
         cursorY += 8;
       }
@@ -446,8 +446,8 @@ export default async function handler(req: any, res: any) {
       const tableX = marginX;
       const tableW = pageW - marginX * 2;
       const colWs = [50, 140, 90, 110, tableW - (50 + 140 + 90 + 110)];
-      const headerH = isFirst ? 30 : 0;
-      const rowH = 26;
+      const headerH = isFirst ? 26 : 0;
+      const rowH = 21;
 
       if (isFirst) {
         drawTableHeader(doc, tableX, cursorY, colWs, headerH);
