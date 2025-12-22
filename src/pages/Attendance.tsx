@@ -6,6 +6,7 @@ import Loading from '../components/Loading';
 import ErrorMessage from '../components/ErrorMessage';
 import SuccessMessage from '../components/SuccessMessage';
 import ProfileModal from '../components/ProfileModal';
+import { getStatusLabel, getStatusColor } from '../utils/attendanceLabels';
 
 const getTodayDate = () => {
   const today = new Date();
@@ -537,7 +538,7 @@ const Attendance: React.FC = () => {
     }
   };
 
-    const formatTime = (dateString: string | null) => {
+  const formatTime = (dateString: string | null) => {
     if (!dateString) return '-';
     const date = new Date(dateString);
     return date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
@@ -635,49 +636,6 @@ const Attendance: React.FC = () => {
 
     return parts.join(' ');
   };
-
-  const getStatusLabel = (
-    status: string | null,
-    currentStatus?: string | null,
-    isTodayOverride?: boolean
-  ) => {
-    const isToday =
-      typeof isTodayOverride === 'boolean' ? isTodayOverride : selectedDate === getTodayDate();
-
-    // ✅ 오늘 attendance(status)가 없더라도 users.current_status로 상태 추정(야근/자정 넘김 대비)
-    if (!status) {
-      if (isToday) {
-        if (currentStatus === 'working') return '근무중';
-        if (currentStatus === 'pause') return '근무중단';
-        if (currentStatus === 'outside') return '외근중';
-        if (currentStatus === 'meeting') return '회의중';
-      }
-      return '미출근';
-    }
-
-    if (status === 'off') return '퇴근';
-    if (status === 'vacation') return '휴가';
-    if (status === 'paused') return '근무중단';
-    if (status === 'working') return '근무중';
-    return '미출근';
-  };
-
-  const getStatusColor = (
-    status: string | null,
-    currentStatus: string | null,
-    isTodayOverride?: boolean
-  ) => {
-    const label = getStatusLabel(status, currentStatus, isTodayOverride);
-    if (label === '근무중') return 'bg-green-100 text-green-800';
-    if (label === '근무중단') return 'bg-orange-100 text-orange-800';
-    if (label === '외근중') return 'bg-blue-100 text-blue-800';
-    if (label === '회의중') return 'bg-purple-100 text-purple-800';
-    if (label === '퇴근') return 'bg-gray-100 text-gray-800';
-    if (label === '미출근') return 'bg-red-100 text-red-800';
-    if (label === '휴가') return 'bg-blue-100 text-blue-800';
-    return 'bg-gray-100 text-gray-800';
-  };
-
 
   const formatWorkTime = (seconds?: number | null) => {
     if (!seconds || seconds <= 0) return '-';
@@ -1174,8 +1132,14 @@ const Attendance: React.FC = () => {
                     ) : '-'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(record.status, record.current_status)}`}>
-                      {getStatusLabel(record.status, record.current_status)}
+                    <span
+                      className={`px-2 py-1 text-xs rounded-full ${getStatusColor(
+                        record.status,
+                        record.current_status,
+                        selectedDate === getTodayDate()
+                      )}`}
+                    >
+                      {getStatusLabel(record.status, record.current_status, selectedDate === getTodayDate())}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
