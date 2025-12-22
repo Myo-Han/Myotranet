@@ -135,10 +135,57 @@ function calcPauseSeconds(events: AttendanceEventRow[], rangeStartIso: string, r
   return Math.max(0, Math.floor(total));
 }
 
-async function fetchUserName(userId: string) {
-  const { data, error } = await supabaseAdmin.from('users').select('name').eq('id', userId).maybeSingle();
+async function fetchUserInfo(userId: string) {
+  const { data, error } = await supabaseAdmin
+    .from('users')
+    .select('name, department, project, part, position')
+    .eq('id', userId)
+    .maybeSingle();
+
   if (error) throw error;
-  return (data?.name || '사용자') as string;
+
+  return {
+    name: (data?.name || '사용자') as string,
+    department: (data as any)?.department ?? null,
+    project: (data as any)?.project ?? null,
+    part: (data as any)?.part ?? null,
+    position: (data as any)?.position ?? null,
+  };
+}
+
+type OrgItem = { code: string; name: string };
+type OrgConfig = {
+  departments?: OrgItem[];
+  projects?: OrgItem[];
+  parts?: OrgItem[];
+  positions?: OrgItem[];
+};
+
+async function fetchOrgConfig(): Promise<OrgConfig | null> {
+  const { data, error } = await supabaseAdmin
+    .from('org_settings')
+    .select('config')
+    .maybeSingle();
+
+  if (error) throw error;
+  return ((data as any)?.config ?? null) as OrgConfig | null;
+}
+
+const getOrgName = (list: OrgItem[] | undefined, codeRaw: any) => {
+  const code = String(codeRaw ?? '').trim();
+  if (!code) return '';
+  return list?.find((x) => x.code === code)?.name || code;
+};
+
+function buildAffiliationText(org: OrgConfig | null, userInfo: any) {
+  const deptName = getOrgName(org?.departments, userInfo?.department);
+  const projName = getOrgName(org?.projects, userInfo?.project);
+  const partName = getOrgName(org?.parts, userInfo?.part);
+  const posName = getOrgName(org?.positions, userInfo?.position);
+
+  // ✅ null/빈값 제외 + 공백으로 연결
+  const parts = [deptName, projName, partName, posName].filter(Boolean);
+  return parts.join(' '); // 예: "개발본부 A프로젝트팀 개발 사원"
 }
 
 async function fetchAttendanceWithEvents(userId: string, startKey: string, endKey: string) {
@@ -188,7 +235,14 @@ async function fetchAttendanceWithEvents(userId: string, startKey: string, endKe
 
 type Row = { date: string; time: string; event: string; memo: string };
 
-function buildRowsAndTotals(att: AttendanceRow[], events: AttendanceEventRow[], startKey: string, endKey: string, userName: string) {
+function buildRowsAndTotals(
+  att: AttendanceRow[],
+  events: AttendanceEventRow[],
+  startKey: string,
+  endKey: string,
+  departmentText: string,
+  userName: string
+) {
   const dateKeys = listDatesInclusive(startKey, endKey);
   const attByDate: Record<string, AttendanceRow> = {};
   for (const a of att) attByDate[a.date] = a;
@@ -247,7 +301,7 @@ function buildRowsAndTotals(att: AttendanceRow[], events: AttendanceEventRow[], 
       noteText: '',
     },
     meta: {
-      departmentText: '-', // 필요하면 users.profile/department 등에서 조회해서 채우세요.
+      departmentText,
       nameText: userName,
     },
   };
@@ -383,9 +437,13 @@ export default async function handler(req: any, res: any) {
     const issueDateText = `${issueDate.getFullYear()}-${String(issueDate.getMonth() + 1).padStart(2, '0')}-${String(issueDate.getDate()).padStart(2, '0')}`;
     const periodText = `${startKey} - ${endKey}`;
 
-    const userName = await fetchUserName(userId);
+    const org = await fetchOrgConfig();
+    const userInfo = await fetchUserInfo(userId);
+
+    const affiliationText = buildAffiliationText(org, userInfo);
     const { attendance, events } = await fetchAttendanceWithEvents(userId, startKey, endKey);
-    const built = buildRowsAndTotals(attendance, events, startKey, endKey, userName);
+
+    const built = buildRowsAndTotals(attendance, events, startKey, endKey, affiliationText, userInfo.name);
 
     const ROWS_PER_PAGE = 25;
     const pagesData: Row[][] = [];
