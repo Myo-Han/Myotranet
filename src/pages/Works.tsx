@@ -16,6 +16,7 @@ import LeaveBalanceAdjust from '../components/LeaveBalanceAdjust';
 import LettersInbox from '../components/LettersInbox';
 import AttendanceRevisionInbox from '../components/AttendanceRevisionInbox';
 import AttendanceAdminEditor from '../components/AttendanceAdminEditor';
+import AttendanceReportAdmin from '../components/attendance-reports/AttendanceReportAdmin';
 
 type WorkMenuItem = {
   id: string;
@@ -472,6 +473,10 @@ const Work: React.FC = () => {
 
           {selectedMenu === 'attendance-admin-editor' && (
             <AttendanceAdminEditor />
+          )}
+
+          {selectedMenu === 'document-issue' && (
+            <AttendanceReportAdmin />
           )}
 
           {submitting && (
