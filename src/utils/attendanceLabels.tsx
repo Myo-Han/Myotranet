@@ -1,32 +1,15 @@
 // 업무 상태 유틸
-// Attendance.tsx 기준에서 outside/meeting 분기 제거(구조상 안 나오는 값)
-
 export type AttendanceStatusCode = 'working' | 'paused' | 'off' | 'vacation';
 export type CurrentStatusCode = 'working' | 'pause';
 export type EventTypeCode = 'check_in' | 'check_out' | 'pause' | 'resume';
 
-export const STATUS_LABEL: Record<AttendanceStatusCode, string> = {
-  working: '근무중',
-  paused: '근무중단',
-  off: '퇴근',
-  vacation: '휴가',
-};
-
-export const EVENT_TYPE_LABEL: Record<EventTypeCode, string> = {
-  check_in: '출근',
-  check_out: '퇴근',
-  pause: '업무중지',
-  resume: '업무재개',
-};
-
-// Attendance.tsx getStatusLabel 로직(단, outside/meeting 제거)
 export const getStatusLabel = (
-  status: AttendanceStatusCode | string | null,
-  currentStatus?: CurrentStatusCode | string | null,
-  isToday?: boolean
+  status: string | null,
+  currentStatus?: string | null,
+  isTodayOverride?: boolean
 ): string => {
   if (!status) {
-    if (isToday) {
+    if (isTodayOverride) {
       if (currentStatus === 'working') return '근무중';
       if (currentStatus === 'pause') return '근무중단';
     }
@@ -41,11 +24,11 @@ export const getStatusLabel = (
 };
 
 export const getStatusColor = (
-  status: AttendanceStatusCode | string | null,
-  currentStatus: CurrentStatusCode | string | null,
-  isToday?: boolean
+  status: string | null,
+  currentStatus: string | null,
+  isTodayOverride?: boolean
 ): string => {
-  const label = getStatusLabel(status, currentStatus, isToday);
+  const label = getStatusLabel(status, currentStatus, isTodayOverride);
   if (label === '근무중') return 'bg-green-100 text-green-800';
   if (label === '근무중단') return 'bg-orange-100 text-orange-800';
   if (label === '퇴근') return 'bg-gray-100 text-gray-800';
@@ -54,7 +37,7 @@ export const getStatusColor = (
   return 'bg-gray-100 text-gray-800';
 };
 
-export const getEventTypeLabel = (eventType: EventTypeCode | string | null | undefined): string => {
+export const getEventTypeLabel = (eventType: string | null | undefined): string => {
   if (!eventType) return '';
   if (eventType === 'check_in') return '출근';
   if (eventType === 'check_out') return '퇴근';
