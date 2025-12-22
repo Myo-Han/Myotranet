@@ -198,16 +198,16 @@ const AttendanceReportSelf: React.FC = () => {
       if (pdfUrl) URL.revokeObjectURL(pdfUrl);
 
       // ✅ TODO: 서버 PDF 생성 API 붙이기 (blob/pdf 반환)
-      const res = await fetch('/api/documents/attendance/daily-detail', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: user.id,
-          mode,
-          startKey,
-          endKey,
-          month,
-        }),
+      const qs = new URLSearchParams({
+        userId: user.id,
+        mode,
+        startKey,
+        endKey,
+        month,
+      }).toString();
+
+      const res = await fetch(`/api/documents/attendance/daily-detail?${qs}`, {
+        method: 'GET',
       });
 
       if (!res.ok) throw new Error('PDF 생성에 실패했습니다');

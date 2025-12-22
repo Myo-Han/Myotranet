@@ -75,7 +75,7 @@ const AttendanceDailyDetailTemplate: React.FC<Props> = ({
           margin: 0 auto 16px auto;
           background: #fff;
           box-shadow: 0 8px 24px rgba(0,0,0,0.12);
-          padding: 18mm 16mm 16mm 16mm;
+          padding: 18mm 16mm 26mm 16mm;
           position: relative;
         }
 
@@ -167,7 +167,7 @@ const AttendanceDailyDetailTemplate: React.FC<Props> = ({
           position: absolute;
           left: 0;
           right: 0;
-          bottom: 12mm;
+          bottom: 10mm;
           text-align: center;
           font-size: 16px;
         }
@@ -197,7 +197,7 @@ const AttendanceDailyDetailTemplate: React.FC<Props> = ({
           .att-ddt-page {
             margin: 0 !important;
             box-shadow: none !important;
-            padding: 18mm 16mm 16mm 16mm;
+            padding: 18mm 16mm 26mm 16mm;
             page-break-after: always;
           }
         }
