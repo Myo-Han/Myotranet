@@ -30,8 +30,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [showWarning, setShowWarning] = useState(false);
 
   const fetchUser = async () => {
-    console.log('--- Fetching User Start ---');
-    console.log('Current URL:', window.location.href);
 
     try {
       const { data, error } = await supabase.auth.getUser();
@@ -47,7 +45,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       if (data?.user) {
-        console.log('Auth User Found:', data.user.email);
         const { data: existing, error: dbError } = await supabase
           .from("users")
           .select("id, name, profile_picture, role, is_active, created_at")
@@ -86,7 +83,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           created_at: existing?.created_at || undefined,
         });
       } else {
-        console.log('No active session found.');
         setUser(null);
       }
     } catch (err) {
@@ -94,7 +90,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.dir(err);
     } finally {
       setLoading(false);
-      console.log('--- Fetching User End ---');
     }
   };
 
@@ -131,7 +126,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [user, lastActivity]);
 
   const login = async () => {
-    console.log('--- Login Triggered ---');
     try {
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
@@ -149,7 +143,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.dir(error);
         alert('로그인 오류: ' + error.message);
       }
-      console.log('OAuth Redirect Data:', data);
     } catch (err) {
       console.error('Login Unexpected Error:');
       console.dir(err);

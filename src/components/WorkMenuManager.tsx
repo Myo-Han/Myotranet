@@ -112,7 +112,7 @@ const WorkMenuManager: React.FC = () => {
       icon: 'briefcase',
       path: '',
       order: menuItems.length + 1,
-      show_to: [],
+      auth_rules: [],
       parent_id: null,
       is_folder: false
     });

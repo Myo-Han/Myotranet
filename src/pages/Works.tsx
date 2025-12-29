@@ -70,30 +70,28 @@ const Work: React.FC = () => {
         }
 
         const filtered = menu.filter((item: WorkMenuItem) => {
-          const rules = item.auth_rules || []; 
-          if (rules.length === 0) return true;
+          // 1. 기존 데이터(show_to 사용 시기) 대응 및 auth_rules 미존재 시 전체 허용
+          if (!item.auth_rules || item.auth_rules.length === 0) return true;
 
-          return rules.some(rule => {
-            // 1. 개별 유저 ID 체크 (UUID 일치 시 즉시 통과)
-            if (rule.users && rule.users.includes(user?.id || '')) return true;
+          return item.auth_rules.some(rule => {
+            // 2. 개별 ID 체크
+            if (rule.users?.includes(user?.id || '')) return true;
 
-            // 2. 값 정규화 (null, undefined, 빈 문자열을 모두 ''로 통일)
-            const rDept = rule.dept || '';
-            const rPos = rule.pos || '';
-            const rProj = rule.proj || '';
-            const rPart = rule.part || '';
+            // 3. 값 정규화 및 트림 처리 (공백으로 인한 불일치 방지)
+            const rDept = (rule.dept || '').trim();
+            const rPos = (rule.pos || '').trim();
+            const rProj = (rule.proj || '').trim();
+            const rPart = (rule.part || '').trim();
 
-            const uDept = user?.department || '';
-            const uPos = user?.position || '';
-            const uProj = user?.project || '';
-            const uPart = user?.part || '';
+            const uDept = (user?.department || '').trim();
+            const uPos = (user?.position || '').trim();
+            const uProj = (user?.project || '').trim();
+            const uPart = (user?.part || '').trim();
 
-            // 3. 전체 미지정 체크 (모든 규칙 필드가 빈 값일 경우 전체 허용)
-            const isAllEmptyRule = !rDept && !rPos && !rProj && !rPart;
-            if (isAllEmptyRule) return true;
+            // 4. 전체 미지정 조합일 경우 통과
+            if (!rDept && !rPos && !rProj && !rPart) return true;
 
-            // 4. 엄격한 일치 확인 (AND 조건)
-            // 이제 '미지정(null/''/undefined)'은 유저 정보의 '미지정'과 정확히 매칭됨
+            // 5. 엄격한 일치 확인 (하나라도 걸려있으면 유저 정보와 1:1 매칭)
             return (
               rDept === uDept &&
               rPos === uPos &&
