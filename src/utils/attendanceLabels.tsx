@@ -65,3 +65,10 @@ export const EVENT_TYPE_OPTIONS: ReadonlyArray<{ value: EventTypeCode; label: st
   { value: 'pause', label: '업무중지' },
   { value: 'resume', label: '업무재개' },
 ] as const;
+
+export const getRevisionStatusLabel = (status: string | null): { label: string; colorClass: string } => {
+  if (status === 'approved') return { label: '승인', colorClass: 'bg-green-100 text-green-800' };
+  if (status === 'rejected') return { label: '반려', colorClass: 'bg-red-100 text-red-800' };
+  if (status === 'pending') return { label: '대기', colorClass: 'bg-yellow-100 text-yellow-800' };
+  return { label: status || '-', colorClass: 'bg-gray-100 text-gray-800' };
+};

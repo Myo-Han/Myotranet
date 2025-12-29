@@ -6,7 +6,7 @@ import Loading from './Loading';
 import ErrorMessage from './ErrorMessage';
 import SuccessMessage from './SuccessMessage';
 import ProfileModal from './ProfileModal';
-import { getStatusLabel, getStatusColor } from '../utils/attendanceLabels';
+import { getStatusLabel, getStatusColor, getRevisionStatusLabel } from '../utils/attendanceLabels';
 
 type UserRow = {
   id: string;
@@ -132,14 +132,6 @@ const calcWorkSecondsWithPause = async (
   const totalSeconds = Math.floor((endMs - startMs) / 1000);
   const workSeconds = Math.max(0, totalSeconds - Math.floor(totalPauseSeconds));
   return workSeconds;
-};
-
-const statusBadge = (status: string) => {
-  const base = 'px-2 py-1 text-xs rounded-full';
-  if (status === 'pending') return `${base} bg-yellow-100 text-yellow-800`;
-  if (status === 'approved') return `${base} bg-green-100 text-green-800`;
-  if (status === 'rejected') return `${base} bg-red-100 text-red-800`;
-  return `${base} bg-gray-100 text-gray-700`;
 };
 
 const AttendanceRevisionInbox: React.FC = () => {
@@ -406,7 +398,7 @@ const AttendanceRevisionInbox: React.FC = () => {
             {filtered.map((r) => {
               const u = usersById[r.user_id];
               const name = u?.name ?? '이름 없음';
-              // 상단에서 수정한 KST 버전 formatDate가 적용됨
+              // ✅ DB에 존재하는 requested_check_in_at을 사용하고 KST 날짜 적용
               const line1 = `${name} · ${formatDate(r.requested_check_in_at)}`;
               const line2 = (r.reason || '').trim() || '(사유 없음)';
               const isSel = String(r.id) === String(selectedId);
@@ -426,7 +418,11 @@ const AttendanceRevisionInbox: React.FC = () => {
                       <div className="text-sm font-semibold text-gray-900 truncate">{line1}</div>
                       <div className="text-xs text-gray-600 mt-1 truncate">{line2}</div>
                     </div>
-                    <span className={statusBadge(String(r.status))}>{String(r.status)}</span>
+                    {/* ✅ 유틸리티를 사용하여 '대기/승인/반려' 한글 라벨 표시 */}
+                    {(() => {
+                      const { label, colorClass } = getRevisionStatusLabel(r.status);
+                      return <span className={`px-2 py-1 text-xs rounded-full ${colorClass}`}>{label}</span>;
+                    })()}
                   </div>
                 </button>
               );
@@ -465,7 +461,7 @@ const AttendanceRevisionInbox: React.FC = () => {
                         {selectedUser?.name ?? '이름 없음'}
                       </div>
                       <div className="text-xs text-gray-500">
-                        {/* KST 기준 날짜 표시 */}
+                        {/* ✅ KST 기준 날짜 표시 */}
                         요청일: {formatDate(selected.requested_check_in_at)} · 생성: {new Date(selected.created_at).toLocaleString('ko-KR')}
                       </div>
                     </div>
@@ -473,7 +469,11 @@ const AttendanceRevisionInbox: React.FC = () => {
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <span className={statusBadge(String(selected.status))}>{String(selected.status)}</span>
+                  {/* ✅ 유틸리티를 사용하여 요청 상태 배지 한글화 */}
+                  {(() => {
+                    const { label, colorClass } = getRevisionStatusLabel(selected.status);
+                    return <span className={`px-2 py-1 text-xs rounded-full ${colorClass}`}>{label}</span>;
+                  })()}
                 </div>
               </div>
 
@@ -528,13 +528,14 @@ const AttendanceRevisionInbox: React.FC = () => {
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-gray-600">상태</span>
-                        {/* ✅ 유틸리티의 getStatusLabel, getStatusColor를 사용하여 Attendance.tsx 스타일 적용 */}
-                        <span className={`px-2 py-1 text-xs rounded-full font-medium ${getStatusColor(selectedAttendance.status, null)}`}>
+                        {/* ✅ Attendance.tsx와 동일한 출퇴근 상태 배지 스타일 */}
+                        <span className={`px-2 py-0.5 text-xs rounded-full font-medium ${getStatusColor(selectedAttendance.status, null)}`}>
                           {getStatusLabel(selectedAttendance.status, null)}
                         </span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-600">누적 시간</span>
+                        {/* ✅ 00h 00m 00s 형식 적용 */}
                         <span className="font-semibold">{secondsToHms(selectedAttendance.total_work_seconds)}</span>
                       </div>
                     </div>
