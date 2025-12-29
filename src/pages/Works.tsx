@@ -479,7 +479,7 @@ const Work: React.FC = () => {
                         ></span>
                       )}
                   </div>
-                  <span className={item.is_folder ? "font-semibold" : ""}>{item.label}</span>
+                  <span>{item.label}</span>
                 </div>
                 {item.is_folder && (
                   <svg
