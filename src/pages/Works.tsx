@@ -70,18 +70,16 @@ const Work: React.FC = () => {
         }
 
         const filtered = menu.filter((item: WorkMenuItem) => {
-          if (!item.auth_rules || item.auth_rules.length === 0) return true;
+          // auth_rules가 없으면(기존 데이터) 전체 허용하거나 빈 배열로 처리
+          const rules = item.auth_rules || []; 
+          if (rules.length === 0) return true;
 
-          return item.auth_rules.some(rule => {
-            // 개별 유저 ID 체크 (가장 우선)
+          return rules.some(rule => {
             if (rule.users && rule.users.includes(user?.id || '')) return true;
-
-            // 상세 조합 체크 (AND 조건)
             const deptMatch = !rule.dept || rule.dept === user?.department;
             const posMatch = !rule.pos || rule.pos === user?.position;
             const projMatch = !rule.proj || rule.proj === user?.project;
             const partMatch = !rule.part || rule.part === user?.part;
-
             return deptMatch && posMatch && projMatch && partMatch;
           });
         });

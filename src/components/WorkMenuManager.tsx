@@ -121,7 +121,10 @@ const WorkMenuManager: React.FC = () => {
 
   const openEditModal = (item: WorkMenuItem) => {
     setEditingItem(item);
-    setForm(item);
+    setForm({
+      ...item,
+      auth_rules: item.auth_rules || [] // 기존 데이터에 필드가 없으면 빈 배열 강제 주입
+    });
     setShowModal(true);
   };
 
@@ -506,19 +509,14 @@ const WorkMenuManager: React.FC = () => {
 
               {/* 권한 뱃지 */}
               <div className="flex gap-1 flex-wrap">
-                {item.show_to.includes('all') ? (
-                  <span className="px-2 py-0.5 bg-green-100 text-green-800 rounded text-xs whitespace-nowrap">전체</span>
+                {(!item.auth_rules || item.auth_rules.length === 0) ? (
+                  <span className="px-2 py-0.5 bg-green-100 text-green-800 rounded text-xs whitespace-nowrap">전체(설정없음)</span>
                 ) : (
-                  item.show_to.slice(0, 2).map((role) => (
-                    <span key={role} className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded text-xs whitespace-nowrap">
-                      {role}
+                  item.auth_rules.map((rule, idx) => (
+                    <span key={idx} className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded text-xs whitespace-nowrap">
+                      조합{idx + 1}
                     </span>
                   ))
-                )}
-                {item.show_to.length > 2 && !item.show_to.includes('all') && (
-                  <span className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-xs whitespace-nowrap">
-                    +{item.show_to.length - 2}
-                  </span>
                 )}
               </div>
             </div>
@@ -664,8 +662,8 @@ const WorkMenuManager: React.FC = () => {
                       type="button"
                       onClick={() => setForm({ ...form, icon: iconId })}
                       className={`p-3 border-2 rounded-lg transition ${form.icon === iconId
-                          ? 'border-blue-500 bg-blue-50 text-blue-600'
-                          : 'border-gray-200 hover:border-gray-300'
+                        ? 'border-blue-500 bg-blue-50 text-blue-600'
+                        : 'border-gray-200 hover:border-gray-300'
                         }`}
                     >
                       {getIcon(iconId)}
