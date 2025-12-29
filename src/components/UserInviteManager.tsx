@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
+import { markAsRead } from '../../api/readLog'; // 읽음 처리 함수 추가
+import { useAuth } from '../context/AuthContext'; // 현재 로그인한 관리자 정보용
 
 type AuthUser = {
   id: string;
@@ -37,6 +39,8 @@ const UserInviteManager: React.FC = () => {
     hire_date: '',
     is_active: true,
   });
+  const { user: admin } = useAuth(); // 관리자 정보 가져오기
+  const [readInviteIds, setReadInviteIds] = useState<Set<string>>(new Set()); // 읽은 초대 시도자 ID 저장
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -85,8 +89,19 @@ const UserInviteManager: React.FC = () => {
         .select('id');
       if (dbError) throw dbError;
 
+      // 내 읽음 로그 데이터 로드
+      const { data: logData } = await supabase
+        .from('user_read_logs')
+        .select('target_id')
+        .eq('user_id', admin?.id)
+        .eq('target_type', 'user-invite');
+
+      if (logData) {
+        setReadInviteIds(new Set(logData.map(log => String(log.target_id))));
+      }
+
       const dbIds = new Set(dbUsers?.map(u => u.id) || []);
-      
+
       setAuthUsers(users as AuthUser[]);
       setDbUserIds(dbIds);
     } catch (e: any) {
@@ -98,16 +113,23 @@ const UserInviteManager: React.FC = () => {
 
   const filteredUsers = authUsers.filter(user => {
     if (dbUserIds.has(user.id)) return false;
-    
+
     const name = user.user_metadata?.name || '';
     const email = user.email || '';
     const query = searchQuery.toLowerCase();
-    
+
     return name.toLowerCase().includes(query) || email.toLowerCase().includes(query);
   });
 
-  const handleSelectUser = (user: AuthUser) => {
+  const handleSelectUser = async (user: AuthUser) => {
     setSelectedUser(user);
+
+    // ✅ 아직 읽지 않은 유저라면 DB에 읽음 처리 및 신호 발송
+    if (admin?.id && !readInviteIds.has(user.id)) {
+      await markAsRead(admin.id, 'user-invite', user.id);
+      setReadInviteIds(prev => new Set(prev).add(user.id));
+    }
+
     setForm({
       name: user.user_metadata?.name || '',
       role: 'User',
@@ -115,6 +137,7 @@ const UserInviteManager: React.FC = () => {
       hire_date: '',
       is_active: true,
     });
+
     setAssignForm({
       department: '',
       position: '',
@@ -220,9 +243,8 @@ const UserInviteManager: React.FC = () => {
             {filteredUsers.map(user => (
               <div
                 key={user.id}
-                className={`border rounded-lg p-4 ${
-                  selectedUser?.id === user.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
-                }`}
+                className={`border rounded-lg p-4 ${selectedUser?.id === user.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
+                  }`}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
@@ -234,7 +256,15 @@ const UserInviteManager: React.FC = () => {
                       />
                     )}
                     <div>
-                      <p className="font-medium">{user.user_metadata?.name || '이름 없음'}</p>
+                      <div className="flex items-center gap-2">
+                        {/* ✅ 고속 레드닷: 관리자가 아직 선택해보지 않은 새로운 유저일 때만 표시 */}
+                        {!readInviteIds.has(user.id) && (
+                          <span className="w-2 h-2 bg-red-600 rounded-full shrink-0 animate-[pulse_0.7s_infinite] shadow-[0_0_5px_rgba(220,38,38,0.8)]"></span>
+                        )}
+                        <p className={`font-medium ${!readInviteIds.has(user.id) ? 'text-gray-900' : 'text-gray-500'}`}>
+                          {user.user_metadata?.name || '이름 없음'}
+                        </p>
+                      </div>
                       <p className="text-sm text-gray-500">{user.email}</p>
                       <p className="text-xs text-gray-400">
                         {new Date(user.created_at).toLocaleDateString('ko-KR')}

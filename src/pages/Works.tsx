@@ -157,24 +157,42 @@ const Work: React.FC = () => {
     sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
     const dateStr = sixtyDaysAgo.toISOString();
 
-    const [
-      { data: notices }, { data: noticeLogs },
-      { data: letters }, { data: letterLogs }
-    ] = await Promise.all([
-      supabase.from('notices').select('id').gte('created_at', dateStr),
-      supabase.from('user_read_logs').select('target_id').eq('user_id', user.id).eq('target_type', 'notice'),
-      supabase.from('letters').select('id').gte('created_at', dateStr),
-      supabase.from('user_read_logs').select('target_id').eq('user_id', user.id).eq('target_type', 'letter')
-    ]);
+    try {
+      // 1. 공지, 편지, 유저목록, 초대로그, 가입시도자(API)를 한 번에 쿼리
+      const [
+        { data: notices }, { data: noticeLogs },
+        { data: letters }, { data: letterLogs },
+        { data: dbUsers }, { data: inviteLogs },
+        authRes
+      ] = await Promise.all([
+        supabase.from('notices').select('id').gte('created_at', dateStr),
+        supabase.from('user_read_logs').select('target_id').eq('user_id', user.id).eq('target_type', 'notice'),
+        supabase.from('letters').select('id').gte('created_at', dateStr),
+        supabase.from('user_read_logs').select('target_id').eq('user_id', user.id).eq('target_type', 'letter'),
+        supabase.from('users').select('id'),
+        supabase.from('user_read_logs').select('target_id').eq('user_id', user.id).eq('target_type', 'user-invite'),
+        fetch('/api/auth-users').then(res => res.json())
+      ]);
 
-    const newBadges: Record<string, boolean> = {};
-    const unreadNotices = notices?.filter(n => !noticeLogs?.some(l => l.target_id === String(n.id)));
-    if (unreadNotices && unreadNotices.length > 0) newBadges['notice'] = true;
+      const newBadges: Record<string, boolean> = {};
 
-    const unreadLetters = letters?.filter(l => !letterLogs?.some(log => log.target_id === String(l.id)));
-    if (unreadLetters && unreadLetters.length > 0) newBadges['letters-inbox'] = true;
+      // 공지사항 체크
+      if (notices?.some(n => !noticeLogs?.some(l => l.target_id === String(n.id)))) newBadges['notice'] = true;
 
-    setBadges(newBadges);
+      // 마음의 편지 체크
+      if (letters?.some(l => !letterLogs?.some(log => log.target_id === String(l.id)))) newBadges['letters-inbox'] = true;
+
+      // 직원 초대 체크: DB에 없고(신규), 내가 읽지 않은 Auth 유저가 있는지 확인
+      const dbIds = new Set(dbUsers?.map(u => String(u.id)) || []);
+      const unreadInvites = (authRes.users || []).filter((au: any) => 
+        !dbIds.has(String(au.id)) && !inviteLogs?.some(log => log.target_id === String(au.id))
+      );
+      if (unreadInvites.length > 0) newBadges['user-invite'] = true;
+
+      setBadges(newBadges);
+    } catch (e) {
+      console.error('배지 데이터 로드 실패:', e);
+    }
   };
 
   // 2. 신호를 감지하여 실시간으로 배지를 갱신
