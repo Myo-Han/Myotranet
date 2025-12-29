@@ -77,8 +77,24 @@ const Dashboard: React.FC = () => {
   const [notices, setNotices] = useState<Notice[]>(
     () => loadCache<Notice[]>(NOTICES_CACHE_KEY) ?? []
   );
+  const [allNotices, setAllNotices] = useState<Notice[]>([]); // ✅ 전체 공지 저장
+  const [isAllNoticeListOpen, setIsAllNoticeListOpen] = useState(false); // ✅ 전체보기 모달 상태
   const [selectedNotice, setSelectedNotice] = useState<Notice | null>(null);
   const [isNoticeModalOpen, setIsNoticeModalOpen] = useState(false);
+
+  // ✅ 전체 공지 불러오기 함수 추가
+  const fetchAllNotices = async () => {
+    const { data, error } = await supabase
+      .from('notices')
+      .select('id, title, content, is_pinned, created_at')
+      .order('is_pinned', { ascending: false })
+      .order('created_at', { ascending: false });
+
+    if (!error && data) {
+      setAllNotices(data as Notice[]);
+      setIsAllNoticeListOpen(true);
+    }
+  };
   const [showProfileModal, setShowProfileModal] = useState(false);
 
   // ✅ 상태 클릭 모달
@@ -566,11 +582,20 @@ const Dashboard: React.FC = () => {
         <div className="bg-white shadow rounded-lg overflow-hidden h-full flex flex-col">
           <div className="bg-gradient-to-r from-[#5C5E66] to-[#4B4E51] px-6 py-4 flex items-center justify-between">
             <h2 className="text-xl font-semibold text-white">공지</h2>
-            {notices.length > 0 && (
-              <span className="text-xs text-yellow-100">
-                최근 {notices.length}개 (7일 이내)
-              </span>
-            )}
+            <div className="flex items-center gap-3">
+              {notices.length > 0 && (
+                <span className="text-xs text-yellow-100">
+                  최근 {notices.length}개 (7일 이내)
+                </span>
+              )}
+              {/* ✅ 전체보기 버튼 추가 */}
+              <button
+                onClick={fetchAllNotices}
+                className="text-xs bg-white/20 hover:bg-white/40 text-white px-2 py-1 rounded border border-white/30 transition"
+              >
+                전체
+              </button>
+            </div>
           </div>
           <div className="p-6 space-y-3 flex-1 overflow-y-auto">
             {notices.length === 0 ? (
@@ -827,7 +852,37 @@ const Dashboard: React.FC = () => {
           <p className="text-sm text-gray-500 mt-1">상세 프로필 조회</p>
         </button>
       </div>
-
+      {/* ✅ 모든 공지 목록 모달 */}
+      {isAllNoticeListOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4 h-[70vh] flex flex-col">
+            <div className="px-6 py-4 border-b flex items-center justify-between bg-gray-50">
+              <h2 className="text-lg font-bold text-gray-900">공지사항 전체목록</h2>
+              <button onClick={() => setIsAllNoticeListOpen(false)} className="text-gray-400 hover:text-gray-600">✕</button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 space-y-2">
+              {allNotices.map((notice) => (
+                <button
+                  key={notice.id}
+                  onClick={() => {
+                    setSelectedNotice(notice);
+                    setIsNoticeModalOpen(true);
+                  }}
+                  className="w-full text-left p-3 rounded-md hover:bg-gray-100 border-b last:border-0 transition"
+                >
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium text-sm text-gray-800">{notice.title}</span>
+                    <span className="text-xs text-gray-400">{new Date(notice.created_at).toLocaleDateString('ko-KR')}</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+            <div className="p-4 border-t flex justify-end">
+              <button onClick={() => setIsAllNoticeListOpen(false)} className="px-4 py-2 bg-gray-800 text-white rounded-md text-sm">닫기</button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* 프로필 모달 */}
       {
         user && (
