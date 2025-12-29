@@ -4,13 +4,21 @@ import Loading from './Loading';
 import ErrorMessage from './ErrorMessage';
 import SuccessMessage from './SuccessMessage';
 
+type AuthRule = {
+  dept: string | null;
+  proj: string | null;
+  part: string | null;
+  pos: string | null;
+  users: string[];
+};
+
 type WorkMenuItem = {
   id: string;
   label: string;
   icon: string;
   path: string;
   order: number;
-  show_to: string[];
+  auth_rules: AuthRule[];
   parent_id: string | null;
   is_folder: boolean;
 };
@@ -30,10 +38,19 @@ const WorkMenuManager: React.FC = () => {
     icon: 'briefcase',
     path: '',
     order: 1,
-    show_to: [] as string[],
+    auth_rules: [] as AuthRule[],
     parent_id: null as string | null,
     is_folder: false,
   });
+
+  const [newRule, setNewRule] = useState<AuthRule>({
+    dept: null,
+    proj: null,
+    part: null,
+    pos: null,
+    users: []
+  });
+  const [tempUserUuid, setTempUserUuid] = useState('');
 
   const [orgConfig, setOrgConfig] = useState({
     departments: [],
@@ -149,6 +166,9 @@ const WorkMenuManager: React.FC = () => {
 
       if (updateError) throw updateError;
 
+      // 캐시 강제 삭제 (다음 접근 시 최신 데이터 로드)
+      localStorage.removeItem('work_menu_cache');
+
       setSuccess(editingItem ? '메뉴가 수정되었습니다' : '메뉴가 추가되었습니다');
       setShowModal(false);
       fetchMenu();
@@ -189,20 +209,35 @@ const WorkMenuManager: React.FC = () => {
     }
   };
 
-  const toggleRole = (role: string) => {
-    // 'all' 선택 시 다른 권한 모두 제거
-    if (role === 'all') {
-      setForm({ ...form, show_to: form.show_to.includes('all') ? [] : ['all'] });
-      return;
-    }
+  const addAuthRule = () => {
+    setForm({
+      ...form,
+      auth_rules: [...form.auth_rules, { ...newRule }]
+    });
+    setNewRule({ dept: null, proj: null, part: null, pos: null, users: [] });
+  };
 
-    // 다른 권한 선택 시 'all' 제거
-    const newRoles = form.show_to.filter((r) => r !== 'all');
-    if (newRoles.includes(role)) {
-      setForm({ ...form, show_to: newRoles.filter((r) => r !== role) });
-    } else {
-      setForm({ ...form, show_to: [...newRoles, role] });
-    }
+  const removeAuthRule = (index: number) => {
+    setForm({
+      ...form,
+      auth_rules: form.auth_rules.filter((_, i) => i !== index)
+    });
+  };
+
+  const addUserToRule = () => {
+    if (!tempUserUuid.trim()) return;
+    setNewRule({
+      ...newRule,
+      users: [...newRule.users, tempUserUuid.trim()]
+    });
+    setTempUserUuid('');
+  };
+
+  const removeUserFromRule = (uuid: string) => {
+    setNewRule({
+      ...newRule,
+      users: newRule.users.filter(id => id !== uuid)
+    });
   };
 
   // 드래그 앤 드롭 핸들러
@@ -214,13 +249,13 @@ const WorkMenuManager: React.FC = () => {
   const handleDragOver = (e: React.DragEvent, item: WorkMenuItem) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
-    
+
     if (!draggedItem || draggedItem.id === item.id) return;
-    
+
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     const midPoint = rect.top + rect.height / 2;
     const position = e.clientY < midPoint ? 'before' : 'after';
-    
+
     setDropPosition({ itemId: item.id, position });
   };
 
@@ -245,7 +280,7 @@ const WorkMenuManager: React.FC = () => {
       if (error) throw error;
 
       let menu = [...data.config.work_menu];
-      
+
       // 같은 parent 내에서만 이동 가능하도록 체크
       if (draggedItem.parent_id !== targetItem.parent_id) {
         setError('같은 레벨 내에서만 순서를 변경할 수 있습니다');
@@ -254,18 +289,18 @@ const WorkMenuManager: React.FC = () => {
         setTimeout(() => setError(''), 3000);
         return;
       }
-      
+
       // 드래그한 아이템 제거
       const draggedIndex = menu.findIndex((item: WorkMenuItem) => item.id === draggedItem.id);
       const [removed] = menu.splice(draggedIndex, 1);
-      
+
       // 타겟 아이템의 새 위치 찾기
       const targetIndex = menu.findIndex((item: WorkMenuItem) => item.id === targetItem.id);
       const insertIndex = dropPosition.position === 'before' ? targetIndex : targetIndex + 1;
-      
+
       // 새 위치에 삽입
       menu.splice(insertIndex, 0, removed);
-      
+
       // order 재정렬
       menu = menu.map((item: WorkMenuItem, index: number) => ({
         ...item,
@@ -428,7 +463,7 @@ const WorkMenuManager: React.FC = () => {
               <div className="absolute left-0 top-1/2 -translate-y-1/2 w-2 h-2 bg-blue-500 rounded-full" />
             </div>
           )}
-          
+
           <div
             draggable
             onDragStart={(e) => handleDragStart(e, item)}
@@ -453,7 +488,7 @@ const WorkMenuManager: React.FC = () => {
                   getIcon(item.icon)
                 )}
               </div>
-              
+
               {/* 메뉴명 */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center space-x-2">
@@ -628,11 +663,10 @@ const WorkMenuManager: React.FC = () => {
                       key={iconId}
                       type="button"
                       onClick={() => setForm({ ...form, icon: iconId })}
-                      className={`p-3 border-2 rounded-lg transition ${
-                        form.icon === iconId
+                      className={`p-3 border-2 rounded-lg transition ${form.icon === iconId
                           ? 'border-blue-500 bg-blue-50 text-blue-600'
                           : 'border-gray-200 hover:border-gray-300'
-                      }`}
+                        }`}
                     >
                       {getIcon(iconId)}
                     </button>
@@ -641,89 +675,65 @@ const WorkMenuManager: React.FC = () => {
                 <p className="text-xs text-gray-500 mt-1">선택된 아이콘: {form.icon}</p>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">권한 설정</label>
+              <div className="space-y-4 border-t pt-4">
+                <label className="block text-sm font-bold text-gray-900">권한 상세 설정 (AND 조합)</label>
+
                 <div className="space-y-2">
-                  <label className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      checked={form.show_to.includes('all')}
-                      onChange={() => toggleRole('all')}
-                      className="rounded"
-                    />
-                    <span className="text-sm font-medium">전체</span>
-                  </label>
-                  <details className="border rounded p-2">
-                    <summary className="text-xs font-medium text-gray-700 cursor-pointer">부서별</summary>
-                    <div className="mt-2 space-y-2 ml-2">
-                      {orgConfig.departments.map((dept: any) => (
-                        <label key={dept.id} className="flex items-center space-x-2">
-                          <input
-                            type="checkbox"
-                            checked={form.show_to.includes(dept.code)}
-                            onChange={() => toggleRole(dept.code)}
-                            disabled={form.show_to.includes('all')}
-                            className="rounded"
-                          />
-                          <span className="text-sm">{dept.name}</span>
-                        </label>
-                      ))}
+                  {form.auth_rules.map((rule, idx) => (
+                    <div key={idx} className="flex items-center justify-between p-2 bg-blue-50 border border-blue-200 rounded-md text-xs">
+                      <div className="flex flex-wrap gap-1">
+                        <span className="font-bold text-blue-700">#{idx + 1}</span>
+                        {rule.dept && <span className="bg-white px-1 border rounded">부서:{rule.dept}</span>}
+                        {rule.pos && <span className="bg-white px-1 border rounded">직급:{rule.pos}</span>}
+                        {rule.proj && <span className="bg-white px-1 border rounded">프로젝트:{rule.proj}</span>}
+                        {rule.part && <span className="bg-white px-1 border rounded">파트:{rule.part}</span>}
+                        {rule.users.map(u => (
+                          <span key={u} className="bg-white px-1 border rounded text-red-600">ID:{u.slice(0, 5)}</span>
+                        ))}
+                      </div>
+                      <button type="button" onClick={() => removeAuthRule(idx)} className="text-red-500 hover:text-red-700">삭제</button>
                     </div>
-                  </details>
+                  ))}
+                </div>
 
-                  <details className="border rounded p-2">
-                    <summary className="text-xs font-medium text-gray-700 cursor-pointer">프로젝트별</summary>
-                    <div className="mt-2 space-y-2 ml-2">
-                      {orgConfig.projects.map((proj: any) => (
-                        <label key={proj.id} className="flex items-center space-x-2">
-                          <input
-                            type="checkbox"
-                            checked={form.show_to.includes(proj.code)}
-                            onChange={() => toggleRole(proj.code)}
-                            disabled={form.show_to.includes('all')}
-                            className="rounded"
-                          />
-                          <span className="text-sm">{proj.name}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </details>
+                <div className="p-3 bg-gray-50 border rounded-lg space-y-3">
+                  <div className="grid grid-cols-2 gap-2">
+                    <select className="text-xs border rounded p-1" value={newRule.dept || ''} onChange={e => setNewRule({ ...newRule, dept: e.target.value || null })}>
+                      <option value="">부서(전체)</option>
+                      {orgConfig.departments.map((d: any) => <option key={d.code} value={d.code}>{d.name}</option>)}
+                    </select>
+                    <select className="text-xs border rounded p-1" value={newRule.pos || ''} onChange={e => setNewRule({ ...newRule, pos: e.target.value || null })}>
+                      <option value="">직급(전체)</option>
+                      {orgConfig.positions.map((p: any) => <option key={p.code} value={p.code}>{p.name}</option>)}
+                    </select>
+                    <select className="text-xs border rounded p-1" value={newRule.proj || ''} onChange={e => setNewRule({ ...newRule, proj: e.target.value || null })}>
+                      <option value="">프로젝트(전체)</option>
+                      {orgConfig.projects.map((p: any) => <option key={p.code} value={p.code}>{p.name}</option>)}
+                    </select>
+                    <select className="text-xs border rounded p-1" value={newRule.part || ''} onChange={e => setNewRule({ ...newRule, part: e.target.value || null })}>
+                      <option value="">파트(전체)</option>
+                      {orgConfig.parts.map((p: any) => <option key={p.code} value={p.code}>{p.name}</option>)}
+                    </select>
+                  </div>
 
-                  <details className="border rounded p-2">
-                    <summary className="text-xs font-medium text-gray-700 cursor-pointer">파트별</summary>
-                    <div className="mt-2 space-y-2 ml-2">
-                      {orgConfig.parts.map((part: any) => (
-                        <label key={part.id} className="flex items-center space-x-2">
-                          <input
-                            type="checkbox"
-                            checked={form.show_to.includes(part.code)}
-                            onChange={() => toggleRole(part.code)}
-                            disabled={form.show_to.includes('all')}
-                            className="rounded"
-                          />
-                          <span className="text-sm">{part.name}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </details>
+                  <div className="flex gap-1">
+                    <input type="text" placeholder="UUID 직접 입력" className="flex-1 text-xs border rounded px-2 py-1" value={tempUserUuid} onChange={e => setTempUserUuid(e.target.value)} />
+                    <button type="button" onClick={addUserToRule} className="bg-gray-600 text-white px-2 py-1 rounded text-xs">ID추가</button>
+                  </div>
 
-                  <details className="border rounded p-2">
-                    <summary className="text-xs font-medium text-gray-700 cursor-pointer">직급별</summary>
-                    <div className="mt-2 space-y-2 ml-2">
-                      {orgConfig.positions.map((pos: any) => (
-                        <label key={pos.id} className="flex items-center space-x-2">
-                          <input
-                            type="checkbox"
-                            checked={form.show_to.includes(pos.code)}
-                            onChange={() => toggleRole(pos.code)}
-                            disabled={form.show_to.includes('all')}
-                            className="rounded"
-                          />
-                          <span className="text-sm">{pos.name}</span>
-                        </label>
+                  {newRule.users.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {newRule.users.map(u => (
+                        <span key={u} className="text-[10px] bg-white border px-1 rounded flex items-center">
+                          {u.slice(0, 8)}... <button type="button" onClick={() => removeUserFromRule(u)} className="ml-1 text-red-500">x</button>
+                        </span>
                       ))}
                     </div>
-                  </details>
+                  )}
+
+                  <button type="button" onClick={addAuthRule} className="w-full py-2 bg-blue-600 text-white rounded text-xs font-bold hover:bg-blue-700">
+                    현재 설정된 조합 추가 (AND)
+                  </button>
                 </div>
               </div>
             </div>

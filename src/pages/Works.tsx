@@ -48,48 +48,47 @@ const Work: React.FC = () => {
 
   const canBuild = user && (user.role === 'Manager' || user.role === 'Admin');
 
-  // 메뉴 로드
   useEffect(() => {
     const fetchMenu = async () => {
       try {
-        const { data, error } = await supabase
-          .from('org_settings')
-          .select('config')
-          .single();
+        const CACHE_KEY = 'work_menu_cache';
+        const cachedData = localStorage.getItem(CACHE_KEY);
+        
+        let menu = [];
+        if (cachedData) {
+          const parsed = JSON.parse(cachedData);
+          if (Date.now() - parsed.ts < 3600000) { // 1시간 유효
+            menu = parsed.data;
+          }
+        }
 
-        if (error) throw error;
+        if (menu.length === 0) {
+          const { data, error } = await supabase.from('org_settings').select('config').single();
+          if (error) throw error;
+          menu = data.config.work_menu || [];
+          localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data: menu }));
+        }
 
-        const menu = data.config.work_menu || [];
+        const filtered = menu.filter((item: WorkMenuItem) => {
+          if (!item.auth_rules || item.auth_rules.length === 0) return true;
 
-        // parent_id, is_folder 없는 기존 메뉴는 기본값 추가
-        const normalizedMenu = menu.map((item: any) => ({
-          ...item,
-          parent_id: item.parent_id || null,
-          is_folder: item.is_folder || false,
-        }));
+          return item.auth_rules.some(rule => {
+            // 개별 유저 ID 체크 (가장 우선)
+            if (rule.users && rule.users.includes(user?.id || '')) return true;
 
-        const filtered = normalizedMenu.filter((item: WorkMenuItem) => {
-          if (item.show_to.includes('all')) return true;
+            // 상세 조합 체크 (AND 조건)
+            const deptMatch = !rule.dept || rule.dept === user?.department;
+            const posMatch = !rule.pos || rule.pos === user?.position;
+            const projMatch = !rule.proj || rule.proj === user?.project;
+            const partMatch = !rule.part || rule.part === user?.part;
 
-          // role 체크
-          if (user?.role && item.show_to.includes(user.role)) return true;
-
-          // position 체크
-          if (user?.position && item.show_to.includes(user.position)) return true;
-
-          // department 체크
-          if (user?.department && item.show_to.includes(user.department)) return true;
-
-          // project 체크
-          if (user?.project && item.show_to.includes(user.project)) return true;
-
-          return false;
+            return deptMatch && posMatch && projMatch && partMatch;
+          });
         });
 
-        const sorted = filtered.sort((a: WorkMenuItem, b: WorkMenuItem) => a.order - b.order);
+        const sorted = filtered.sort((a, b) => a.order - b.order);
         setMenuItems(sorted);
 
-        // 첫 번째 메뉴를 기본 선택
         if (sorted.length > 0 && !selectedMenu) {
           const firstMenu = sorted.find(m => !m.is_folder) || sorted[0];
           setSelectedMenu(firstMenu.path);
