@@ -10,6 +10,7 @@ import SearchModal from '../components/SearchModal';
 import LettersModal from '../components/LettersModal';
 import { getStatusLabel } from '../utils/attendanceLabels';
 import EvidenceIssueModal from '../components/EvidenceIssueModal';
+import { markAsRead } from '../../api/readLog';
 
 type Notice = {
   id: number;
@@ -81,6 +82,7 @@ const Dashboard: React.FC = () => {
   const [isAllNoticeListOpen, setIsAllNoticeListOpen] = useState(false); // ✅ 전체보기 모달 상태
   const [selectedNotice, setSelectedNotice] = useState<Notice | null>(null);
   const [isNoticeModalOpen, setIsNoticeModalOpen] = useState(false);
+  const [readNoticeIds, setReadNoticeIds] = useState<Set<number>>(new Set()); // 읽은 공지 ID 보관용
 
   // ✅ 전체 공지 불러오기 함수 추가
   const fetchAllNotices = async () => {
@@ -309,26 +311,39 @@ const Dashboard: React.FC = () => {
   };
 
   useEffect(() => {
-    const fetchNotices = async () => {
-      const oneWeekAgo = new Date();
-      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+    const fetchNoticesAndLogs = async () => {
+      if (!user?.id) return;
 
-      const { data, error } = await supabase
+      const sixtyDaysAgo = new Date();
+      sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60); // 60일 데이터 기준
+
+      // 1. 공지사항 로드
+      const { data: nData, error: nErr } = await supabase
         .from('notices')
         .select('id, title, content, is_pinned, created_at')
-        .gte('created_at', oneWeekAgo.toISOString())
+        .gte('created_at', sixtyDaysAgo.toISOString())
         .order('is_pinned', { ascending: false })
         .order('created_at', { ascending: false });
 
-      if (!error && data) {
-        const next = data as Notice[];
-        setNotices(next);
-        saveCache(NOTICES_CACHE_KEY, next);
+      // 2. 내 읽음 로그 로드
+      const { data: lData } = await supabase
+        .from('user_read_logs')
+        .select('target_id')
+        .eq('user_id', user.id)
+        .eq('target_type', 'notice');
+
+      if (!nErr && nData) {
+        setNotices(nData as Notice[]);
+        saveCache(NOTICES_CACHE_KEY, nData);
+      }
+      if (lData) {
+        // 읽은 ID들만 뽑아서 Set에 저장
+        setReadNoticeIds(new Set(lData.map(log => Number(log.target_id))));
       }
     };
 
-    fetchNotices();
-  }, []);
+    fetchNoticesAndLogs();
+  }, [user?.id]);
 
   useEffect(() => {
     const fetchOrgConfig = async () => {
@@ -599,22 +614,35 @@ const Dashboard: React.FC = () => {
           </div>
           <div className="p-6 space-y-3 flex-1 overflow-y-auto">
             {notices.length === 0 ? (
-              <p className="text-gray-500 text-sm">최근 7일 이내 공지가 없습니다.</p>
+              <p className="text-gray-500 text-sm">최근 공지가 없습니다.</p>
             ) : (
               notices.map((notice) => (
                 <button
                   key={notice.id}
                   type="button"
-                  onClick={() => {
+                  onClick={async () => {
                     setSelectedNotice(notice);
                     setIsNoticeModalOpen(true);
+
+                    // 읽지 않은 공지일 때만 DB에 기록 전송
+                    if (user?.id && !readNoticeIds.has(notice.id)) {
+                      await markAsRead(user.id, 'notice', String(notice.id));
+                      // 로컬 상태 즉시 갱신해서 레드닷 지우기
+                      setReadNoticeIds(prev => new Set(prev).add(notice.id));
+                    }
                   }}
                   className="w-full text-left border-b last:border-b-0 pb-3 last:pb-0 hover:bg-yellow-50 rounded-md px-2 -mx-2"
                 >
                   <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-semibold text-gray-900">
-                      {notice.title}
-                    </h3>
+                    <div className="flex items-center gap-2">
+                      {/* 읽지 않은 경우에만 레드닷 표시 */}
+                      {!readNoticeIds.has(notice.id) && (
+                        <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></span>
+                      )}
+                      <h3 className={`text-sm ${!readNoticeIds.has(notice.id) ? 'font-bold text-gray-900' : 'text-gray-600'}`}>
+                        {notice.title}
+                      </h3>
+                    </div>
                     <span className="text-xs text-gray-400">
                       {new Date(notice.created_at).toLocaleDateString('ko-KR')}
                     </span>
