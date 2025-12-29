@@ -39,13 +39,17 @@ type RevisionRequestRow = {
   created_at: string;
 };
 
-const formatDate = (dateString: string | null) => {
-  if (!dateString) return '-';
-  const parts = dateString.split('-');
-  if (parts.length < 3) return dateString;
-  const yy = parts[0].slice(2);
-  const mm = parts[1];
-  const dd = parts[2].slice(0, 2);
+// 타임스탬프(2025-12-29T00:00...)에서 날짜(25.12.29)만 추출
+const formatDate = (isoString: string | null) => {
+  if (!isoString) return '-';
+  const d = new Date(isoString);
+  // 잘못된 날짜 형식일 경우 NaN 방지
+  if (isNaN(d.getTime())) return '-';
+
+  // 로컬 시간(KST) 기준으로 년/월/일 추출
+  const yy = String(d.getFullYear()).slice(2);
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
   return `${yy}.${mm}.${dd}`;
 };
 
@@ -401,7 +405,8 @@ const AttendanceRevisionInbox: React.FC = () => {
             {filtered.map((r) => {
               const u = usersById[r.user_id];
               const name = u?.name ?? '이름 없음';
-              const line1 = `${name} · ${formatDate(r.requested_date)}`;
+              // 상단에서 수정한 KST 버전 formatDate가 적용됨
+              const line1 = `${name} · ${formatDate(r.requested_check_in_at)}`;
               const line2 = (r.reason || '').trim() || '(사유 없음)';
               const isSel = String(r.id) === String(selectedId);
 
@@ -459,7 +464,8 @@ const AttendanceRevisionInbox: React.FC = () => {
                         {selectedUser?.name ?? '이름 없음'}
                       </div>
                       <div className="text-xs text-gray-500">
-                        요청일: {formatDate(selected.requested_date)} · 생성: {new Date(selected.created_at).toLocaleString('ko-KR')}
+                        {/* KST 기준 날짜 표시 */}
+                        요청일: {formatDate(selected.requested_check_in_at)} · 생성: {new Date(selected.created_at).toLocaleString('ko-KR')}
                       </div>
                     </div>
                   </button>
