@@ -64,23 +64,38 @@ const Work: React.FC = () => {
 
         if (userError) throw userError;
 
-        // 2. 메뉴 데이터 로드 (캐시 또는 DB)
+        // 2. 메뉴 데이터 로드 (서버 수정 시각 대조)
         const CACHE_KEY = 'work_menu_cache';
         const cachedData = localStorage.getItem(CACHE_KEY);
         let menu = [];
+        let needsFetch = true;
+
+        // DB에서 최종 수정 시각(updated_at)과 데이터를 한 번에 가져옴
+        const { data: serverInfo, error: serverError } = await supabase
+          .from('org_settings')
+          .select('updated_at, config')
+          .single();
+
+        if (serverError) throw serverError;
+
+        const serverUpdatedAt = new Date(serverInfo.updated_at).getTime();
 
         if (cachedData) {
           const parsed = JSON.parse(cachedData);
-          if (Date.now() - parsed.ts < 3600000) {
+          // 내 로컬 캐시에 저장된 서버 시각(serverTs)이 DB의 현재 시각과 일치하면 캐시 사용
+          if (parsed.serverTs === serverUpdatedAt) {
             menu = parsed.data;
+            needsFetch = false;
           }
         }
 
-        if (menu.length === 0) {
-          const { data, error } = await supabase.from('org_settings').select('config').single();
-          if (error) throw error;
-          menu = data.config.work_menu || [];
-          localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data: menu }));
+        if (needsFetch) {
+          // 캐시가 없거나 서버 시각이 바뀌었으면(데이터가 수정됐으면) 새로 저장
+          menu = serverInfo.config.work_menu || [];
+          localStorage.setItem(CACHE_KEY, JSON.stringify({ 
+            serverTs: serverUpdatedAt, // 서버에서 가져온 수정 시각을 박음
+            data: menu 
+          }));
         }
 
         // 3. 필터링 로직 (profile 변수에 담긴 실제 DB 코드값을 사용)
