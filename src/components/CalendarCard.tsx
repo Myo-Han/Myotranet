@@ -53,11 +53,9 @@ const CalendarCard: React.FC<CalendarCardProps> = ({
 
   // 3. API 호출 및 데이터 누적 함수
   const fetchEventsForRange = useCallback(async (start: Date, end: Date) => {
-    // 현재 보고 있는 달의 중앙 날짜를 기준으로 월 키(YYYY-MM) 생성
     const midDate = new Date(start.getTime() + (end.getTime() - start.getTime()) / 2);
     const monthKey = `${midDate.getFullYear()}-${String(midDate.getMonth() + 1).padStart(2, '0')}`;
 
-    // 이미 불러온 월이면 중단
     if (loadedMonths.has(monthKey)) return;
 
     try {
@@ -79,20 +77,24 @@ const CalendarCard: React.FC<CalendarCardProps> = ({
       const hList = Array.isArray(hData?.events) ? hData.events : [];
       const mList = Array.isArray(mData?.events) ? mData.events : [];
 
+      // 중복 제거 후 상태 업데이트
       setHolidayEvents((prev) => {
         const combined = [...prev, ...hList];
-        // title과 date를 조합하거나 고유 ID가 있다면 그것을 사용하여 중복 제거
         return Array.from(new Map(combined.map(item => [`${item.title}-${item.date || item.start}`, item])).values());
       });
 
       setMyohanEvents((prev) => {
         const combined = [...prev, ...mList];
-        // myohancalendar.ts는 id를 반환하므로 id 기준 중복 제거
         return Array.from(new Map(combined.map(item => [item.id, item])).values());
       });
 
       // 캐시 업데이트
       setLoadedMonths((prev) => new Set(prev).add(monthKey));
+
+      // ✅ 스타일 강제 리렌더링 (공휴일 색상 즉시 반영용)
+      setTimeout(() => {
+        calRef.current?.getApi().render();
+      }, 0);
     } catch (e) {
       console.error('Calendar fetch error:', e);
     }
@@ -100,6 +102,14 @@ const CalendarCard: React.FC<CalendarCardProps> = ({
 
   return (
     <div className={`bg-white shadow rounded-lg overflow-hidden flex flex-col ${className}`}>
+      {/* ✅ 공휴일 색상 실시간 반영을 위한 CSS 스타일 */}
+      <style>{`
+        .fc-holiday .fc-daygrid-day-number {
+          color: #ef4444 !important;
+          font-weight: 600 !important;
+        }
+      `}</style>
+
       <div className="bg-gradient-to-r from-[#6D6F72] to-[#4A4D50] px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-2 min-w-0">
           <h2 className="text-xl font-semibold text-white shrink-0">{title}</h2>
@@ -115,7 +125,7 @@ const CalendarCard: React.FC<CalendarCardProps> = ({
 
       <div className="p-4 flex-1 min-h-0">
         <FullCalendar
-          key="calendar-root"
+          key="fixed-calendar-root" // ✅ 고정된 key를 사용하여 리마운트(오늘로 돌아감) 방지
           ref={(r) => { calRef.current = r; }}
           plugins={[dayGridPlugin, interactionPlugin]}
           initialView="dayGridMonth"
@@ -127,7 +137,6 @@ const CalendarCard: React.FC<CalendarCardProps> = ({
             ...holidayEvents.map(e => ({ ...e, backgroundColor: 'transparent', borderColor: 'transparent', textColor: '#ef4444' })),
             ...myohanEvents.map(e => ({ ...e, backgroundColor: 'transparent', borderColor: 'transparent', textColor: '#000000' }))
           ]}
-          // 4. 달력의 날짜 범위가 바뀔 때(초기 로드 포함) 실행되는 함수
           datesSet={(arg) => {
             setViewTitle(arg.view.title);
             fetchEventsForRange(arg.start, arg.end);
@@ -150,17 +159,13 @@ const CalendarCard: React.FC<CalendarCardProps> = ({
           dayMaxEvents={false}
           dayCellClassNames={(arg) => (holidayDateSet.has(arg.dateStr) ? ['fc-holiday'] : [])}
           dayCellDidMount={(arg) => {
-            const dateStr = arg.el.getAttribute('data-date');
             const num = arg.el.querySelector('.fc-daygrid-day-number') as HTMLElement | null;
             if (!num) return;
-            if (dateStr && holidayDateSet.has(dateStr)) {
-              num.style.color = '#ef4444';
-              num.style.fontWeight = '600';
-              return;
-            }
+
             const dow = arg.date.getDay();
-            if (dow === 0) num.style.color = '#ef4444';
-            if (dow === 6) num.style.color = '#2563eb';
+            if (dow === 0) num.style.color = '#ef4444'; // 일요일
+            else if (dow === 6) num.style.color = '#2563eb'; // 토요일
+            else num.style.color = ''; // 평일 (공휴일은 CSS가 덮어씌움)
           }}
           dateClick={(arg) => onDateClick?.(arg.dateStr)}
         />
