@@ -6,6 +6,7 @@ import Loading from './Loading';
 import ErrorMessage from './ErrorMessage';
 import SuccessMessage from './SuccessMessage';
 import ProfileModal from './ProfileModal';
+import { getStatusLabel, getStatusColor } from '../utils/attendanceLabels';
 
 type UserRow = {
   id: string;
@@ -525,9 +526,12 @@ const AttendanceRevisionInbox: React.FC = () => {
                         <span className="text-gray-600">퇴근</span>
                         <span className="font-semibold">{formatTime(selectedAttendance.check_out)}</span>
                       </div>
-                      <div className="flex justify-between">
+                      <div className="flex justify-between items-center">
                         <span className="text-gray-600">상태</span>
-                        <span className="font-semibold">{selectedAttendance.status || '-'}</span>
+                        {/* ✅ 유틸리티의 getStatusLabel, getStatusColor를 사용하여 Attendance.tsx 스타일 적용 */}
+                        <span className={`px-2 py-1 text-xs rounded-full font-medium ${getStatusColor(selectedAttendance.status, null)}`}>
+                          {getStatusLabel(selectedAttendance.status, null)}
+                        </span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-600">누적 시간</span>
