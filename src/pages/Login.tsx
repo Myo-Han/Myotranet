@@ -38,27 +38,19 @@ const Login: React.FC = () => {
         <div className="mt-8 space-y-6">
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 max-h-40 overflow-y-auto">
             <h3 className="text-sm font-medium text-blue-900 mb-2">
-              25.12.21 20:31 패치노트
+              25.12.29 19:33 패치노트
             </h3>
 
             <p className="text-xs font-semibold text-blue-900 mb-1">변경 사항</p>
             <ul className="text-sm text-blue-700 space-y-1 mb-3">
-              <li>• [대시보드] '운영툴 제안' 버튼 링크 변경</li>
-              <li>• [대시보드] 캘린터 헤더 컨테이너 크기 통일</li>
-              <li>• [대시보드] 헤더 컨테이너 색상 변경</li>
-              <li>• [대시보드] '상태' 출퇴근 기능 추가</li>
-              <li>• [대시보드] 구글 캘린더 연동 (공휴일, 회사 캘린더)</li>
-              <li>• [마음의 편지] 페이지 → 모달 방식 변경</li>
-              <li>• [업무] 마음의 편지 수신함 추가</li>
-              <li>• [직원 검색] 페이지 → 모달 방식 변경</li>
-              <li>• [업무] 출퇴근 수정 요청 추가</li>
-              <li>• [업무] 출퇴근 상세 수정 추가</li>
-              <li>• 테스트 개발 환경 구축</li>
+              <li>• [대시보드] 공지 전체보기 추가</li>
+              <li>• [업무 → 출퇴근수정요청] 표시형식 변경</li>
+              <li>• [출퇴근관리] 업무 중단 자정 넘어가면 자동 퇴근 처리 기능(검증 필요)</li>
             </ul>
 
             <p className="text-xs font-semibold text-blue-900 mb-1">버그 수정</p>
             <ul className="text-sm text-blue-700 space-y-1">
-              <li>• [로그인] 세션 문제 해결</li>
+              <li>• [대시보드] 캘린더 이전 날짜 출력 문제 해결</li>
             </ul>
           </div>
 
