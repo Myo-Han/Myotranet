@@ -6,7 +6,7 @@ import Loading from '../components/Loading';
 import ErrorMessage from '../components/ErrorMessage';
 import SuccessMessage from '../components/SuccessMessage';
 import ProfileModal from '../components/ProfileModal';
-import { getStatusLabel, getStatusColor } from '../utils/attendanceLabels';
+import { getStatusLabel, getStatusColor, getRevisionStatusLabel } from '../utils/attendanceLabels';
 
 const getTodayDate = () => {
   const today = new Date();
@@ -23,6 +23,7 @@ const shiftDate = (yyyyMMdd: string, deltaDays: number) => {
 const Attendance: React.FC = () => {
   const { user } = useAuth();
   const [records, setRecords] = useState<AttendanceType[]>([]);
+  const [revisionRequests, setRevisionRequests] = useState<Record<string, any>>({});
   const [selectedDate, setSelectedDate] = useState<string>(getTodayDate());
   const [allEmployees, setAllEmployees] = useState<any[]>([]);
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -92,6 +93,7 @@ const Attendance: React.FC = () => {
       const attendanceIds = (attendanceData || []).map((a: any) => a.id).filter(Boolean);
 
       if (attendanceIds.length > 0) {
+        // ✅ 1. 휴게/중지 이벤트 조회
         const { data: evts, error: evtErr } = await supabase
           .from('attendance_events')
           .select('attendance_id, event_type, occurred_at')
@@ -100,6 +102,21 @@ const Attendance: React.FC = () => {
           .order('occurred_at', { ascending: true });
 
         if (evtErr) throw evtErr;
+
+        // ✅ 2. 수정 요청 내역 조회 추가
+        const { data: revData, error: revErr } = await supabase
+          .from('attendance_revision_requests')
+          .select('attendance_id, status')
+          .in('attendance_id', attendanceIds);
+
+        if (revErr) throw revErr;
+
+        // ✅ 3. 수정 요청 상태 매핑 저장
+        const revMap: Record<string, any> = {};
+        (revData || []).forEach((r) => {
+          revMap[String(r.attendance_id)] = r.status;
+        });
+        setRevisionRequests(revMap);
 
         const map: Record<string, { attendance_id: string; event_type: 'pause' | 'resume'; occurred_at: string }[]> = {};
         (evts || []).forEach((e: any) => {
@@ -1154,12 +1171,29 @@ const Attendance: React.FC = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     {record.user_id === user?.id && (
-                      <button
-                        onClick={() => openRevisionModal(record)}
-                        className="text-blue-600 hover:text-blue-800"
-                      >
-                        수정 요청
-                      </button>
+                      <div className="flex items-center">
+                        {/* ✅ 요청 기록이 있으면 상태 배지, 없으면 버튼 표시 */}
+                        {revisionRequests[record.id] ? (
+                          (() => {
+                            const { label, colorClass } = getRevisionStatusLabel(revisionRequests[record.id]);
+                            return (
+                              <button 
+                                onClick={() => openRevisionModal(record)}
+                                className={`px-2 py-1 text-xs rounded-full font-medium ${colorClass} hover:opacity-80`}
+                              >
+                                {label} (수정)
+                              </button>
+                            );
+                          })()
+                        ) : (
+                          <button
+                            onClick={() => openRevisionModal(record)}
+                            className="text-blue-600 hover:text-blue-800"
+                          >
+                            수정 요청
+                          </button>
+                        )}
+                      </div>
                     )}
                   </td>
                 </tr>
