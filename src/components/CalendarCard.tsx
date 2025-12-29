@@ -115,7 +115,7 @@ const CalendarCard: React.FC<CalendarCardProps> = ({
 
       <div className="p-4 flex-1 min-h-0">
         <FullCalendar
-          key={`cal-${holidayDateSet.size}`}
+          key="calendar-root"
           ref={(r) => { calRef.current = r; }}
           plugins={[dayGridPlugin, interactionPlugin]}
           initialView="dayGridMonth"
