@@ -634,12 +634,16 @@ const Dashboard: React.FC = () => {
                   className="w-full text-left border-b last:border-b-0 pb-3 last:pb-0 hover:bg-yellow-50 rounded-md px-2 -mx-2"
                 >
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      {/* 읽지 않은 경우에만 레드닷 표시 */}
+                    <div className="relative inline-block">
+                      {/* 읽지 않은 경우에만 레드닷 표시 (위치: 좌측 상단 밀착, 애니메이션: 0.7초 고속) */}
                       {!readNoticeIds.has(notice.id) && (
-                        <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></span>
+                        <span
+                          className="absolute -top-1 -left-1.5 w-2 h-2 bg-red-600 rounded-full shadow-[0_0_5px_rgba(220,38,38,0.8)] animate-[pulse_0.7s_infinite]"
+                          style={{ zIndex: 1 }}
+                        ></span>
                       )}
-                      <h3 className={`text-sm ${!readNoticeIds.has(notice.id) ? 'font-bold text-gray-900' : 'text-gray-600'}`}>
+
+                      <h3 className={`text-sm relative ${!readNoticeIds.has(notice.id) ? 'font-bold text-gray-900' : 'text-gray-600'}`}>
                         {notice.title}
                       </h3>
                     </div>
