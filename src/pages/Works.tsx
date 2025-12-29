@@ -70,16 +70,27 @@ const Work: React.FC = () => {
         }
 
         const filtered = menu.filter((item: WorkMenuItem) => {
-          // auth_rules가 없으면(기존 데이터) 전체 허용하거나 빈 배열로 처리
           const rules = item.auth_rules || []; 
+          // 설정된 규칙이 아예 없으면 기본적으로 노출 (기존 데이터 대응)
           if (rules.length === 0) return true;
 
           return rules.some(rule => {
+            // 1. 개별 유저 ID 체크 (UUID가 일치하면 즉시 승인)
             if (rule.users && rule.users.includes(user?.id || '')) return true;
-            const deptMatch = !rule.dept || rule.dept === user?.department;
-            const posMatch = !rule.pos || rule.pos === user?.position;
-            const projMatch = !rule.proj || rule.proj === user?.project;
-            const partMatch = !rule.part || rule.part === user?.part;
+
+            // 2. 모든 필드가 미지정(null/empty)인지 확인
+            const isAllNull = !rule.dept && !rule.pos && !rule.proj && !rule.part;
+            
+            // 3. 전체가 미지정인 조합이라면 누구나 열람 가능
+            if (isAllNull) return true;
+
+            // 4. 특정 조건이 하나라도 걸려있다면 유저 정보와 1:1로 정확히 일치해야 함
+            // (규칙이 '미지정'이면 유저 정보도 'null'이나 'empty'여야 통과)
+            const deptMatch = (rule.dept || null) === (user?.department || null);
+            const posMatch = (rule.pos || null) === (user?.position || null);
+            const projMatch = (rule.proj || null) === (user?.project || null);
+            const partMatch = (rule.part || null) === (user?.part || null);
+
             return deptMatch && posMatch && projMatch && partMatch;
           });
         });
