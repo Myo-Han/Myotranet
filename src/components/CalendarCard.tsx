@@ -24,7 +24,7 @@ const CalendarCard: React.FC<CalendarCardProps> = ({
   // 1. 이벤트 데이터 상태 (누적 저장)
   const [holidayEvents, setHolidayEvents] = useState<any[]>([]);
   const [myohanEvents, setMyohanEvents] = useState<any[]>([]);
-  
+
   // 2. 캐싱 상태: 이미 불러온 연-월(YYYY-MM)을 기록
   const [loadedMonths, setLoadedMonths] = useState<Set<string>>(new Set());
 
@@ -79,10 +79,18 @@ const CalendarCard: React.FC<CalendarCardProps> = ({
       const hList = Array.isArray(hData?.events) ? hData.events : [];
       const mList = Array.isArray(mData?.events) ? mData.events : [];
 
-      // 기존 데이터와 합치되, 중복 제거를 위해 ID나 제목/날짜 조합 등으로 필터링 가능 (여기선 단순 누적)
-      setHolidayEvents((prev) => [...prev, ...hList]);
-      setMyohanEvents((prev) => [...prev, ...mList]);
-      
+      setHolidayEvents((prev) => {
+        const combined = [...prev, ...hList];
+        // title과 date를 조합하거나 고유 ID가 있다면 그것을 사용하여 중복 제거
+        return Array.from(new Map(combined.map(item => [`${item.title}-${item.date || item.start}`, item])).values());
+      });
+
+      setMyohanEvents((prev) => {
+        const combined = [...prev, ...mList];
+        // myohancalendar.ts는 id를 반환하므로 id 기준 중복 제거
+        return Array.from(new Map(combined.map(item => [item.id, item])).values());
+      });
+
       // 캐시 업데이트
       setLoadedMonths((prev) => new Set(prev).add(monthKey));
     } catch (e) {
