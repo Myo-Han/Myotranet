@@ -31,6 +31,20 @@ type WorkMenuItem = {
 
 const Work: React.FC = () => {
   const { user } = useAuth();
+
+useEffect(() => {
+    if (user) {
+      console.log('--- [현재 접속 유저 정보 상세] ---');
+      console.log('UUID (id):', `"${user.id}"`);
+      console.log('부서 (department):', `"${user.department || ''}"`);
+      console.log('직급 (position):', `"${user.position || ''}"`);
+      console.log('프로젝트 (project):', `"${user.project || ''}"`);
+      console.log('파트 (part):', `"${user.part || ''}"`);
+      console.log('권한 (role):', `"${user.role || ''}"`);
+      console.log('---------------------------------');
+    }
+  }, [user]);
+
   const [menuItems, setMenuItems] = useState<WorkMenuItem[]>([]);
   const [selectedMenu, setSelectedMenu] = useState('');
   const [loadingMenu, setLoadingMenu] = useState(true);
