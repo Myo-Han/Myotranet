@@ -71,27 +71,35 @@ const Work: React.FC = () => {
 
         const filtered = menu.filter((item: WorkMenuItem) => {
           const rules = item.auth_rules || []; 
-          // 설정된 규칙이 아예 없으면 기본적으로 노출 (기존 데이터 대응)
           if (rules.length === 0) return true;
 
           return rules.some(rule => {
-            // 1. 개별 유저 ID 체크 (UUID가 일치하면 즉시 승인)
+            // 1. 개별 유저 ID 체크 (UUID 일치 시 즉시 통과)
             if (rule.users && rule.users.includes(user?.id || '')) return true;
 
-            // 2. 모든 필드가 미지정(null/empty)인지 확인
-            const isAllNull = !rule.dept && !rule.pos && !rule.proj && !rule.part;
-            
-            // 3. 전체가 미지정인 조합이라면 누구나 열람 가능
-            if (isAllNull) return true;
+            // 2. 값 정규화 (null, undefined, 빈 문자열을 모두 ''로 통일)
+            const rDept = rule.dept || '';
+            const rPos = rule.pos || '';
+            const rProj = rule.proj || '';
+            const rPart = rule.part || '';
 
-            // 4. 특정 조건이 하나라도 걸려있다면 유저 정보와 1:1로 정확히 일치해야 함
-            // (규칙이 '미지정'이면 유저 정보도 'null'이나 'empty'여야 통과)
-            const deptMatch = (rule.dept || null) === (user?.department || null);
-            const posMatch = (rule.pos || null) === (user?.position || null);
-            const projMatch = (rule.proj || null) === (user?.project || null);
-            const partMatch = (rule.part || null) === (user?.part || null);
+            const uDept = user?.department || '';
+            const uPos = user?.position || '';
+            const uProj = user?.project || '';
+            const uPart = user?.part || '';
 
-            return deptMatch && posMatch && projMatch && partMatch;
+            // 3. 전체 미지정 체크 (모든 규칙 필드가 빈 값일 경우 전체 허용)
+            const isAllEmptyRule = !rDept && !rPos && !rProj && !rPart;
+            if (isAllEmptyRule) return true;
+
+            // 4. 엄격한 일치 확인 (AND 조건)
+            // 이제 '미지정(null/''/undefined)'은 유저 정보의 '미지정'과 정확히 매칭됨
+            return (
+              rDept === uDept &&
+              rPos === uPos &&
+              rProj === uProj &&
+              rPart === uPart
+            );
           });
         });
 
