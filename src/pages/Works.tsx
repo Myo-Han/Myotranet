@@ -150,38 +150,41 @@ const Work: React.FC = () => {
 
   const [badges, setBadges] = useState<Record<string, boolean>>({}); // 메뉴 path별 레드닷 여부
 
+  const fetchAllBadges = async () => {
+    if (!user?.id) return;
+
+    const sixtyDaysAgo = new Date();
+    sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+    const dateStr = sixtyDaysAgo.toISOString();
+
+    const [
+      { data: notices }, { data: noticeLogs },
+      { data: letters }, { data: letterLogs }
+    ] = await Promise.all([
+      supabase.from('notices').select('id').gte('created_at', dateStr),
+      supabase.from('user_read_logs').select('target_id').eq('user_id', user.id).eq('target_type', 'notice'),
+      supabase.from('letters').select('id').gte('created_at', dateStr),
+      supabase.from('user_read_logs').select('target_id').eq('user_id', user.id).eq('target_type', 'letter')
+    ]);
+
+    const newBadges: Record<string, boolean> = {};
+    const unreadNotices = notices?.filter(n => !noticeLogs?.some(l => l.target_id === String(n.id)));
+    if (unreadNotices && unreadNotices.length > 0) newBadges['notice'] = true;
+
+    const unreadLetters = letters?.filter(l => !letterLogs?.some(log => log.target_id === String(l.id)));
+    if (unreadLetters && unreadLetters.length > 0) newBadges['letters-inbox'] = true;
+
+    setBadges(newBadges);
+  };
+
+  // 2. 신호를 감지하여 실시간으로 배지를 갱신
   useEffect(() => {
-    const fetchAllBadges = async () => {
-      if (!user?.id) return;
-
-      const sixtyDaysAgo = new Date();
-      sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
-      const dateStr = sixtyDaysAgo.toISOString();
-
-      // 1. 모든 메뉴의 전체 데이터와 내 읽음 기록을 동시에 조회
-      const [
-        { data: notices }, { data: noticeLogs },
-        { data: letters }, { data: letterLogs }
-      ] = await Promise.all([
-        supabase.from('notices').select('id').gte('created_at', dateStr),
-        supabase.from('user_read_logs').select('target_id').eq('user_id', user.id).eq('target_type', 'notice'),
-        supabase.from('letters').select('id').gte('created_at', dateStr),
-        supabase.from('user_read_logs').select('target_id').eq('user_id', user.id).eq('target_type', 'letter')
-      ]);
-
-      // 2. 안 읽은 게 있는지 계산하여 Map 생성
-      const newBadges: Record<string, boolean> = {};
-
-      const unreadNotices = notices?.filter(n => !noticeLogs?.some(l => l.target_id === String(n.id)));
-      if (unreadNotices && unreadNotices.length > 0) newBadges['notice'] = true;
-
-      const unreadLetters = letters?.filter(l => !letterLogs?.some(log => log.target_id === String(l.id)));
-      if (unreadLetters && unreadLetters.length > 0) newBadges['letters-inbox'] = true;
-
-      setBadges(newBadges);
-    };
-
     fetchAllBadges();
+
+    const handleUpdate = () => fetchAllBadges();
+    window.addEventListener('read-log-updated', handleUpdate);
+
+    return () => window.removeEventListener('read-log-updated', handleUpdate);
   }, [user?.id]);
 
   useEffect(() => {
@@ -501,7 +504,16 @@ const Work: React.FC = () => {
                         : 'text-gray-600 hover:bg-gray-50'
                         }`}
                     >
-                      {getIcon(child.icon)}
+                      {/* 하위 메뉴 아이콘에 레드닷 적용 */}
+                      <div className="relative">
+                        {getIcon(child.icon)}
+                        {badges[child.path] && (
+                          <span
+                            className="absolute -top-1 -left-1 w-2 h-2 bg-red-600 rounded-full shadow-[0_0_5px_rgba(220,38,38,0.8)] animate-[pulse_0.7s_infinite]"
+                            style={{ zIndex: 10 }}
+                          ></span>
+                        )}
+                      </div>
                       <span>{child.label}</span>
                     </button>
                   ))}

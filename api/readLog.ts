@@ -22,7 +22,10 @@ export const markAsRead = async (userId: string, type: string, id: string) => {
         { onConflict: 'user_id,target_type,target_id' } // 중복 기록 방지
       );
 
-    if (error) {
+    if (!error) {
+      // ✅ 추가: 읽음 성공 시 'read-log-updated' 이벤트를 발생시킴
+      window.dispatchEvent(new CustomEvent('read-log-updated'));
+    } else {
       console.error(`[${type}] 읽음 처리 실패:`, error.message);
     }
   } catch (err) {
