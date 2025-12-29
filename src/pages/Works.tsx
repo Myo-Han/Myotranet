@@ -92,9 +92,9 @@ const Work: React.FC = () => {
         if (needsFetch) {
           // 캐시가 없거나 서버 시각이 바뀌었으면(데이터가 수정됐으면) 새로 저장
           menu = serverInfo.config.work_menu || [];
-          localStorage.setItem(CACHE_KEY, JSON.stringify({ 
+          localStorage.setItem(CACHE_KEY, JSON.stringify({
             serverTs: serverUpdatedAt, // 서버에서 가져온 수정 시각을 박음
-            data: menu 
+            data: menu
           }));
         }
 
@@ -146,6 +146,42 @@ const Work: React.FC = () => {
     };
 
     fetchMenuAndUser();
+  }, [user?.id]);
+
+  const [badges, setBadges] = useState<Record<string, boolean>>({}); // 메뉴 path별 레드닷 여부
+
+  useEffect(() => {
+    const fetchAllBadges = async () => {
+      if (!user?.id) return;
+
+      const sixtyDaysAgo = new Date();
+      sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+      const dateStr = sixtyDaysAgo.toISOString();
+
+      // 1. 모든 메뉴의 전체 데이터와 내 읽음 기록을 동시에 조회
+      const [
+        { data: notices }, { data: noticeLogs },
+        { data: letters }, { data: letterLogs }
+      ] = await Promise.all([
+        supabase.from('notices').select('id').gte('created_at', dateStr),
+        supabase.from('user_read_logs').select('target_id').eq('user_id', user.id).eq('target_type', 'notice'),
+        supabase.from('letters').select('id').gte('created_at', dateStr),
+        supabase.from('user_read_logs').select('target_id').eq('user_id', user.id).eq('target_type', 'letter')
+      ]);
+
+      // 2. 안 읽은 게 있는지 계산하여 Map 생성
+      const newBadges: Record<string, boolean> = {};
+
+      const unreadNotices = notices?.filter(n => !noticeLogs?.some(l => l.target_id === String(n.id)));
+      if (unreadNotices && unreadNotices.length > 0) newBadges['notice'] = true;
+
+      const unreadLetters = letters?.filter(l => !letterLogs?.some(log => log.target_id === String(l.id)));
+      if (unreadLetters && unreadLetters.length > 0) newBadges['letters-inbox'] = true;
+
+      setBadges(newBadges);
+    };
+
+    fetchAllBadges();
   }, [user?.id]);
 
   useEffect(() => {
@@ -421,9 +457,26 @@ const Work: React.FC = () => {
                   : 'text-gray-700 hover:bg-gray-50'
                   }`}
               >
-                <div className="flex items-center space-x-3">
-                  {getIcon(item.icon)}
-                  <span>{item.label}</span>
+                {/* 아이콘 렌더링 부분 수정 */}
+                <div className="flex items-center space-x-3 relative">
+                  <div className="relative">
+                    {getIcon(item.icon)}
+
+                    {/* 레드닷 로직: 
+        1. 일반 메뉴일 때: badges[item.path]가 true인 경우
+        2. 폴더일 때: menuItems 중 나를 부모로 가진 자식의 path가 badges에 하나라도 있는 경우
+    */}
+                    {(item.is_folder
+                      ? menuItems.filter(child => child.parent_id === item.id).some(child => badges[child.path])
+                      : badges[item.path]
+                    ) && (
+                        <span
+                          className="absolute -top-1 -left-1 w-2 h-2 bg-red-600 rounded-full shadow-[0_0_5px_rgba(220,38,38,0.8)] animate-[pulse_0.7s_infinite]"
+                          style={{ zIndex: 10 }}
+                        ></span>
+                      )}
+                  </div>
+                  <span className={item.is_folder ? "font-semibold" : ""}>{item.label}</span>
                 </div>
                 {item.is_folder && (
                   <svg
