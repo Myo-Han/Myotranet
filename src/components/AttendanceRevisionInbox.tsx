@@ -39,12 +39,24 @@ type RevisionRequestRow = {
   created_at: string;
 };
 
-const formatDate = (dateString: string) => {
-  const d = new Date(dateString);
-  const yy = String(d.getFullYear()).slice(2);
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
+const formatDate = (dateString: string | null) => {
+  if (!dateString) return '-';
+  const parts = dateString.split('-');
+  if (parts.length < 3) return dateString;
+  const yy = parts[0].slice(2);
+  const mm = parts[1];
+  const dd = parts[2].slice(0, 2);
   return `${yy}.${mm}.${dd}`;
+};
+
+// 초 단위를 h m s 형식으로 변환하는 함수 추가
+const secondsToHms = (sec: number | null) => {
+  if (sec === null || sec === undefined) return '00h 00m 00s';
+  const s = Math.max(0, Math.floor(sec));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const rs = s % 60;
+  return `${String(h).padStart(2, '0')}h ${String(m).padStart(2, '0')}m ${String(rs).padStart(2, '0')}s`;
 };
 
 const formatTime = (iso: string | null) => {
@@ -512,8 +524,8 @@ const AttendanceRevisionInbox: React.FC = () => {
                         <span className="font-semibold">{selectedAttendance.status || '-'}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-600">누적(초)</span>
-                        <span className="font-semibold">{selectedAttendance.total_work_seconds ?? 0}</span>
+                        <span className="text-gray-600">누적 시간</span>
+                        <span className="font-semibold">{secondsToHms(selectedAttendance.total_work_seconds)}</span>
                       </div>
                     </div>
                   ) : (
