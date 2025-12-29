@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState, useCallback } from 'react';
+import React, { useMemo, useRef, useState, useCallback, useEffect } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
@@ -25,8 +25,16 @@ const CalendarCard: React.FC<CalendarCardProps> = ({
   const [holidayEvents, setHolidayEvents] = useState<any[]>([]);
   const [myohanEvents, setMyohanEvents] = useState<any[]>([]);
 
-  // 2. 캐싱 상태: 이미 불러온 연-월(YYYY-MM)을 기록
+  // 2. 캐싱 상태: 이미 불러온 연-월(YYYY-MM) 기록
   const [loadedMonths, setLoadedMonths] = useState<Set<string>>(new Set());
+
+  // ✅ 데이터가 업데이트될 때마다 달력을 강제로 다시 그려서 스타일(빨간색)을 입힘
+  useEffect(() => {
+    if (calRef.current) {
+      const api = calRef.current.getApi();
+      api.render();
+    }
+  }, [holidayEvents, myohanEvents]);
 
   const headerButtons = useMemo(
     () => ({
@@ -51,7 +59,7 @@ const CalendarCard: React.FC<CalendarCardProps> = ({
     return set;
   }, [holidayEvents]);
 
-  // 3. API 호출 및 데이터 누적 함수
+  // 3. API 호출 및 데이터 누적 함수 (범위 기반)
   const fetchEventsForRange = useCallback(async (start: Date, end: Date) => {
     const midDate = new Date(start.getTime() + (end.getTime() - start.getTime()) / 2);
     const monthKey = `${midDate.getFullYear()}-${String(midDate.getMonth() + 1).padStart(2, '0')}`;
@@ -77,7 +85,7 @@ const CalendarCard: React.FC<CalendarCardProps> = ({
       const hList = Array.isArray(hData?.events) ? hData.events : [];
       const mList = Array.isArray(mData?.events) ? mData.events : [];
 
-      // 중복 제거 후 상태 업데이트
+      // 중복 제거 후 업데이트
       setHolidayEvents((prev) => {
         const combined = [...prev, ...hList];
         return Array.from(new Map(combined.map(item => [`${item.title}-${item.date || item.start}`, item])).values());
@@ -88,13 +96,7 @@ const CalendarCard: React.FC<CalendarCardProps> = ({
         return Array.from(new Map(combined.map(item => [item.id, item])).values());
       });
 
-      // 캐시 업데이트
       setLoadedMonths((prev) => new Set(prev).add(monthKey));
-
-      // ✅ 스타일 강제 리렌더링 (공휴일 색상 즉시 반영용)
-      setTimeout(() => {
-        calRef.current?.getApi().render();
-      }, 0);
     } catch (e) {
       console.error('Calendar fetch error:', e);
     }
@@ -102,11 +104,24 @@ const CalendarCard: React.FC<CalendarCardProps> = ({
 
   return (
     <div className={`bg-white shadow rounded-lg overflow-hidden flex flex-col ${className}`}>
-      {/* ✅ 공휴일 색상 실시간 반영을 위한 CSS 스타일 */}
+      {/* ✅ 공휴일 및 요일 색상 강제 지정을 위한 CSS */}
       <style>{`
-        .fc-holiday .fc-daygrid-day-number {
+        /* 공휴일 숫자 빨간색 (최우선순위) */
+        .fc-daygrid-day.fc-holiday .fc-daygrid-day-number {
           color: #ef4444 !important;
           font-weight: 600 !important;
+        }
+        /* 일요일 빨간색 */
+        .fc-day-sun .fc-daygrid-day-number {
+          color: #ef4444 !important;
+        }
+        /* 토요일 파란색 */
+        .fc-day-sat .fc-daygrid-day-number {
+          color: #2563eb !important;
+        }
+        /* 기본 날짜 숫자 스타일 */
+        .fc-daygrid-day-number {
+          text-decoration: none !important;
         }
       `}</style>
 
@@ -125,7 +140,7 @@ const CalendarCard: React.FC<CalendarCardProps> = ({
 
       <div className="p-4 flex-1 min-h-0">
         <FullCalendar
-          key="fixed-calendar-root" // ✅ 고정된 key를 사용하여 리마운트(오늘로 돌아감) 방지
+          key="calendar-root-fixed" // ✅ key 고정하여 데이터 로드 시 리마운트(오늘로 이동) 방지
           ref={(r) => { calRef.current = r; }}
           plugins={[dayGridPlugin, interactionPlugin]}
           initialView="dayGridMonth"
@@ -157,16 +172,12 @@ const CalendarCard: React.FC<CalendarCardProps> = ({
             titleEl.style.textOverflow = 'ellipsis';
           }}
           dayMaxEvents={false}
-          dayCellClassNames={(arg) => (holidayDateSet.has(arg.dateStr) ? ['fc-holiday'] : [])}
-          dayCellDidMount={(arg) => {
-            const num = arg.el.querySelector('.fc-daygrid-day-number') as HTMLElement | null;
-            if (!num) return;
-
-            const dow = arg.date.getDay();
-            if (dow === 0) num.style.color = '#ef4444'; // 일요일
-            else if (dow === 6) num.style.color = '#2563eb'; // 토요일
-            else num.style.color = ''; // 평일 (공휴일은 CSS가 덮어씌움)
+          dayCellClassNames={(arg) => {
+            // ✅ 데이터가 로드되면 fc-holiday 클래스를 추가하여 CSS가 적용되게 함
+            return holidayDateSet.has(arg.dateStr) ? ['fc-holiday'] : [];
           }}
+          // ✅ JS 스타일링은 제거 (CSS가 !important로 처리)
+          dayCellDidMount={() => {}} 
           dateClick={(arg) => onDateClick?.(arg.dateStr)}
         />
       </div>
