@@ -5,6 +5,7 @@ import { supabase } from '../supabaseClient';
 import Loading from './Loading';
 import ErrorMessage from './ErrorMessage';
 import ProfileModal from './ProfileModal';
+import { markAsRead } from '../../api/readLog';
 
 type LetterRow = {
   id: number | string;
@@ -22,6 +23,7 @@ const LettersInbox: React.FC = () => {
 
   const [letters, setLetters] = useState<LetterRow[]>([]);
   const [selected, setSelected] = useState<LetterRow | null>(null);
+  const [readLetterIds, setReadLetterIds] = useState<Set<string>>(new Set()); // string으로 변경
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -66,6 +68,17 @@ const LettersInbox: React.FC = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
+
+      // 내 읽음 로그 데이터 로드
+      const { data: logData } = await supabase
+        .from('user_read_logs')
+        .select('target_id')
+        .eq('user_id', user?.id)
+        .eq('target_type', 'letter');
+
+      if (logData) {
+        setReadLetterIds(new Set(logData.map(log => String(log.target_id)))); // 읽은 ID들 저장
+      }
 
       const base = (data ?? []) as Array<{
         id: number | string;
@@ -179,13 +192,26 @@ const LettersInbox: React.FC = () => {
                     <button
                       key={String(l.id)}
                       type="button"
-                      onClick={() => setSelected(l)}
-                      className={`w-full text-left px-6 py-4 border-b hover:bg-gray-50 ${isActive ? 'bg-blue-50' : ''
-                        }`}
+                      onClick={async () => {
+                        setSelected(l);
+                        
+                        // 안 읽은 편지라면 즉시 DB에 읽음 처리 기록
+                        if (user?.id && !readLetterIds.has(String(l.id))) {
+                          await markAsRead(user.id, 'letter', String(l.id));
+                          setReadLetterIds(prev => new Set(prev).add(String(l.id))); // UI 즉시 반영
+                        }
+                      }}
+                      className={`w-full text-left px-6 py-4 border-b hover:bg-gray-50 ${isActive ? 'bg-blue-50' : ''}`}
                     >
                       <div className="flex items-center justify-between gap-3">
-                        <div className="min-w-0 flex-1">
-                          <div className="font-semibold text-gray-900 truncate">{l.title}</div>
+                        <div className="min-w-0 flex-1 flex items-center gap-2">
+                          {/* 고속 레드닷: 읽지 않은 경우에만 표시 */}
+                          {!readLetterIds.has(String(l.id)) && (
+                            <span className="w-2 h-2 bg-red-600 rounded-full shrink-0 animate-[pulse_0.7s_infinite] shadow-[0_0_5px_rgba(220,38,38,0.8)]"></span>
+                          )}
+                          <div className={`truncate ${!readLetterIds.has(String(l.id)) ? 'font-bold text-gray-900' : 'text-gray-600'}`}>
+                            {l.title}
+                          </div>
                         </div>
                         <div className="text-xs text-gray-400 shrink-0">
                           {new Date(l.created_at).toLocaleDateString('ko-KR')}
