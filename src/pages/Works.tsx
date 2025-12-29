@@ -63,15 +63,29 @@ useEffect(() => {
   const canBuild = user && (user.role === 'Manager' || user.role === 'Admin');
 
   useEffect(() => {
-    const fetchMenu = async () => {
+    const fetchMenuAndUser = async () => {
+      if (!user?.id) return;
+
       try {
+        setLoadingMenu(true);
+
+        // 1. DB에서 유저의 상세 정보(부서, 직급 등)를 먼저 가져옴
+        const { data: profile, error: userError } = await supabase
+          .from('users')
+          .select('department, position, project, part')
+          .eq('id', user.id)
+          .single();
+
+        if (userError) throw userError;
+
+        // 2. 메뉴 데이터 로드 (캐시 또는 DB)
         const CACHE_KEY = 'work_menu_cache';
         const cachedData = localStorage.getItem(CACHE_KEY);
-        
         let menu = [];
+
         if (cachedData) {
           const parsed = JSON.parse(cachedData);
-          if (Date.now() - parsed.ts < 3600000) { // 1시간 유효
+          if (Date.now() - parsed.ts < 3600000) {
             menu = parsed.data;
           }
         }
@@ -83,29 +97,30 @@ useEffect(() => {
           localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data: menu }));
         }
 
-        const filtered = menu.filter((item: WorkMenuItem) => {
-          // 1. 기존 데이터(show_to 사용 시기) 대응 및 auth_rules 미존재 시 전체 허용
+        // 3. 필터링 로직 (profile 변수에 담긴 실제 DB 코드값을 사용)
+        const filtered = menu.filter((item: any) => {
+          // auth_rules가 없거나 비어있으면 전체 노출
           if (!item.auth_rules || item.auth_rules.length === 0) return true;
 
-          return item.auth_rules.some(rule => {
-            // 2. 개별 ID 체크
-            if (rule.users?.includes(user?.id || '')) return true;
+          return item.auth_rules.some((rule: any) => {
+            // 개별 유저 ID 체크
+            if (rule.users?.includes(user.id)) return true;
 
-            // 3. 값 정규화 및 트림 처리 (공백으로 인한 불일치 방지)
+            // 값 정규화 및 트림 (DB 원본 코드값 대조)
             const rDept = (rule.dept || '').trim();
             const rPos = (rule.pos || '').trim();
             const rProj = (rule.proj || '').trim();
             const rPart = (rule.part || '').trim();
 
-            const uDept = (user?.department || '').trim();
-            const uPos = (user?.position || '').trim();
-            const uProj = (user?.project || '').trim();
-            const uPart = (user?.part || '').trim();
+            const uDept = (profile.department || '').trim();
+            const uPos = (profile.position || '').trim();
+            const uProj = (profile.project || '').trim();
+            const uPart = (profile.part || '').trim();
 
-            // 4. 전체 미지정 조합일 경우 통과
+            // 전체 미지정 조합(전체 허용) 체크
             if (!rDept && !rPos && !rProj && !rPart) return true;
 
-            // 5. 엄격한 일치 확인 (하나라도 걸려있으면 유저 정보와 1:1 매칭)
+            // 상세 조합 일치 확인 (AND 조건)
             return (
               rDept === uDept &&
               rPos === uPos &&
@@ -115,22 +130,22 @@ useEffect(() => {
           });
         });
 
-        const sorted = filtered.sort((a, b) => a.order - b.order);
+        const sorted = filtered.sort((a: any, b: any) => a.order - b.order);
         setMenuItems(sorted);
 
         if (sorted.length > 0 && !selectedMenu) {
-          const firstMenu = sorted.find(m => !m.is_folder) || sorted[0];
+          const firstMenu = sorted.find((m: any) => !m.is_folder) || sorted[0];
           setSelectedMenu(firstMenu.path);
         }
       } catch (e) {
-        console.error('메뉴 로드 실패:', e);
+        console.error('데이터 로드 실패:', e);
       } finally {
         setLoadingMenu(false);
       }
     };
 
-    fetchMenu();
-  }, [user]);
+    fetchMenuAndUser();
+  }, [user?.id]);
 
   useEffect(() => {
     const fetchBuildInfo = async () => {
