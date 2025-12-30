@@ -174,16 +174,14 @@ const UserInviteManager: React.FC = () => {
 
       if (error) throw error;
 
-      // ✅ 삭제 결과 확인을 위해 변수에 담음
-      const { error: delError } = await supabase
+      // ✅ 추가: 등록 성공 시 해당 유저의 초대 알림 로그를 테이블에서 완전히 삭제 (데이터 최적화)
+      await supabase
         .from('user_read_logs')
         .delete()
         .eq('target_id', selectedUser.id)
         .eq('target_type', 'user-invite');
 
-      // 🔴 여기서 에러가 찍힌다면 RLS(권한) 문제입니다.
-      if (delError) console.error("알림 로그 삭제 실패:", delError.message);
-
+      // ✅ 추가: 사이드바 레드닷 갱신 신호 발송
       window.dispatchEvent(new CustomEvent('read-log-updated'));
 
       setSuccess('직원이 추가되었습니다');
@@ -207,16 +205,14 @@ const UserInviteManager: React.FC = () => {
 
       if (!response.ok) throw new Error('삭제 실패');
 
-      // ✅ 로그 삭제 실행 및 결과 확인
-      const { error: delError } = await supabase
+      // ✅ 추가: 삭제 성공 시 관련 알림 로그도 함께 청소
+      await supabase
         .from('user_read_logs')
         .delete()
         .eq('target_id', userId)
         .eq('target_type', 'user-invite');
-
-      // 🔴 콘솔창(F12)에서 이 메시지가 나오는지 확인하세요.
-      if (delError) console.error("알림 로그 삭제 실패:", delError.message);
         
+      // ✅ 추가: 사이드바 레드닷 갱신 신호 발송
       window.dispatchEvent(new CustomEvent('read-log-updated'));
 
       setSuccess('사용자가 삭제되었습니다');
