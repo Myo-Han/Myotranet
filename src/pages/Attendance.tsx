@@ -7,6 +7,8 @@ import ErrorMessage from '../components/ErrorMessage';
 import SuccessMessage from '../components/SuccessMessage';
 import ProfileModal from '../components/ProfileModal';
 import { getStatusLabel, getStatusColor, getRevisionStatusLabel } from '../utils/attendanceLabels';
+import WeeklyAttendanceSummary from '../components/attendance-dashboard/WeeklyAttendanceSummary';
+import MonthlyAttendanceTable from '../components/attendance-dashboard/MonthlyAttendanceTable';
 
 const getTodayDate = () => {
   const today = new Date();
@@ -1022,6 +1024,12 @@ const Attendance: React.FC = () => {
     <div className="space-y-6">
       {error && <ErrorMessage message={error} />}
       {success && <SuccessMessage message={success} />}
+
+      {/* 이번 주 근무 현황 */}
+      <WeeklyAttendanceSummary />
+
+      {/* 월간 근태 상세 */}
+      <MonthlyAttendanceTable />
 
       {/* Check-in/out button (토글) */}
       <div className="bg-white shadow rounded-lg p-6">

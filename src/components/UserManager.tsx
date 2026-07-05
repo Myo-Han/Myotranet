@@ -46,7 +46,7 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
     const { data, error } = await supabase
       .from<User>('users')
       .select(
-        'id, name, email, role, annual_leave_balance, profile_picture, is_active, gender, hire_date, current_status, department, position, project, part'
+        'id, name, email, role, annual_leave_balance, profile_picture, is_active, gender, hire_date, current_status, department, position, project, part, weekly_required_hours, weekly_max_hours'
       )
       .order('name', { ascending: true });
 
@@ -67,7 +67,9 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
       | 'department'
       | 'position'
       | 'project'
-      | 'part',
+      | 'part'
+      | 'weekly_required_hours'
+      | 'weekly_max_hours',
     value: any,
   ) => {
     if (!selectedUser) return;
@@ -102,10 +104,12 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
           position: (selectedUser as any).position || null,
           project: (selectedUser as any).project || null,
           part: (selectedUser as any).part || null,
+          weekly_required_hours: (selectedUser as any).weekly_required_hours ?? 40,
+          weekly_max_hours: (selectedUser as any).weekly_max_hours ?? 52,
         })
         .eq('id', selectedUser.id)
         .select(
-          'id, name, email, role, annual_leave_balance, profile_picture, is_active, gender, hire_date, current_status, department, position, project, part',
+          'id, name, email, role, annual_leave_balance, profile_picture, is_active, gender, hire_date, current_status, department, position, project, part, weekly_required_hours, weekly_max_hours',
         )
         .single();
 
@@ -335,6 +339,36 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
                     <option key={pos.id} value={pos.code}>{pos.name}</option>
                   ))}
                 </select>
+              </div>
+
+              {/* 계약 근로시간(필수) */}
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">
+                  주간 계약 근로시간(필수, 시간)
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  max={168}
+                  value={(selectedUser as any).weekly_required_hours ?? 40}
+                  onChange={e => handleUserChange('weekly_required_hours', Number(e.target.value) || 0)}
+                  className="w-full rounded-md border-gray-300 text-sm"
+                />
+              </div>
+
+              {/* 최대 근무가능시간 */}
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">
+                  주간 최대 근무가능시간(시간)
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  max={168}
+                  value={(selectedUser as any).weekly_max_hours ?? 52}
+                  onChange={e => handleUserChange('weekly_max_hours', Number(e.target.value) || 0)}
+                  className="w-full rounded-md border-gray-300 text-sm"
+                />
               </div>
 
             </div>
