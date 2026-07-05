@@ -232,15 +232,40 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
     );
   };
 
-  const FieldLabel = ({ text, field }: { text: string; field?: string }) => (
-    <div className="mb-1 flex items-center justify-between">
-      <label className="block text-xs font-medium text-gray-500">{text}</label>
-      {field && <VisibilityToggle field={field} />}
-    </div>
+  const FieldLabel = ({ text }: { text: string }) => (
+    <label className="mb-1 block text-xs font-medium text-gray-500">{text}</label>
   );
+
+  const FIELD_VISIBILITY_LABELS: Record<string, string> = {
+    employee_no: '사번',
+    email: '이메일',
+    affiliation: '부서(소속)',
+    hire_date: '입사일',
+    phone: '휴대폰 번호',
+    birth_date: '생일',
+    status_message: '상태 메시지',
+  };
 
   return (
     <div className="space-y-6">
+      <div className="rounded-lg border border-gray-100 bg-gray-50/60 p-4">
+        <h2 className="text-sm font-semibold text-gray-700 mb-1">프로필 공개 설정</h2>
+        <p className="text-xs text-gray-400 mb-3">
+          공개로 설정하면 모든 직원이 볼 수 있고, 관리자 전용으로 설정하면 관리자와 본인만 볼 수 있습니다.
+        </p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          {Object.entries(FIELD_VISIBILITY_LABELS).map(([field, label]) => (
+            <div
+              key={field}
+              className="flex items-center justify-between rounded-md border border-gray-200 bg-white px-3 py-2"
+            >
+              <span className="text-xs font-medium text-gray-600">{label}</span>
+              <VisibilityToggle field={field} />
+            </div>
+          ))}
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <div className="lg:col-span-1 border-r border-gray-100 pr-4">
         <div className="flex items-center justify-between mb-3">
@@ -339,7 +364,7 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
             <div className="space-y-4">
               {/* 사번 (자동 계산, 수정 불가) */}
               <div>
-                <FieldLabel text="사번 (자동 계산)" field="employee_no" />
+                <FieldLabel text="사번 (자동 계산)" />
                 <input
                   type="text"
                   value={(selectedUser as any).employee_number || '입사일 미지정'}
@@ -362,7 +387,7 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
 
               {/* 이메일 */}
               <div>
-                <FieldLabel text="이메일" field="email" />
+                <FieldLabel text="이메일" />
                 <input
                   type="email"
                   value={selectedUser.email || ''}
@@ -373,7 +398,7 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
 
               {/* 휴대폰 번호 */}
               <div>
-                <FieldLabel text="휴대폰 번호" field="phone" />
+                <FieldLabel text="휴대폰 번호" />
                 <input
                   type="tel"
                   value={(selectedUser as any).phone || ''}
@@ -400,7 +425,7 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
 
               {/* 입사일 */}
               <div>
-                <FieldLabel text="입사일" field="hire_date" />
+                <FieldLabel text="입사일" />
                 <input
                   type="date"
                   value={(selectedUser as any).hire_date || ''}
@@ -411,7 +436,7 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
 
               {/* 생일 */}
               <div>
-                <FieldLabel text="생일" field="birth_date" />
+                <FieldLabel text="생일" />
                 <input
                   type="date"
                   value={(selectedUser as any).birth_date || ''}
@@ -436,7 +461,7 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
 
               {/* 부서 */}
               <div>
-                <FieldLabel text="부서" field="affiliation" />
+                <FieldLabel text="부서" />
                 <select
                   value={(selectedUser as any).department || ''}
                   onChange={e => handleUserChange('department', e.target.value)}
@@ -492,7 +517,7 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
 
               {/* 상태 메시지 (본인만 프로필에서 입력 가능, 수정 불가) */}
               <div>
-                <FieldLabel text="상태 메시지 (본인 입력)" field="status_message" />
+                <FieldLabel text="상태 메시지 (본인 입력)" />
                 <input
                   type="text"
                   value={(selectedUser as any).status_message || '상태 메시지가 없습니다.'}
