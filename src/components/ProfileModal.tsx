@@ -25,7 +25,6 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, userId, cu
     const { user: authUser } = useAuth();
     const isOwnProfile = userId === currentUserId;
     const canEdit = isOwnProfile && !readOnly;
-    const canSeeHireDate = isOwnProfile || authUser?.role === 'Admin';
 
     type OrgItem = { code: string; name: string };
     type OrgConfig = {
@@ -37,6 +36,10 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, userId, cu
 
     const [todayStatus, setTodayStatus] = useState<string | null>(null);
     const [orgConfig, setOrgConfig] = useState<OrgConfig | null>(null);
+    // ✅ 필드별 공개 범위(field_visibility): true=전체 공개, false=관리자/본인만
+    const [fieldVisibility, setFieldVisibility] = useState<Record<string, boolean>>({});
+    const canSee = (field: string) =>
+        isOwnProfile || authUser?.role === 'Admin' || (fieldVisibility[field] ?? true);
 
     const getOrgName = (list: OrgItem[] | undefined, code: any) => {
         const c = String(code ?? '').trim();
@@ -54,6 +57,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, userId, cu
             parts: data?.config?.parts || [],
             positions: data?.config?.positions || [],
         });
+        setFieldVisibility(data?.config?.field_visibility || {});
     };
 
     const statusLabel =
@@ -84,8 +88,8 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, userId, cu
 
     const fetchUser = async () => {
         const { data, error } = await supabase
-            .from('users')
-            .select('id, name, email, profile_picture, banner_image, department, project, part, position, hire_date, current_status, status_message, phone, birth_date')
+            .from('users_with_employee_number')
+            .select('id, name, email, profile_picture, banner_image, department, project, part, position, hire_date, current_status, status_message, phone, birth_date, employee_number')
             .eq('id', userId)
             .single();
 
@@ -407,26 +411,37 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, userId, cu
                     {/* 정보 */}
                     <div className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
-                            <div className="col-span-2">
-                                <label className="block text-sm font-medium text-gray-500 mb-1">이메일</label>
-                                <p className="text-base text-gray-900">{user.email || '미지정'}</p>
-                            </div>
+                            {canSee('employee_no') && (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-500 mb-1">사번</label>
+                                    <p className="text-base text-gray-900">{user.employee_number || '미지정'}</p>
+                                </div>
+                            )}
 
-                            <div className="col-span-2">
-                                <label className="block text-sm font-medium text-gray-500 mb-1">소속</label>
-                                <p className="text-base text-gray-900">
-                                    {[
-                                        getOrgName(orgConfig?.departments, user.department),
-                                        getOrgName(orgConfig?.projects, user.project),
-                                        getOrgName(orgConfig?.parts, user.part),
-                                        getOrgName(orgConfig?.positions, user.position),
-                                    ]
-                                        .filter(Boolean)
-                                        .join(' ') || '미지정'}
-                                </p>
-                            </div>
+                            {canSee('email') && (
+                                <div className={canSee('employee_no') ? '' : 'col-span-2'}>
+                                    <label className="block text-sm font-medium text-gray-500 mb-1">이메일</label>
+                                    <p className="text-base text-gray-900">{user.email || '미지정'}</p>
+                                </div>
+                            )}
 
-                            {canSeeHireDate && (
+                            {canSee('affiliation') && (
+                                <div className="col-span-2">
+                                    <label className="block text-sm font-medium text-gray-500 mb-1">소속</label>
+                                    <p className="text-base text-gray-900">
+                                        {[
+                                            getOrgName(orgConfig?.departments, user.department),
+                                            getOrgName(orgConfig?.projects, user.project),
+                                            getOrgName(orgConfig?.parts, user.part),
+                                            getOrgName(orgConfig?.positions, user.position),
+                                        ]
+                                            .filter(Boolean)
+                                            .join(' ') || '미지정'}
+                                    </p>
+                                </div>
+                            )}
+
+                            {canSee('hire_date') && (
                                 <div>
                                     <label className="block text-sm font-medium text-gray-500 mb-1">입사일</label>
                                     <p className="text-base text-gray-900">
@@ -437,6 +452,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, userId, cu
                         </div>
 
                         {/* 휴대폰 번호 */}
+                        {canSee('phone') && (
                         <div>
                             <label className="block text-sm font-medium text-gray-500 mb-1">휴대폰 번호</label>
                             {isOwnProfile && editingPhone ? (
@@ -479,8 +495,10 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, userId, cu
                                 </div>
                             )}
                         </div>
+                        )}
 
                         {/* 생일 */}
+                        {canSee('birth_date') && (
                         <div>
                             <label className="block text-sm font-medium text-gray-500 mb-1">생일</label>
                             {isOwnProfile && editingBirthDate ? (
@@ -524,8 +542,10 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, userId, cu
                                 </div>
                             )}
                         </div>
+                        )}
 
                         {/* 상태 메시지 */}
+                        {canSee('status_message') && (
                         <div>
                             <label className="block text-sm font-medium text-gray-500 mb-1">상태 메시지</label>
                             {isOwnProfile && editingStatus ? (
@@ -574,6 +594,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, userId, cu
                                 </div>
                             )}
                         </div>
+                        )}
                     </div>
 
                     <div className="mt-6 flex justify-end">

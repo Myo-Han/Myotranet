@@ -45,6 +45,7 @@ type UserExtra = {
   birth_date: string | null;
   hire_date: string | null;
   status_message: string | null;
+  employee_number: string | null;
 };
 
 const CACHE_TTL_MS = 60 * 60 * 1000; // 60분
@@ -448,8 +449,8 @@ const Dashboard: React.FC = () => {
 
       const [userRes, attRes] = await Promise.all([
         supabase
-          .from('users')
-          .select('department, project, part, position, annual_leave_balance, monthly_leave_balance, phone, birth_date, hire_date, status_message')
+          .from('users_with_employee_number')
+          .select('department, project, part, position, annual_leave_balance, monthly_leave_balance, phone, birth_date, hire_date, status_message, employee_number')
           .eq('id', user.id)
           .maybeSingle(),
         supabase
@@ -593,6 +594,9 @@ const Dashboard: React.FC = () => {
                     )}
                   </div>
                   <div className="mt-3 space-y-1">
+                    <p className="text-sm text-gray-600">
+                      사번: {userExtra?.employee_number || '미등록'}
+                    </p>
                     <p className="text-sm text-gray-600">{affiliationText}</p>
                     <p className="text-sm text-gray-600">{user?.email}</p>
                     <p className="text-sm text-gray-600">{userExtra?.phone || '연락처 미등록'}</p>
