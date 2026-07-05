@@ -104,13 +104,13 @@ const Dashboard: React.FC = () => {
   const [showProfileModal, setShowProfileModal] = useState(false);
 
   // ✅ 상태 클릭 모달
-  const [workModal, setWorkModal] = useState<null | 'checkin' | 'checkout' | 'pause' | 'resume'>(null);
-
-  // ✅ 업무중지 사유 (Attendance.tsx와 동일)  :contentReference[oaicite:3]{index=3}
-  const [pauseReason, setPauseReason] = useState<'휴게' | '외출' | '기타' | ''>('');
-  const [pauseMemo, setPauseMemo] = useState('');
+  const [workModal, setWorkModal] = useState<null | 'checkin' | 'checkout' | 'resume'>(null);
   const [checkoutMemo, setCheckoutMemo] = useState('');
   const [workModalError, setWorkModalError] = useState('');
+
+  // ✅ 업무정지: 사유 입력 없이 즉시 처리
+  const [pausing, setPausing] = useState(false);
+  const [pauseError, setPauseError] = useState('');
 
   const [orgConfig, setOrgConfig] = useState<OrgConfig | null>(
     () => loadCache<OrgConfig>(ORG_CACHE_KEY)
@@ -264,8 +264,6 @@ const Dashboard: React.FC = () => {
   };
 
   const handleDashboardPauseConfirm = async () => {
-    if (!pauseReason) throw new Error('사유를 선택해주세요');
-
     const existing = await findOpenAttendance();
     if (!existing) throw new Error('출근 기록이 없습니다');
 
@@ -275,8 +273,8 @@ const Dashboard: React.FC = () => {
       user_id: user!.id,
       attendance_id: existing.id,
       event_type: 'pause',
-      reason_category: pauseReason,
-      notes: pauseMemo || null,
+      reason_category: '업무정지',
+      notes: null,
       occurred_at: nowIso,
     });
 
@@ -284,6 +282,18 @@ const Dashboard: React.FC = () => {
     await supabase.from('users').update({ current_status: 'paused' }).eq('id', user!.id);
 
     setUserExtra((prev) => (prev ? { ...prev, current_status: 'paused' } : prev));
+  };
+
+  const handlePauseClick = async () => {
+    setPauseError('');
+    setPausing(true);
+    try {
+      await handleDashboardPauseConfirm();
+    } catch (e: any) {
+      setPauseError(e?.message ?? '업무중지 처리 실패');
+    } finally {
+      setPausing(false);
+    }
   };
 
   const handleDashboardResume = async () => {
@@ -560,17 +570,20 @@ const Dashboard: React.FC = () => {
                     </button>
                     <button
                       type="button"
-                      onClick={() => {
-                        setWorkModalError('');
-                        setPauseReason('');
-                        setPauseMemo('');
-                        setWorkModal('pause');
-                      }}
-                      className="flex-1 rounded-lg bg-amber-500 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-amber-600"
+                      disabled={pausing}
+                      onClick={handlePauseClick}
+                      className="flex-1 rounded-lg bg-amber-500 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-amber-600 disabled:opacity-60"
                     >
-                      업무정지
+                      {pausing ? '처리 중...' : '업무정지'}
                     </button>
                   </>
+                )}
+
+                {pauseError && (
+                  <p className="mt-2 flex w-full items-center gap-1 text-sm text-red-600">
+                    <span className="inline-block h-1.5 w-1.5 rounded-full bg-red-500" />
+                    {pauseError}
+                  </p>
                 )}
 
                 {statusMeta.label === '근무중단' && (
@@ -811,85 +824,6 @@ const Dashboard: React.FC = () => {
                 }}
               >
                 퇴근하기
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {workModal === 'pause' && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="w-full max-w-sm overflow-hidden rounded-2xl bg-white shadow-2xl">
-            <div className="flex items-center gap-3 px-6 pt-6">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-amber-50 text-amber-600">
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <h2 className="text-lg font-semibold text-gray-900">업무정지</h2>
-            </div>
-
-            <div className="space-y-4 px-6 pt-4 pb-2">
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">사유</label>
-                <div className="flex flex-wrap gap-2">
-                  {['휴게', '외출', '기타'].map((reason) => (
-                    <button
-                      key={reason}
-                      type="button"
-                      onClick={() => setPauseReason(reason as any)}
-                      className={`rounded-full border px-3.5 py-1.5 text-sm font-medium transition ${
-                        pauseReason === reason
-                          ? 'border-amber-500 bg-amber-500 text-white'
-                          : 'border-gray-300 bg-white text-gray-600 hover:border-amber-300 hover:text-amber-600'
-                      }`}
-                    >
-                      {reason}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">메모 (선택)</label>
-                <textarea
-                  value={pauseMemo}
-                  onChange={(e) => setPauseMemo(e.target.value)}
-                  rows={2}
-                  placeholder="사유에 대한 메모를 남겨주세요"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
-                />
-              </div>
-
-              {workModalError && (
-                <p className="flex items-center gap-1 text-sm text-red-600">
-                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-red-500" />
-                  {workModalError}
-                </p>
-              )}
-            </div>
-
-            <div className="flex gap-2 px-6 pb-6 pt-4">
-              <button
-                type="button"
-                className="flex-1 rounded-lg bg-gray-100 px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-200"
-                onClick={() => setWorkModal(null)}
-              >
-                취소
-              </button>
-              <button
-                type="button"
-                className="flex-1 rounded-lg bg-amber-500 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-amber-600"
-                onClick={async () => {
-                  try {
-                    await handleDashboardPauseConfirm();
-                    setWorkModal(null);
-                  } catch (e: any) {
-                    setWorkModalError(e?.message ?? '업무중지 처리 실패');
-                  }
-                }}
-              >
-                확인
               </button>
             </div>
           </div>
