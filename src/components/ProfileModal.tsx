@@ -14,10 +14,12 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, userId, cu
     const [user, setUser] = useState<any>(null);
     const [statusMessage, setStatusMessage] = useState('');
     const [phone, setPhone] = useState('');
+    const [birthDate, setBirthDate] = useState('');
     const [uploading, setUploading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [editingStatus, setEditingStatus] = useState(false);
     const [editingPhone, setEditingPhone] = useState(false);
+    const [editingBirthDate, setEditingBirthDate] = useState(false);
 
     const isOwnProfile = userId === currentUserId;
     const canEdit = isOwnProfile && !readOnly;
@@ -80,7 +82,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, userId, cu
     const fetchUser = async () => {
         const { data, error } = await supabase
             .from('users')
-            .select('id, name, email, profile_picture, banner_image, department, project, part, position, hire_date, current_status, status_message, phone')
+            .select('id, name, email, profile_picture, banner_image, department, project, part, position, hire_date, current_status, status_message, phone, birth_date')
             .eq('id', userId)
             .single();
 
@@ -97,6 +99,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, userId, cu
             setUser(data);
             setStatusMessage(data.status_message || '');
             setPhone(data.phone || '');
+            setBirthDate(data.birth_date || '');
             setTodayStatus((attendanceRow?.status ?? null) as any);
         }
     };
@@ -270,6 +273,27 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, userId, cu
         }
     };
 
+    const handleSaveBirthDate = async () => {
+        if (!canEdit) return;
+
+        setSaving(true);
+        try {
+            const { error } = await supabase
+                .from('users')
+                .update({ birth_date: birthDate || null })
+                .eq('id', userId);
+
+            if (error) throw error;
+
+            setEditingBirthDate(false);
+            fetchUser();
+        } catch (error) {
+            console.error('생일 저장 실패:', error);
+        } finally {
+            setSaving(false);
+        }
+    };
+
     if (!isOpen || !user) return null;
 
     return (
@@ -437,6 +461,51 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, userId, cu
                                     {canEdit && (
                                         <button
                                             onClick={() => setEditingPhone(true)}
+                                            className="text-blue-600 hover:text-blue-700 text-sm"
+                                        >
+                                            수정
+                                        </button>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* 생일 */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-500 mb-1">생일</label>
+                            {isOwnProfile && editingBirthDate ? (
+                                <div className="flex items-center space-x-2">
+                                    <input
+                                        type="date"
+                                        value={birthDate}
+                                        onChange={(e) => setBirthDate(e.target.value)}
+                                        className="flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm"
+                                    />
+                                    <button
+                                        onClick={handleSaveBirthDate}
+                                        disabled={saving}
+                                        className="px-3 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 disabled:opacity-50"
+                                    >
+                                        저장
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            setEditingBirthDate(false);
+                                            setBirthDate(user.birth_date || '');
+                                        }}
+                                        className="px-3 py-2 bg-gray-300 text-gray-700 rounded-md text-sm hover:bg-gray-400"
+                                    >
+                                        취소
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="flex items-center justify-between">
+                                    <p className="text-base text-gray-900">
+                                        {user.birth_date ? new Date(user.birth_date).toLocaleDateString('ko-KR') : '미지정'}
+                                    </p>
+                                    {canEdit && (
+                                        <button
+                                            onClick={() => setEditingBirthDate(true)}
                                             className="text-blue-600 hover:text-blue-700 text-sm"
                                         >
                                             수정

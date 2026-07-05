@@ -14,6 +14,7 @@ export interface User {
   monthly_leave_balance?: number;
   is_active?: boolean;
   gender?: 'male' | 'female' | 'other' | null;
+  birth_date?: string | null;
   weekly_required_hours?: number;
   weekly_max_hours?: number;
   created_at?: string;
