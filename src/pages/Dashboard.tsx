@@ -42,6 +42,9 @@ type UserExtra = {
   monthly_leave_balance: number | null;
   current_status: string | null;
   phone: string | null;
+  birth_date: string | null;
+  hire_date: string | null;
+  status_message: string | null;
 };
 
 const CACHE_TTL_MS = 60 * 60 * 1000; // 60분
@@ -377,7 +380,7 @@ const Dashboard: React.FC = () => {
       const [userRes, attRes] = await Promise.all([
         supabase
           .from('users')
-          .select('department, project, part, position, annual_leave_balance, monthly_leave_balance, phone')
+          .select('department, project, part, position, annual_leave_balance, monthly_leave_balance, phone, birth_date, hire_date, status_message')
           .eq('id', user.id)
           .maybeSingle(),
         supabase
@@ -478,7 +481,7 @@ const Dashboard: React.FC = () => {
           <div className="bg-gradient-to-r from-[#6D6F72] to-[#4A4D50] px-6 py-4">
             <h2 className="text-xl font-semibold text-white">프로필</h2>
           </div>
-          <div className="p-6 flex-1">
+          <div className="p-6 flex-1 overflow-y-auto">
             <div className="flex items-start justify-between">
               <div className="flex items-center space-x-6">
                 {user?.profile_picture && (
@@ -499,6 +502,15 @@ const Dashboard: React.FC = () => {
                     <p className="text-sm text-gray-600">{affiliationText}</p>
                     <p className="text-sm text-gray-600">{user?.email}</p>
                     <p className="text-sm text-gray-600">{userExtra?.phone || '연락처 미등록'}</p>
+                    <p className="text-sm text-gray-600">
+                      생일: {userExtra?.birth_date ? new Date(userExtra.birth_date).toLocaleDateString('ko-KR') : '미등록'}
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      입사일: {userExtra?.hire_date ? new Date(userExtra.hire_date).toLocaleDateString('ko-KR') : '미등록'}
+                    </p>
+                    <p className="text-sm text-gray-600 italic">
+                      {userExtra?.status_message || '상태 메시지가 없습니다.'}
+                    </p>
                   </div>
                 </div>
               </div>

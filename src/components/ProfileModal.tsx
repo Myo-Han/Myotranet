@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { User } from '../types';
+import { useAuth } from '../context/AuthContext';
 
 interface ProfileModalProps {
     isOpen: boolean;
@@ -21,8 +22,10 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, userId, cu
     const [editingPhone, setEditingPhone] = useState(false);
     const [editingBirthDate, setEditingBirthDate] = useState(false);
 
+    const { user: authUser } = useAuth();
     const isOwnProfile = userId === currentUserId;
     const canEdit = isOwnProfile && !readOnly;
+    const canSeeHireDate = isOwnProfile || authUser?.role === 'Admin';
 
     type OrgItem = { code: string; name: string };
     type OrgConfig = {
@@ -405,6 +408,11 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, userId, cu
                     <div className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
                             <div className="col-span-2">
+                                <label className="block text-sm font-medium text-gray-500 mb-1">이메일</label>
+                                <p className="text-base text-gray-900">{user.email || '미지정'}</p>
+                            </div>
+
+                            <div className="col-span-2">
                                 <label className="block text-sm font-medium text-gray-500 mb-1">소속</label>
                                 <p className="text-base text-gray-900">
                                     {[
@@ -418,12 +426,14 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, userId, cu
                                 </p>
                             </div>
 
-                            <div>
-                                <label className="block text-sm font-medium text-gray-500 mb-1">입사일</label>
-                                <p className="text-base text-gray-900">
-                                    {user.hire_date ? new Date(user.hire_date).toLocaleDateString('ko-KR') : '미지정'}
-                                </p>
-                            </div>
+                            {canSeeHireDate && (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-500 mb-1">입사일</label>
+                                    <p className="text-base text-gray-900">
+                                        {user.hire_date ? new Date(user.hire_date).toLocaleDateString('ko-KR') : '미지정'}
+                                    </p>
+                                </div>
+                            )}
                         </div>
 
                         {/* 휴대폰 번호 */}
