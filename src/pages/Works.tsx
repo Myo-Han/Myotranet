@@ -17,6 +17,11 @@ import LettersInbox from '../components/LettersInbox';
 import AttendanceRevisionInbox from '../components/AttendanceRevisionInbox';
 import AttendanceAdminEditor from '../components/AttendanceAdminEditor';
 import AttendanceReportAdmin from '../components/attendance-reports/AttendanceReportAdmin';
+import EmploymentCertificate from '../components/documents/EmploymentCertificate';
+import WorkFactCertificate from '../components/documents/WorkFactCertificate';
+import ResignationCertificate from '../components/documents/ResignationCertificate';
+import PayslipManager from '../components/documents/PayslipManager';
+import WithholdingManager from '../components/documents/WithholdingManager';
 
 type WorkMenuItem = {
   id: string;
@@ -604,6 +609,26 @@ const Work: React.FC = () => {
 
           {selectedMenu === 'document-issue' && (
             <AttendanceReportAdmin />
+          )}
+
+          {selectedMenu === 'doc-employment' && (
+            <EmploymentCertificate />
+          )}
+
+          {selectedMenu === 'doc-work-cert' && (
+            <WorkFactCertificate />
+          )}
+
+          {selectedMenu === 'doc-resignation' && (
+            <ResignationCertificate />
+          )}
+
+          {selectedMenu === 'doc-payslip' && (
+            <PayslipManager />
+          )}
+
+          {selectedMenu === 'doc-withholding' && (
+            <WithholdingManager />
           )}
 
           {submitting && (
