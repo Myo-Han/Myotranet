@@ -41,6 +41,7 @@ type UserExtra = {
   annual_leave_balance: number | null;
   monthly_leave_balance: number | null;
   current_status: string | null;
+  phone: string | null;
 };
 
 const CACHE_TTL_MS = 60 * 60 * 1000; // 60분
@@ -376,7 +377,7 @@ const Dashboard: React.FC = () => {
       const [userRes, attRes] = await Promise.all([
         supabase
           .from('users')
-          .select('department, project, part, position, annual_leave_balance, monthly_leave_balance')
+          .select('department, project, part, position, annual_leave_balance, monthly_leave_balance, phone')
           .eq('id', user.id)
           .maybeSingle(),
         supabase
@@ -478,117 +479,78 @@ const Dashboard: React.FC = () => {
             <h2 className="text-xl font-semibold text-white">프로필</h2>
           </div>
           <div className="p-6 flex-1">
-            <div className="flex items-center space-x-6">
-              {user?.profile_picture && (
-                <img
-                  src={user.profile_picture}
-                  alt={user.name}
-                  className="h-24 w-24 rounded-full border-4 border-blue-200"
-                />
-              )}
-              <div className="flex-1">
-                <div className="flex items-center space-x-2">
-                  <h3 className="text-2xl font-bold text-gray-900">{user?.name}</h3>
-                  <button
-                    onClick={() => setShowProfileModal(true)}
-                    className="text-sm text-gray-500 hover:text-gray-700 bg-transparent"
-                  >
-                    [편집]
-                  </button>
-                </div>
-                <p className="text-gray-600 mt-1">{user?.email}</p>
-                <div className="mt-3 flex items-center space-x-4">
-                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-                    {user?.role}
-                  </span>
+            <div className="flex items-start justify-between">
+              <div className="flex items-center space-x-6">
+                {user?.profile_picture && (
+                  <img
+                    src={user.profile_picture}
+                    alt={user.name}
+                    className="h-24 w-24 rounded-full border-4 border-blue-200"
+                  />
+                )}
+                <div className="flex-1">
+                  <div className="flex items-baseline space-x-2">
+                    <h3 className="text-2xl font-bold text-gray-900">{user?.name}</h3>
+                    {posName && (
+                      <span className="text-sm font-medium text-gray-500">{posName}</span>
+                    )}
+                  </div>
+                  <div className="mt-3 space-y-1">
+                    <p className="text-sm text-gray-600">{affiliationText}</p>
+                    <p className="text-sm text-gray-600">{user?.email}</p>
+                    <p className="text-sm text-gray-600">{userExtra?.phone || '연락처 미등록'}</p>
+                  </div>
                 </div>
               </div>
+              <button
+                onClick={() => setShowProfileModal(true)}
+                className="text-sm text-gray-500 hover:text-gray-700 bg-transparent shrink-0"
+              >
+                [편집]
+              </button>
             </div>
 
             <div className="mt-6 pt-6 border-t border-gray-200">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="bg-purple-50 rounded-lg p-4 border border-purple-200 sm:col-span-2">
-                  <div className="flex items-start gap-3">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-purple-600 whitespace-nowrap">소속</p>
-                      <p className="text-lg font-semibold text-purple-700 mt-1 truncate">{affiliationText}</p>
-                    </div>
-                    <div className="text-purple-500 shrink-0">
-                      <svg className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6"
-                        />
-                      </svg>
-                    </div>
+              {/* ✅ 상태 */}
+              <button
+                type="button"
+                onClick={() => {
+                  setWorkModalError('');
+
+                  if (statusMeta.label === '미출근') {
+                    setWorkModal('checkin');
+                    return;
+                  }
+
+                  if (statusMeta.label === '근무중') {
+                    setPauseReason('');
+                    setPauseMemo('');
+                    setWorkModal('pause');
+                    return;
+                  }
+
+                  if (statusMeta.label === '근무중단') {
+                    setWorkModal('resume');
+                    return;
+                  }
+
+                  // 퇴근/휴가 등은 무반응
+                }}
+
+                className={`rounded-lg p-4 border ${statusMeta.wrap} w-full text-left hover:brightness-95 transition`}
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className={`text-sm font-medium ${statusMeta.title}`}>상태</p>
+                    <p className={`text-lg font-semibold mt-1 ${statusMeta.value}`}>{statusMeta.label}</p>
+                  </div>
+                  <div className={`${statusMeta.icon} shrink-0`}>
+                    <svg className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={statusMeta.iconPath} />
+                    </svg>
                   </div>
                 </div>
-
-                {/* ✅ 상태 */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setWorkModalError('');
-
-                    if (statusMeta.label === '미출근') {
-                      setWorkModal('checkin');
-                      return;
-                    }
-
-                    if (statusMeta.label === '근무중') {
-                      setPauseReason('');
-                      setPauseMemo('');
-                      setWorkModal('pause');
-                      return;
-                    }
-
-                    if (statusMeta.label === '근무중단') {
-                      setWorkModal('resume');
-                      return;
-                    }
-
-                    // 퇴근/휴가 등은 무반응
-                  }}
-
-                  className={`rounded-lg p-4 border ${statusMeta.wrap} w-full text-left hover:brightness-95 transition`}
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className={`text-sm font-medium ${statusMeta.title}`}>상태</p>
-                      <p className={`text-lg font-semibold mt-1 ${statusMeta.value}`}>{statusMeta.label}</p>
-                    </div>
-                    <div className={`${statusMeta.icon} shrink-0`}>
-                      <svg className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={statusMeta.iconPath} />
-                      </svg>
-                    </div>
-                  </div>
-                </button>
-
-                {/* ✅ 남은 휴가 */}
-                <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-blue-600">남은 휴가</p>
-                      <p className="text-lg font-semibold text-blue-700 mt-1">
-                        {remainingLeave}일
-                      </p>
-                    </div>
-                    <div className="text-blue-500">
-                      <svg className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                        />
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              </button>
             </div>
           </div>
         </div>
