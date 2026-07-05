@@ -11,6 +11,7 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [savingUser, setSavingUser] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [photoError, setPhotoError] = useState('');
   const [orgConfig, setOrgConfig] = useState({
     departments: [],
     projects: [],
@@ -63,25 +64,22 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
     setFieldVisibility({ ...fieldVisibility, [field]: nextValue });
     setSavingVisibility(field);
     try {
-      const { data: row, error: fetchError } = await supabase
-        .from('org_settings')
-        .select('id, config')
-        .single();
-      if (fetchError || !row) throw fetchError || new Error('설정을 불러올 수 없습니다');
+      // ✅ 읽기->수정->쓰기를 클라이언트에서 나눠 하지 않고, DB 함수(RPC)에서 원자적으로 처리
+      // (경합 상태를 없애고, 관리자가 아닐 때는 조용히 무시되는 대신 명확한 에러를 받도록 함)
+      const { data, error } = await supabase.rpc('set_field_visibility', {
+        p_field: field,
+        p_value: nextValue,
+      });
 
-      const nextConfig = {
-        ...row.config,
-        field_visibility: { ...(row.config.field_visibility || {}), [field]: nextValue },
-      };
+      if (error) throw error;
 
-      const { error: updateError } = await supabase
-        .from('org_settings')
-        .update({ config: nextConfig })
-        .eq('id', row.id);
-
-      if (updateError) throw updateError;
+      // 서버가 반환한 최신 config 기준으로 동기화 (다른 관리자의 동시 변경도 함께 반영)
+      if (data?.field_visibility) {
+        setFieldVisibility({ ...FIELD_VISIBILITY_DEFAULTS, ...data.field_visibility });
+      }
     } catch (e) {
       console.error('공개 범위 설정 저장 실패:', e);
+      alert('공개 범위 설정 저장에 실패했습니다. 관리자 권한을 확인해주세요.');
       setFieldVisibility(prev);
     } finally {
       setSavingVisibility(null);
@@ -139,13 +137,17 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
 
     const file = e.target.files[0];
     setUploadingPhoto(true);
+    setPhotoError('');
     try {
       const fileExt = file.name.split('.').pop();
       const fileName = `profile-${selectedUser.id}-${Date.now()}.${fileExt}`;
       const oldPicture = (selectedUser as any).profile_picture as string | null;
       if (oldPicture) {
         const oldPath = oldPicture.split('/').pop();
-        if (oldPath) await supabase.storage.from('avatars').remove([oldPath]);
+        if (oldPath) {
+          const { error: removeError } = await supabase.storage.from('avatars').remove([oldPath]);
+          if (removeError) console.warn('기존 프로필 사진 삭제 실패(무시하고 계속):', removeError);
+        }
       }
 
       const { error: uploadError } = await supabase.storage.from('avatars').upload(fileName, file);
@@ -153,8 +155,9 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
 
       const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(fileName);
       handleUserChange('profile_picture', publicUrl);
-    } catch (err) {
+    } catch (err: any) {
       console.error('프로필 사진 업로드 실패:', err);
+      setPhotoError(err?.message || '프로필 사진 업로드에 실패했습니다.');
     } finally {
       setUploadingPhoto(false);
       e.target.value = '';
@@ -358,6 +361,9 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
               </div>
               {uploadingPhoto && (
                 <p className="mt-1 text-[11px] text-gray-400">업로드 중...</p>
+              )}
+              {photoError && (
+                <p className="mt-1 text-[11px] text-red-500">{photoError}</p>
               )}
             </div>
 
