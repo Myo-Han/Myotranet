@@ -103,14 +103,9 @@ const Dashboard: React.FC = () => {
   };
   const [showProfileModal, setShowProfileModal] = useState(false);
 
-  // ✅ 상태 클릭 모달
-  const [workModal, setWorkModal] = useState<null | 'checkin' | 'checkout' | 'resume'>(null);
-  const [checkoutMemo, setCheckoutMemo] = useState('');
-  const [workModalError, setWorkModalError] = useState('');
-
-  // ✅ 업무정지: 사유 입력 없이 즉시 처리
-  const [pausing, setPausing] = useState(false);
-  const [pauseError, setPauseError] = useState('');
+  // ✅ 출근/업무정지(재개 토글)/퇴근 - 모두 즉시 처리(모달 없음)
+  const [actionBusy, setActionBusy] = useState<null | 'checkin' | 'pause' | 'resume' | 'checkout'>(null);
+  const [actionError, setActionError] = useState('');
 
   const [orgConfig, setOrgConfig] = useState<OrgConfig | null>(
     () => loadCache<OrgConfig>(ORG_CACHE_KEY)
@@ -138,7 +133,7 @@ const Dashboard: React.FC = () => {
 
     let { data: existing } = await supabase
       .from('attendance')
-      .select('id, date, check_in')
+      .select('id, date, check_in, total_work_seconds')
       .eq('user_id', user.id)
       .eq('date', today)
       .is('check_out', null)
@@ -147,7 +142,7 @@ const Dashboard: React.FC = () => {
     if (!existing) {
       const r = await supabase
         .from('attendance')
-        .select('id, date, check_in')
+        .select('id, date, check_in, total_work_seconds')
         .eq('user_id', user.id)
         .eq('date', y)
         .is('check_out', null)
@@ -158,6 +153,21 @@ const Dashboard: React.FC = () => {
     return existing as any;
   };
 
+  // 오늘 날짜의 가장 최근 attendance row (진행중이든 이미 퇴근했든 상관없이 조회) - 재출근용
+  const findTodayAttendance = async () => {
+    if (!user?.id) return null;
+    const today = getTodayDate();
+    const { data } = await supabase
+      .from('attendance')
+      .select('id, date, check_in, total_work_seconds')
+      .eq('user_id', user.id)
+      .eq('date', today)
+      .order('check_in', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    return data as any;
+  };
+
   const calcWorkSecondsUntil = async (attendanceId: string, checkInIso: string, nowIso: string) => {
     const { data: pauseEvents, error: pauseError } = await supabase
       .from('attendance_events')
@@ -165,6 +175,8 @@ const Dashboard: React.FC = () => {
       .eq('user_id', user!.id)
       .eq('attendance_id', attendanceId)
       .in('event_type', ['pause', 'resume'])
+      // ✅ 재출근(같은 attendance row 재사용) 시 이전 세션의 pause/resume이 다시 집계되지 않도록 현재 세션(check_in 이후)만 필터링
+      .gte('occurred_at', checkInIso)
       .order('occurred_at', { ascending: true });
 
     if (pauseError) throw pauseError;
@@ -199,7 +211,10 @@ const Dashboard: React.FC = () => {
     if (!existing) throw new Error('출근 기록이 없습니다');
 
     const nowIso = new Date().toISOString();
-    const workSeconds = await calcWorkSecondsUntil(existing.id, existing.check_in, nowIso);
+    const sessionSeconds = await calcWorkSecondsUntil(existing.id, existing.check_in, nowIso);
+    // ✅ 퇴근 후 재출근으로 같은 row를 재사용한 경우, 이전 세션에 누적된 시간(뱅킹)에 이번 세션 시간을 더함
+    const bankedSeconds = Number(existing.total_work_seconds || 0);
+    const workSeconds = bankedSeconds + sessionSeconds;
 
     // ✅ 퇴근 이벤트 먼저 insert(롤백 대비)
     const { data: insertedEvent, error: eventError } = await supabase
@@ -240,23 +255,65 @@ const Dashboard: React.FC = () => {
     setUserExtra((prev) => (prev ? { ...prev, current_status: 'off' } : prev));
   };
 
-  const handleDashboardCheckOutConfirm = async () => {
-    await handleDashboardCheckOut('퇴근', checkoutMemo || null);
-  };
-
   const handleDashboardCheckIn = async () => {
     if (!user?.id) return;
 
     const today = getTodayDate();
     const nowIso = new Date().toISOString();
 
-    await supabase.from('attendance').insert({
+    const { data: inserted, error: insertError } = await supabase
+      .from('attendance')
+      .insert({
+        user_id: user.id,
+        date: today,
+        check_in: nowIso,
+        status: 'working',
+        total_work_seconds: 0,
+      })
+      .select('id')
+      .single();
+
+    if (insertError) throw insertError;
+
+    await supabase.from('attendance_events').insert({
       user_id: user.id,
-      date: today,
-      check_in: nowIso,
-      status: 'working',
-      total_work_seconds: 0,
+      attendance_id: inserted!.id,
+      event_type: 'check_in',
+      reason_category: '출근',
+      notes: null,
+      occurred_at: nowIso,
     });
+
+    await supabase.from('users').update({ current_status: 'working' }).eq('id', user.id);
+
+    setUserExtra((prev) => (prev ? { ...prev, current_status: 'working' } : prev));
+  };
+
+  // ✅ 퇴근한 이후 다시 "출근하기"를 누른 경우: 새 row를 만들지 않고 오늘 row를 재오픈, 기존 누적 시간은 보존
+  const handleDashboardReCheckIn = async () => {
+    if (!user?.id) return;
+
+    const existing = await findTodayAttendance();
+    if (!existing) {
+      await handleDashboardCheckIn();
+      return;
+    }
+
+    const nowIso = new Date().toISOString();
+
+    await supabase.from('attendance_events').insert({
+      user_id: user.id,
+      attendance_id: existing.id,
+      event_type: 'check_in',
+      reason_category: '재출근',
+      notes: null,
+      occurred_at: nowIso,
+    });
+
+    await supabase
+      .from('attendance')
+      .update({ check_in: nowIso, check_out: null, status: 'working' })
+      .eq('id', existing.id);
 
     await supabase.from('users').update({ current_status: 'working' }).eq('id', user.id);
 
@@ -284,18 +341,6 @@ const Dashboard: React.FC = () => {
     setUserExtra((prev) => (prev ? { ...prev, current_status: 'paused' } : prev));
   };
 
-  const handlePauseClick = async () => {
-    setPauseError('');
-    setPausing(true);
-    try {
-      await handleDashboardPauseConfirm();
-    } catch (e: any) {
-      setPauseError(e?.message ?? '업무중지 처리 실패');
-    } finally {
-      setPausing(false);
-    }
-  };
-
   const handleDashboardResume = async () => {
     const existing = await findOpenAttendance();
     if (!existing) throw new Error('출근 기록이 없습니다');
@@ -315,6 +360,19 @@ const Dashboard: React.FC = () => {
     await supabase.from('users').update({ current_status: 'working' }).eq('id', user!.id);
 
     setUserExtra((prev) => (prev ? { ...prev, current_status: 'working' } : prev));
+  };
+
+  // ✅ 출근/업무정지/재개/퇴근 공통 실행기: 로딩 + 에러 상태만 관리 (모달 없이 즉시 처리)
+  const runStatusAction = async (kind: 'checkin' | 'pause' | 'resume' | 'checkout', fn: () => Promise<void>) => {
+    setActionError('');
+    setActionBusy(kind);
+    try {
+      await fn();
+    } catch (e: any) {
+      setActionError(e?.message ?? '처리 실패');
+    } finally {
+      setActionBusy(null);
+    }
   };
 
   useEffect(() => {
@@ -526,85 +584,98 @@ const Dashboard: React.FC = () => {
             </div>
 
             <div className="mt-6 pt-6 border-t border-gray-200">
-              {/* ✅ 상태 표시 */}
+              {/* ✅ 상태 표시 + 액션 아이콘 (출근하기 / 업무정지·재개 / 퇴근하기) */}
               <div className={`flex items-center gap-3 rounded-xl border ${statusMeta.wrap} px-4 py-3`}>
                 <span className={`h-2.5 w-2.5 rounded-full ${statusMeta.dot}`} />
                 <div className="flex-1 min-w-0">
                   <p className={`text-xs font-medium ${statusMeta.title}`}>현재 상태</p>
                   <p className={`text-base font-semibold ${statusMeta.value}`}>{statusMeta.label}</p>
                 </div>
-                <div className={`${statusMeta.icon} shrink-0`}>
-                  <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={statusMeta.iconPath} />
-                  </svg>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  {(() => {
+                    const isPaused = statusMeta.label === '근무중단';
+                    const canCheckIn = statusMeta.label === '미출근' || statusMeta.label === '퇴근';
+                    const canToggle = statusMeta.label === '근무중' || isPaused;
+                    const canCheckOut = statusMeta.label === '근무중' || isPaused;
+                    const disabled = actionBusy !== null;
+
+                    const btnClass = (enabled: boolean, activeColor: string) =>
+                      `flex h-9 w-9 items-center justify-center rounded-full border transition ${
+                        enabled
+                          ? `${activeColor} cursor-pointer`
+                          : 'border-gray-200 bg-gray-50 text-gray-300 cursor-not-allowed'
+                      }`;
+
+                    return (
+                      <>
+                        <button
+                          type="button"
+                          title="출근하기"
+                          disabled={!canCheckIn || disabled}
+                          onClick={() =>
+                            runStatusAction(
+                              'checkin',
+                              statusMeta.label === '퇴근' ? handleDashboardReCheckIn : handleDashboardCheckIn
+                            )
+                          }
+                          className={btnClass(canCheckIn, 'border-indigo-200 bg-indigo-600 text-white hover:bg-indigo-700')}
+                        >
+                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                          </svg>
+                        </button>
+
+                        <button
+                          type="button"
+                          title={isPaused ? '업무재개' : '업무정지'}
+                          disabled={!canToggle || disabled}
+                          onClick={() =>
+                            runStatusAction(
+                              isPaused ? 'resume' : 'pause',
+                              isPaused ? handleDashboardResume : handleDashboardPauseConfirm
+                            )
+                          }
+                          className={btnClass(canToggle, 'border-amber-200 bg-amber-500 text-white hover:bg-amber-600')}
+                        >
+                          {isPaused ? (
+                            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M8 5v14l11-7z" />
+                            </svg>
+                          ) : (
+                            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M6 5h4v14H6zM14 5h4v14h-4z" />
+                            </svg>
+                          )}
+                        </button>
+
+                        <button
+                          type="button"
+                          title="퇴근하기"
+                          disabled={!canCheckOut || disabled}
+                          onClick={() => runStatusAction('checkout', () => handleDashboardCheckOut('퇴근', null))}
+                          className={btnClass(canCheckOut, 'border-gray-300 bg-gray-800 text-white hover:bg-gray-900')}
+                        >
+                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                          </svg>
+                        </button>
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
 
-              {/* ✅ 액션 버튼 */}
-              <div className="mt-3 flex gap-2">
-                {statusMeta.label === '미출근' && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setWorkModalError('');
-                      setWorkModal('checkin');
-                    }}
-                    className="flex-1 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-700"
-                  >
-                    출근
-                  </button>
-                )}
+              {actionError && (
+                <p className="mt-2 flex items-center gap-1 text-sm text-red-600">
+                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-red-500" />
+                  {actionError}
+                </p>
+              )}
 
-                {statusMeta.label === '근무중' && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setWorkModalError('');
-                        setCheckoutMemo('');
-                        setWorkModal('checkout');
-                      }}
-                      className="flex-1 rounded-lg bg-gray-800 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-gray-900"
-                    >
-                      퇴근
-                    </button>
-                    <button
-                      type="button"
-                      disabled={pausing}
-                      onClick={handlePauseClick}
-                      className="flex-1 rounded-lg bg-amber-500 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-amber-600 disabled:opacity-60"
-                    >
-                      {pausing ? '처리 중...' : '업무정지'}
-                    </button>
-                  </>
-                )}
-
-                {pauseError && (
-                  <p className="mt-2 flex w-full items-center gap-1 text-sm text-red-600">
-                    <span className="inline-block h-1.5 w-1.5 rounded-full bg-red-500" />
-                    {pauseError}
-                  </p>
-                )}
-
-                {statusMeta.label === '근무중단' && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setWorkModalError('');
-                      setWorkModal('resume');
-                    }}
-                    className="flex-1 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-emerald-700"
-                  >
-                    업무재개
-                  </button>
-                )}
-
-                {(statusMeta.label === '퇴근' || statusMeta.label === '휴가') && (
-                  <p className="w-full py-2 text-center text-sm text-gray-400">
-                    {statusMeta.label === '휴가' ? '오늘은 휴가일입니다.' : '오늘 근무가 종료되었습니다.'}
-                  </p>
-                )}
-              </div>
+              {statusMeta.label === '휴가' && (
+                <p className="mt-2 text-center text-sm text-gray-400">오늘은 휴가일입니다.</p>
+              )}
             </div>
           </div>
         </div>
@@ -722,164 +793,6 @@ const Dashboard: React.FC = () => {
           </div>
         )
       }
-      {workModal === 'checkin' && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="w-full max-w-sm overflow-hidden rounded-2xl bg-white shadow-2xl">
-            <div className="flex items-center gap-3 px-6 pt-6">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-indigo-50 text-indigo-600">
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                </svg>
-              </div>
-              <h2 className="text-lg font-semibold text-gray-900">출근</h2>
-            </div>
-
-            <div className="px-6 pt-4 pb-2">
-              <p className="text-sm text-gray-600">출근 처리를 진행할까요?</p>
-              {workModalError && (
-                <p className="mt-2 flex items-center gap-1 text-sm text-red-600">
-                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-red-500" />
-                  {workModalError}
-                </p>
-              )}
-            </div>
-
-            <div className="flex gap-2 px-6 pb-6 pt-4">
-              <button
-                type="button"
-                className="flex-1 rounded-lg bg-gray-100 px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-200"
-                onClick={() => setWorkModal(null)}
-              >
-                취소
-              </button>
-              <button
-                type="button"
-                className="flex-1 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-700"
-                onClick={async () => {
-                  try {
-                    await handleDashboardCheckIn();
-                    setWorkModal(null);
-                  } catch (e: any) {
-                    setWorkModalError(e?.message ?? '출근 처리 실패');
-                  }
-                }}
-              >
-                출근하기
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {workModal === 'checkout' && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="w-full max-w-sm overflow-hidden rounded-2xl bg-white shadow-2xl">
-            <div className="flex items-center gap-3 px-6 pt-6">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-700">
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                </svg>
-              </div>
-              <h2 className="text-lg font-semibold text-gray-900">퇴근</h2>
-            </div>
-
-            <div className="space-y-3 px-6 pt-4 pb-2">
-              <p className="text-sm text-gray-600">퇴근 처리를 진행할까요?</p>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">메모 (선택)</label>
-                <textarea
-                  value={checkoutMemo}
-                  onChange={(e) => setCheckoutMemo(e.target.value)}
-                  rows={2}
-                  placeholder="특이사항이 있다면 남겨주세요"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                />
-              </div>
-              {workModalError && (
-                <p className="flex items-center gap-1 text-sm text-red-600">
-                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-red-500" />
-                  {workModalError}
-                </p>
-              )}
-            </div>
-
-            <div className="flex gap-2 px-6 pb-6 pt-4">
-              <button
-                type="button"
-                className="flex-1 rounded-lg bg-gray-100 px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-200"
-                onClick={() => setWorkModal(null)}
-              >
-                취소
-              </button>
-              <button
-                type="button"
-                className="flex-1 rounded-lg bg-gray-800 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-gray-900"
-                onClick={async () => {
-                  try {
-                    await handleDashboardCheckOutConfirm();
-                    setWorkModal(null);
-                  } catch (e: any) {
-                    setWorkModalError(e?.message ?? '퇴근 처리 실패');
-                  }
-                }}
-              >
-                퇴근하기
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {workModal === 'resume' && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="w-full max-w-sm overflow-hidden rounded-2xl bg-white shadow-2xl">
-            <div className="flex items-center gap-3 px-6 pt-6">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              <h2 className="text-lg font-semibold text-gray-900">업무재개</h2>
-            </div>
-
-            <div className="px-6 pt-4 pb-2">
-              <p className="text-sm text-gray-600">업무를 재개할까요?</p>
-              {workModalError && (
-                <p className="mt-2 flex items-center gap-1 text-sm text-red-600">
-                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-red-500" />
-                  {workModalError}
-                </p>
-              )}
-            </div>
-
-            <div className="flex gap-2 px-6 pb-6 pt-4">
-              <button
-                type="button"
-                className="flex-1 rounded-lg bg-gray-100 px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-200"
-                onClick={() => setWorkModal(null)}
-              >
-                취소
-              </button>
-              <button
-                type="button"
-                className="flex-1 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-emerald-700"
-                onClick={async () => {
-                  try {
-                    await handleDashboardResume();
-                    setWorkModal(null);
-                  } catch (e: any) {
-                    setWorkModalError(e?.message ?? '업무재개 처리 실패');
-                  }
-                }}
-              >
-                재개하기
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <button
           onClick={() => setIsEvidenceIssueOpen(true)}
