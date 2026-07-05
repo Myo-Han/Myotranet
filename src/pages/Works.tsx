@@ -22,6 +22,7 @@ import WorkFactCertificate from '../components/documents/WorkFactCertificate';
 import ResignationCertificate from '../components/documents/ResignationCertificate';
 import PayslipManager from '../components/documents/PayslipManager';
 import WithholdingManager from '../components/documents/WithholdingManager';
+import LeaveRequestForm from '../components/documents/LeaveRequestForm';
 
 type WorkMenuItem = {
   id: string;
@@ -558,6 +559,10 @@ const Work: React.FC = () => {
               <h2 className="text-xl font-bold mb-2">내 업무</h2>
               <p className="text-sm text-gray-500">내 업무 대시보드 (개발 예정)</p>
             </div>
+          )}
+
+          {selectedMenu === 'leave-request' && (
+            <LeaveRequestForm />
           )}
 
           {selectedMenu === 'leave-approval' && (
