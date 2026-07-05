@@ -31,6 +31,7 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
   };
   const [fieldVisibility, setFieldVisibility] = useState<Record<string, boolean>>(FIELD_VISIBILITY_DEFAULTS);
   const [savingVisibility, setSavingVisibility] = useState<string | null>(null);
+  const [visibilityError, setVisibilityError] = useState('');
 
   useEffect(() => {
     fetchUsers();
@@ -81,6 +82,8 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
   };
 
   const toggleFieldVisibility = async (field: string) => {
+    console.log('[프로필 공개 설정] 토글 클릭됨:', field);
+    setVisibilityError('');
     const nextValue = !(fieldVisibility[field] ?? true);
     const prev = fieldVisibility;
     setFieldVisibility({ ...fieldVisibility, [field]: nextValue });
@@ -101,19 +104,21 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
           console.warn('set_field_visibility RPC를 찾을 수 없어 테이블 직접 업데이트로 대체합니다:', error);
           const updatedVisibility = await toggleFieldVisibilityViaTable(field, nextValue);
           setFieldVisibility({ ...FIELD_VISIBILITY_DEFAULTS, ...updatedVisibility });
+          console.log('[프로필 공개 설정] 테이블 폴백으로 저장 성공:', updatedVisibility);
           return;
         }
         throw error;
       }
 
+      console.log('[프로필 공개 설정] RPC 저장 성공:', data);
       // 서버가 반환한 최신 config 기준으로 동기화 (다른 관리자의 동시 변경도 함께 반영)
       if (data?.field_visibility) {
         setFieldVisibility({ ...FIELD_VISIBILITY_DEFAULTS, ...data.field_visibility });
       }
     } catch (e: any) {
-      console.error('공개 범위 설정 저장 실패:', e);
+      console.error('[프로필 공개 설정] 저장 실패:', e);
       const detail = e?.message || e?.error_description || e?.details || e?.hint || JSON.stringify(e);
-      alert(`공개 범위 설정 저장에 실패했습니다.\n\n(상세: ${detail})`);
+      setVisibilityError(detail || '알 수 없는 오류');
       setFieldVisibility(prev);
     } finally {
       setSavingVisibility(null);
@@ -290,6 +295,11 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
         <p className="text-xs text-gray-400 mb-3">
           공개로 설정하면 모든 직원이 볼 수 있고, 관리자 전용으로 설정하면 관리자와 본인만 볼 수 있습니다.
         </p>
+        {visibilityError && (
+          <p className="mb-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600">
+            저장 실패: {visibilityError}
+          </p>
+        )}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
           {Object.entries(FIELD_VISIBILITY_LABELS).map(([field, label]) => (
             <div
