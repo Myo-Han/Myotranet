@@ -1019,48 +1019,10 @@ const Attendance: React.FC = () => {
 
   if (loading) return <Loading />;
 
-  const isToday = selectedDate === getTodayDate();
-  const myEmployee = allEmployees.find(e => e.id === user?.id);
-  const myCurrentStatus = myEmployee?.current_status ?? null;
-
   return (
     <div className="space-y-6">
       {error && <ErrorMessage message={error} />}
       {success && <SuccessMessage message={success} />}
-
-      {/* Check-in/out button (토글) */}
-      <div className="bg-white shadow rounded-lg p-6">
-        <h2 className="text-xl font-semibold mb-4">오늘의 출퇴근</h2>
-        <p className="text-sm text-gray-600 mb-4">
-          오늘 상태:{' '}
-          <span className="font-medium">
-            {getStatusLabel(
-              isTodayOnLeave ? 'vacation' : todayStatus,
-              allEmployees.find(e => e.id === user?.id)?.current_status,
-              true
-            )}
-          </span>
-        </p>
-        {getTodayButtonLabel() ? (
-          <button
-            onClick={handleTodayAction}
-            className={`px-4 py-2 text-white rounded-lg ${getTodayButtonLabel() === '업무중지'
-              ? 'bg-orange-600 hover:bg-orange-700'
-              : getTodayButtonLabel() === '업무재개'
-                ? 'bg-green-600 hover:bg-green-700'
-                : 'bg-blue-600 hover:bg-blue-700'
-              }`}
-          >
-            {getTodayButtonLabel()}
-          </button>
-        ) : (
-          <p className="text-sm text-gray-500">
-            {isTodayOnLeave
-              ? '오늘은 휴가일입니다.'
-              : '변경 가능한 상태가 없습니다.'}
-          </p>
-        )}
-      </div>
 
       {/* 이번 주 근무 현황 */}
       <WeeklyAttendanceSummary />
