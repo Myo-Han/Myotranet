@@ -10,6 +10,7 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
   const [users, setUsers] = useState<User[]>([]);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [savingUser, setSavingUser] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [orgConfig, setOrgConfig] = useState({
     departments: [],
     projects: [],
@@ -115,7 +116,8 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
       | 'part'
       | 'weekly_required_hours'
       | 'weekly_max_hours'
-      | 'phone',
+      | 'phone'
+      | 'birth_date',
     value: any,
   ) => {
     if (!selectedUser) return;
@@ -130,6 +132,33 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
 
     setUsers(prev => prev.filter(u => u.id !== selectedUser.id));
     setSelectedUser(null);
+  };
+
+  const handleProfilePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || !e.target.files[0] || !selectedUser?.id) return;
+
+    const file = e.target.files[0];
+    setUploadingPhoto(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `profile-${selectedUser.id}-${Date.now()}.${fileExt}`;
+      const oldPicture = (selectedUser as any).profile_picture as string | null;
+      if (oldPicture) {
+        const oldPath = oldPicture.split('/').pop();
+        if (oldPath) await supabase.storage.from('avatars').remove([oldPath]);
+      }
+
+      const { error: uploadError } = await supabase.storage.from('avatars').upload(fileName, file);
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(fileName);
+      handleUserChange('profile_picture', publicUrl);
+    } catch (err) {
+      console.error('프로필 사진 업로드 실패:', err);
+    } finally {
+      setUploadingPhoto(false);
+      e.target.value = '';
+    }
   };
 
   const handleSaveUser = async () => {
@@ -148,11 +177,10 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
           hire_date: (selectedUser as any).hire_date || null,
           department: (selectedUser as any).department || null,
           position: (selectedUser as any).position || null,
-          project: (selectedUser as any).project || null,
-          part: (selectedUser as any).part || null,
           weekly_required_hours: (selectedUser as any).weekly_required_hours ?? 40,
           weekly_max_hours: (selectedUser as any).weekly_max_hours ?? 52,
           phone: (selectedUser as any).phone || null,
+          birth_date: (selectedUser as any).birth_date || null,
         })
         .eq('id', selectedUser.id);
 
@@ -240,9 +268,8 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
                 )}
                 <div>
                   <div className="font-medium">{u.name}</div>
-                  <div className="text-xs text-gray-500">{u.email}</div>
-                  <div className="text-[11px] text-gray-400">
-                    {(u as any).current_status || '상태 미지정'}
+                  <div className="text-xs text-gray-500">
+                    {(u as any).employee_number || '사번 미지정'}
                   </div>
                 </div>
               </div>
@@ -272,18 +299,41 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
             </div>
 
             {/* 프로필 사진 */}
-            <div className="flex justify-center mb-4">
-              <div className="h-24 w-24 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center">
-                {selectedUser.profile_picture ? (
-                  <img
-                    src={selectedUser.profile_picture}
-                    alt={selectedUser.name}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <span className="text-xs text-gray-400">No Image</span>
-                )}
+            <div className="flex flex-col items-center mb-4">
+              <div className="relative h-24 w-24">
+                <div className="h-24 w-24 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center">
+                  {selectedUser.profile_picture ? (
+                    <img
+                      src={selectedUser.profile_picture}
+                      alt={selectedUser.name}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-xs text-gray-400">No Image</span>
+                  )}
+                </div>
+                <label
+                  htmlFor="admin-profile-photo-upload"
+                  className="absolute bottom-0 right-0 h-7 w-7 rounded-full bg-indigo-600 text-white flex items-center justify-center cursor-pointer shadow hover:bg-indigo-700"
+                  title="프로필 사진 변경"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+                    <path d="M2 5a2 2 0 012-2h1.5l.7-1.4A1 1 0 017.1 1h5.8a1 1 0 01.9.6L14.5 3H16a2 2 0 012 2v9a2 2 0 01-2 2H4a2 2 0 01-2-2V5z" />
+                    <circle cx="10" cy="10.5" r="3" fill="white" />
+                  </svg>
+                </label>
+                <input
+                  id="admin-profile-photo-upload"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleProfilePhotoUpload}
+                  disabled={uploadingPhoto}
+                />
               </div>
+              {uploadingPhoto && (
+                <p className="mt-1 text-[11px] text-gray-400">업로드 중...</p>
+              )}
             </div>
 
             <div className="space-y-4">
@@ -359,19 +409,14 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
                 />
               </div>
 
-              {/* 생일 (본인만 프로필에서 입력 가능, 수정 불가) */}
+              {/* 생일 */}
               <div>
-                <FieldLabel text="생일 (본인 입력)" field="birth_date" />
+                <FieldLabel text="생일" field="birth_date" />
                 <input
-                  type="text"
-                  value={
-                    (selectedUser as any).birth_date
-                      ? new Date((selectedUser as any).birth_date).toLocaleDateString('ko-KR')
-                      : '미지정'
-                  }
-                  readOnly
-                  disabled
-                  className="w-full rounded-md border-gray-200 bg-gray-50 text-sm text-gray-500"
+                  type="date"
+                  value={(selectedUser as any).birth_date || ''}
+                  onChange={e => handleUserChange('birth_date', e.target.value)}
+                  className="w-full rounded-md border-gray-300 text-sm"
                 />
               </div>
 
@@ -400,36 +445,6 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
                   <option value="">미지정</option>
                   {orgConfig.departments.map((dept: any) => (
                     <option key={dept.id} value={dept.code}>{dept.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* 프로젝트 */}
-              <div>
-                <FieldLabel text="프로젝트" />
-                <select
-                  value={(selectedUser as any).project || ''}
-                  onChange={e => handleUserChange('project', e.target.value)}
-                  className="w-full rounded-md border-gray-300 text-sm"
-                >
-                  <option value="">미지정</option>
-                  {orgConfig.projects.map((proj: any) => (
-                    <option key={proj.id} value={proj.code}>{proj.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* 파트 */}
-              <div>
-                <FieldLabel text="파트" />
-                <select
-                  value={(selectedUser as any).part || ''}
-                  onChange={e => handleUserChange('part', e.target.value)}
-                  className="w-full rounded-md border-gray-300 text-sm"
-                >
-                  <option value="">미지정</option>
-                  {orgConfig.parts.map((part: any) => (
-                    <option key={part.id} value={part.code}>{part.name}</option>
                   ))}
                 </select>
               </div>
