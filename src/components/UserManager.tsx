@@ -27,15 +27,6 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
     birth_date: true,
     status_message: true,
   };
-  const FIELD_VISIBILITY_LABELS: Record<string, string> = {
-    employee_no: '사번',
-    email: '이메일',
-    affiliation: '소속',
-    hire_date: '입사일',
-    phone: '휴대폰 번호',
-    birth_date: '생일',
-    status_message: '상태 메시지',
-  };
   const [fieldVisibility, setFieldVisibility] = useState<Record<string, boolean>>(FIELD_VISIBILITY_DEFAULTS);
   const [savingVisibility, setSavingVisibility] = useState<string | null>(null);
 
@@ -100,7 +91,7 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
     const { data, error } = await supabase
       .from('users_with_employee_number')
       .select(
-        'id, name, email, role, annual_leave_balance, profile_picture, is_active, gender, hire_date, current_status, department, position, project, part, weekly_required_hours, weekly_max_hours, employee_number'
+        'id, name, email, role, annual_leave_balance, profile_picture, is_active, gender, hire_date, current_status, department, position, project, part, weekly_required_hours, weekly_max_hours, employee_number, phone, birth_date, status_message'
       )
       .order('name', { ascending: true });
 
@@ -123,7 +114,8 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
       | 'project'
       | 'part'
       | 'weekly_required_hours'
-      | 'weekly_max_hours',
+      | 'weekly_max_hours'
+      | 'phone',
     value: any,
   ) => {
     if (!selectedUser) return;
@@ -160,6 +152,7 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
           part: (selectedUser as any).part || null,
           weekly_required_hours: (selectedUser as any).weekly_required_hours ?? 40,
           weekly_max_hours: (selectedUser as any).weekly_max_hours ?? 52,
+          phone: (selectedUser as any).phone || null,
         })
         .eq('id', selectedUser.id);
 
@@ -168,7 +161,7 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
         const { data: refreshed } = await supabase
           .from('users_with_employee_number')
           .select(
-            'id, name, email, role, annual_leave_balance, profile_picture, is_active, gender, hire_date, current_status, department, position, project, part, weekly_required_hours, weekly_max_hours, employee_number',
+            'id, name, email, role, annual_leave_balance, profile_picture, is_active, gender, hire_date, current_status, department, position, project, part, weekly_required_hours, weekly_max_hours, employee_number, phone, birth_date, status_message',
           )
           .order('name', { ascending: true });
 
@@ -183,46 +176,43 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
     }
   };
 
+  const VisibilityToggle = ({ field }: { field: string }) => {
+    const visible = fieldVisibility[field] ?? true;
+    return (
+      <button
+        type="button"
+        disabled={savingVisibility === field}
+        onClick={() => toggleFieldVisibility(field)}
+        title={visible ? '전체 공개 중 (클릭 시 관리자 전용으로 전환)' : '관리자 전용 (클릭 시 전체 공개로 전환)'}
+        className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border transition disabled:opacity-50 ${
+          visible
+            ? 'border-indigo-200 bg-indigo-50 text-indigo-600 hover:bg-indigo-100'
+            : 'border-gray-200 bg-gray-50 text-gray-400 hover:bg-gray-100'
+        }`}
+      >
+        {visible ? (
+          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+          </svg>
+        ) : (
+          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
+          </svg>
+        )}
+      </button>
+    );
+  };
+
+  const FieldLabel = ({ text, field }: { text: string; field?: string }) => (
+    <div className="mb-1 flex items-center justify-between">
+      <label className="block text-xs font-medium text-gray-500">{text}</label>
+      {field && <VisibilityToggle field={field} />}
+    </div>
+  );
+
   return (
     <div className="space-y-6">
-      {/* ✅ 프로필 공개 범위 설정 (전체 공개 / 관리자 전용 토글) */}
-      <div className="rounded-lg border border-gray-200 p-4">
-        <h2 className="mb-1 text-sm font-semibold text-gray-700">프로필 공개 설정</h2>
-        <p className="mb-3 text-xs text-gray-400">
-          눈 아이콘이 켜져 있으면 모든 직원이 볼 수 있고, 꺼져 있으면 관리자(및 본인)만 볼 수 있어요.
-        </p>
-        <div className="flex flex-wrap gap-2">
-          {Object.keys(FIELD_VISIBILITY_LABELS).map((field) => {
-            const visible = fieldVisibility[field] ?? true;
-            return (
-              <button
-                key={field}
-                type="button"
-                disabled={savingVisibility === field}
-                onClick={() => toggleFieldVisibility(field)}
-                className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition disabled:opacity-50 ${
-                  visible
-                    ? 'border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100'
-                    : 'border-gray-200 bg-gray-50 text-gray-400 hover:bg-gray-100'
-                }`}
-              >
-                {visible ? (
-                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                  </svg>
-                ) : (
-                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
-                  </svg>
-                )}
-                {FIELD_VISIBILITY_LABELS[field]}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <div className="lg:col-span-1 border-r border-gray-100 pr-4">
         <div className="flex items-center justify-between mb-3">
@@ -267,7 +257,20 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
       <div className="lg:col-span-2">
         {selectedUser ? (
           <div className="space-y-4">
-            <h2 className="text-sm font-semibold text-gray-700 mb-2">선택된 직원 설정</h2>
+            <div className="mb-2 flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-gray-700">선택된 직원 설정</h2>
+              <label className="flex items-center gap-2 text-xs font-medium text-gray-600">
+                <input
+                  id="is_active"
+                  type="checkbox"
+                  checked={(selectedUser as any).is_active ?? true}
+                  onChange={e => handleUserChange('is_active', e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-300 text-indigo-600"
+                />
+                활성 계정
+              </label>
+            </div>
+
             {/* 프로필 사진 */}
             <div className="flex justify-center mb-4">
               <div className="h-24 w-24 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center">
@@ -283,12 +286,10 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-4">
               {/* 사번 (자동 계산, 수정 불가) */}
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">
-                  사번 (자동 계산)
-                </label>
+                <FieldLabel text="사번 (자동 계산)" field="employee_no" />
                 <input
                   type="text"
                   value={(selectedUser as any).employee_number || '입사일 미지정'}
@@ -300,9 +301,7 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
 
               {/* 이름 */}
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">
-                  이름
-                </label>
+                <FieldLabel text="이름" />
                 <input
                   type="text"
                   value={selectedUser.name || ''}
@@ -313,9 +312,7 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
 
               {/* 이메일 */}
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">
-                  이메일
-                </label>
+                <FieldLabel text="이메일" field="email" />
                 <input
                   type="email"
                   value={selectedUser.email || ''}
@@ -324,27 +321,21 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
                 />
               </div>
 
-              {/* 역할 */}
+              {/* 휴대폰 번호 */}
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">
-                  역할(Role)
-                </label>
-                <select
-                  value={selectedUser.role || ''}
-                  onChange={e => handleUserChange('role', e.target.value)}
+                <FieldLabel text="휴대폰 번호" field="phone" />
+                <input
+                  type="tel"
+                  value={(selectedUser as any).phone || ''}
+                  onChange={e => handleUserChange('phone', e.target.value)}
+                  placeholder="010-0000-0000"
                   className="w-full rounded-md border-gray-300 text-sm"
-                >
-                  <option value="User">User</option>
-                  <option value="Manager">Manager</option>
-                  <option value="Admin">Admin</option>
-                </select>
+                />
               </div>
 
               {/* 성별 */}
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">
-                  성별
-                </label>
+                <FieldLabel text="성별" />
                 <select
                   value={(selectedUser as any).gender || ''}
                   onChange={e => handleUserChange('gender', e.target.value)}
@@ -359,9 +350,7 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
 
               {/* 입사일 */}
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">
-                  입사일
-                </label>
+                <FieldLabel text="입사일" field="hire_date" />
                 <input
                   type="date"
                   value={(selectedUser as any).hire_date || ''}
@@ -370,28 +359,39 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
                 />
               </div>
 
-              {/* 활성 계정 */}
-              <div className="flex items-center space-x-2">
+              {/* 생일 (본인만 프로필에서 입력 가능, 수정 불가) */}
+              <div>
+                <FieldLabel text="생일 (본인 입력)" field="birth_date" />
                 <input
-                  id="is_active"
-                  type="checkbox"
-                  checked={(selectedUser as any).is_active ?? true}
-                  onChange={e => handleUserChange('is_active', e.target.checked)}
-                  className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
+                  type="text"
+                  value={
+                    (selectedUser as any).birth_date
+                      ? new Date((selectedUser as any).birth_date).toLocaleDateString('ko-KR')
+                      : '미지정'
+                  }
+                  readOnly
+                  disabled
+                  className="w-full rounded-md border-gray-200 bg-gray-50 text-sm text-gray-500"
                 />
-                <label
-                  htmlFor="is_active"
-                  className="text-xs font-medium text-gray-600"
+              </div>
+
+              {/* 역할 */}
+              <div>
+                <FieldLabel text="역할(Role)" />
+                <select
+                  value={selectedUser.role || ''}
+                  onChange={e => handleUserChange('role', e.target.value)}
+                  className="w-full rounded-md border-gray-300 text-sm"
                 >
-                  활성 계정
-                </label>
+                  <option value="User">User</option>
+                  <option value="Manager">Manager</option>
+                  <option value="Admin">Admin</option>
+                </select>
               </div>
 
               {/* 부서 */}
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">
-                  부서
-                </label>
+                <FieldLabel text="부서" field="affiliation" />
                 <select
                   value={(selectedUser as any).department || ''}
                   onChange={e => handleUserChange('department', e.target.value)}
@@ -406,9 +406,7 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
 
               {/* 프로젝트 */}
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">
-                  프로젝트
-                </label>
+                <FieldLabel text="프로젝트" />
                 <select
                   value={(selectedUser as any).project || ''}
                   onChange={e => handleUserChange('project', e.target.value)}
@@ -423,9 +421,7 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
 
               {/* 파트 */}
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">
-                  파트
-                </label>
+                <FieldLabel text="파트" />
                 <select
                   value={(selectedUser as any).part || ''}
                   onChange={e => handleUserChange('part', e.target.value)}
@@ -440,9 +436,7 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
 
               {/* 직급 */}
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">
-                  직급
-                </label>
+                <FieldLabel text="직급" />
                 <select
                   value={(selectedUser as any).position || ''}
                   onChange={e => handleUserChange('position', e.target.value)}
@@ -457,9 +451,7 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
 
               {/* 계약 근로시간(필수) */}
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">
-                  주간 계약 근로시간(필수, 시간)
-                </label>
+                <FieldLabel text="주간 계약 근로시간(필수, 시간)" />
                 <input
                   type="number"
                   min={0}
@@ -472,9 +464,7 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
 
               {/* 최대 근무가능시간 */}
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">
-                  주간 최대 근무가능시간(시간)
-                </label>
+                <FieldLabel text="주간 최대 근무가능시간(시간)" />
                 <input
                   type="number"
                   min={0}
@@ -485,6 +475,17 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
                 />
               </div>
 
+              {/* 상태 메시지 (본인만 프로필에서 입력 가능, 수정 불가) */}
+              <div>
+                <FieldLabel text="상태 메시지 (본인 입력)" field="status_message" />
+                <input
+                  type="text"
+                  value={(selectedUser as any).status_message || '상태 메시지가 없습니다.'}
+                  readOnly
+                  disabled
+                  className="w-full rounded-md border-gray-200 bg-gray-50 text-sm text-gray-500"
+                />
+              </div>
             </div>
 
             <div className="flex justify-between mt-4">
