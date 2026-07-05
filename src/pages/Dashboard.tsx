@@ -597,9 +597,9 @@ const Dashboard: React.FC = () => {
                     <p className="text-sm text-gray-600">
                       사번: {userExtra?.employee_number || '미등록'}
                     </p>
-                    <p className="text-sm text-gray-600">{affiliationText}</p>
-                    <p className="text-sm text-gray-600">{user?.email}</p>
-                    <p className="text-sm text-gray-600">{userExtra?.phone || '연락처 미등록'}</p>
+                    <p className="text-sm text-gray-600">소속: {affiliationText}</p>
+                    <p className="text-sm text-gray-600">이메일: {user?.email}</p>
+                    <p className="text-sm text-gray-600">휴대폰 번호: {userExtra?.phone || '연락처 미등록'}</p>
                     <p className="text-sm text-gray-600">
                       생일: {userExtra?.birth_date ? new Date(userExtra.birth_date).toLocaleDateString('ko-KR') : '미등록'}
                     </p>
@@ -607,7 +607,7 @@ const Dashboard: React.FC = () => {
                       입사일: {userExtra?.hire_date ? new Date(userExtra.hire_date).toLocaleDateString('ko-KR') : '미등록'}
                     </p>
                     <p className="text-sm text-gray-600 italic">
-                      {userExtra?.status_message || '상태 메시지가 없습니다.'}
+                      상태 메시지: {userExtra?.status_message || '상태 메시지가 없습니다.'}
                     </p>
                   </div>
                 </div>
