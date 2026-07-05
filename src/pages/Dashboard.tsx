@@ -112,6 +112,14 @@ const Dashboard: React.FC = () => {
   );
   const [userExtra, setUserExtra] = useState<UserExtra | null>(null);
 
+  type TeamMember = {
+    id: string;
+    name: string;
+    profile_picture: string | null;
+    current_status: string | null;
+  };
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+
   const getTodayDate = () => {
     const now = new Date();
     const yyyy = now.getFullYear();
@@ -513,6 +521,31 @@ const Dashboard: React.FC = () => {
   };
 
   const deptCode = String((userExtra?.department ?? (user as any)?.department ?? '')).trim();
+
+  // ✅ 같은 부서 팀원 상태 (부서가 지정되어 있지 않으면 아무도 표시하지 않음)
+  useEffect(() => {
+    const fetchTeamMembers = async () => {
+      if (!deptCode || !user?.id) {
+        setTeamMembers([]);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('users')
+        .select('id, name, profile_picture, current_status')
+        .eq('department', deptCode)
+        .eq('is_active', true)
+        .neq('id', user.id)
+        .order('name', { ascending: true });
+
+      if (!error) {
+        setTeamMembers((data || []) as TeamMember[]);
+      }
+    };
+
+    fetchTeamMembers();
+  }, [deptCode, user?.id]);
+
   const projCode = String((userExtra?.project ?? (user as any)?.project ?? '')).trim();
   const partCode = String((userExtra?.part ?? (user as any)?.part ?? '')).trim();
   const posCode = String((userExtra?.position ?? (user as any)?.position ?? '')).trim();
@@ -677,6 +710,52 @@ const Dashboard: React.FC = () => {
                 <p className="mt-2 text-center text-sm text-gray-400">오늘은 휴가일입니다.</p>
               )}
             </div>
+
+            {/* ✅ 같은 부서 팀원 상태 (부서 미지정 시 표시 안 함) */}
+            {deptCode && (
+              <div className="mt-6 pt-6 border-t border-gray-200">
+                <p className="mb-3 text-xs font-medium text-gray-500">같은 부서 팀원</p>
+
+                {teamMembers.length === 0 ? (
+                  <p className="text-sm text-gray-400">같은 부서에 다른 팀원이 없습니다.</p>
+                ) : (
+                  <div className="flex flex-wrap gap-3">
+                    {teamMembers.map((member) => {
+                      const dotColor =
+                        member.current_status === 'working'
+                          ? 'bg-green-500'
+                          : member.current_status === 'paused'
+                            ? 'bg-yellow-400'
+                            : 'bg-gray-300';
+
+                      return (
+                        <div key={member.id} className="flex w-14 flex-col items-center gap-1">
+                          <div className="relative">
+                            <div className="h-10 w-10 overflow-hidden rounded-full border border-gray-200 bg-gray-100">
+                              {member.profile_picture ? (
+                                <img
+                                  src={member.profile_picture}
+                                  alt={member.name}
+                                  className="h-full w-full object-cover"
+                                />
+                              ) : (
+                                <div className="flex h-full w-full items-center justify-center text-sm font-semibold text-gray-400">
+                                  {member.name?.charAt(0)}
+                                </div>
+                              )}
+                            </div>
+                            <span
+                              className={`absolute -right-0.5 -top-0.5 h-3 w-3 rounded-full border-2 border-white ${dotColor}`}
+                            />
+                          </div>
+                          <p className="w-full truncate text-center text-[11px] text-gray-600">{member.name}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
