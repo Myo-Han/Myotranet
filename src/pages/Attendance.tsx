@@ -540,6 +540,9 @@ const Attendance: React.FC = () => {
       const { error } = await supabase.from('attendance_revision_requests').insert({
         attendance_id: selectedRecord.id,
         user_id: user.id,
+        requested_date: selectedRecord.date,
+        original_check_in: selectedRecord.check_in || null,
+        original_check_out: selectedRecord.check_out || null,
         requested_check_in_at: revisionForm.requestedCheckIn || null,
         requested_check_out_at: revisionForm.requestedCheckOut || null,
         reason: revisionForm.reason,
@@ -1025,12 +1028,6 @@ const Attendance: React.FC = () => {
       {error && <ErrorMessage message={error} />}
       {success && <SuccessMessage message={success} />}
 
-      {/* 이번 주 근무 현황 */}
-      <WeeklyAttendanceSummary />
-
-      {/* 월간 근태 상세 */}
-      <MonthlyAttendanceTable />
-
       {/* Check-in/out button (토글) */}
       <div className="bg-white shadow rounded-lg p-6">
         <h2 className="text-xl font-semibold mb-4">오늘의 출퇴근</h2>
@@ -1065,151 +1062,15 @@ const Attendance: React.FC = () => {
         )}
       </div>
 
-      {/* 날짜 필터 + 새로고침 */}
-      <div className="bg-white shadow rounded-lg p-6">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center space-x-4">
-            <button onClick={() => {
-              setSelectedDate(shiftDate(selectedDate, -1));
-            }} className="px-3 py-2 bg-gray-100 rounded hover:bg-gray-200">←</button>
+      {/* 이번 주 근무 현황 */}
+      <WeeklyAttendanceSummary />
 
-            <div className="relative">
-              <button onClick={() => setShowCalendar(!showCalendar)}
-                className="px-4 py-2 bg-white border border-gray-300 rounded hover:bg-gray-50 min-w-[120px]">
-                📅 {formatDate(selectedDate)}
-              </button>
-              {showCalendar && (
-                <div className="absolute top-full mt-2 z-10 bg-white border border-gray-300 rounded shadow-lg">
-                  <input type="date" value={selectedDate}
-                    onChange={(e) => { setSelectedDate(e.target.value); setShowCalendar(false); }}
-                    className="px-3 py-2" />
-                </div>
-              )}
-            </div>
+      {/* 월간 근태 상세 (우측 상단에 근태 수정요청 버튼 포함) */}
+      <MonthlyAttendanceTable
+        onRequestRevision={(record) => openRevisionModal(record as any)}
+        revisionStatusByAttendanceId={revisionRequests}
+      />
 
-            <button onClick={() => {
-              setSelectedDate(shiftDate(selectedDate, 1));
-            }} className="px-3 py-2 bg-gray-100 rounded hover:bg-gray-200">→</button>
-
-            {selectedDate !== getTodayDate() && (
-              <button onClick={() => setSelectedDate(getTodayDate())}
-                className="px-4 py-2 bg-blue-100 text-blue-700 rounded hover:bg-blue-200">오늘</button>
-            )}
-          </div>
-
-          <button onClick={() => fetchData(true)} className="px-4 py-2 bg-gray-100 rounded hover:bg-gray-200">
-            🔄 새로고침
-          </button>
-        </div>
-      </div>
-
-      {/* Attendance records */}
-      <div className="bg-white shadow rounded-lg overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-xl font-semibold">출퇴근 기록</h2>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200 table-fixed">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-1/6">직원</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-1/6">출근</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-1/6">퇴근</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-1/6">상태</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-1/6">근무시간</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-1/6">작업</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {records.map((record: any) => (
-                <tr key={record.id}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    <button
-                      type="button"
-                      onClick={() => openProfileModal(record.user_id)}
-                      className="flex items-center gap-2 bg-transparent p-0 border-0 cursor-pointer"
-                    >
-                      {record.users?.profile_picture ? (
-                        <img
-                          src={record.users.profile_picture}
-                          className="h-8 w-8 rounded-full object-cover"
-                          alt="profile"
-                        />
-                      ) : (
-                        <div className="h-8 w-8 rounded-full bg-gray-300 flex items-center justify-center text-xs font-semibold text-gray-600">
-                          {record.users?.name?.charAt(0).toUpperCase() || '?'}
-                        </div>
-                      )}
-                      <span>{record.users?.name ?? '이름 없음'}</span>
-                    </button>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {formatTime(record.check_in)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {record.check_out ? (
-                      <>
-                        {isNextDay(record.check_in, record.check_out) && (
-                          <span className="text-orange-600 font-medium">익일 </span>
-                        )}
-                        {formatTime(record.check_out)}
-                      </>
-                    ) : '-'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className={`px-2 py-1 text-xs rounded-full ${getStatusColor(
-                        record.status,
-                        record.current_status,
-                        selectedDate === getTodayDate()
-                      )}`}
-                    >
-                      {getStatusLabel(record.status, record.current_status, selectedDate === getTodayDate())}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {calculateWorkHours(
-                      record.id ?? null,
-                      record.user_id === user?.id,
-                      record.check_in,
-                      record.check_out,
-                      record.total_work_seconds
-                    )}
-
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    {record.user_id === user?.id && (
-                      <div className="flex items-center">
-                        {/* ✅ 요청 기록이 있으면 상태 배지, 없으면 버튼 표시 */}
-                        {revisionRequests[record.id] ? (
-                          (() => {
-                            const { label, colorClass } = getRevisionStatusLabel(revisionRequests[record.id]);
-                            return (
-                              <button 
-                                onClick={() => openRevisionModal(record)}
-                                className={`px-2 py-1 text-xs rounded-full font-medium ${colorClass} hover:opacity-80`}
-                              >
-                                {label} (수정)
-                              </button>
-                            );
-                          })()
-                        ) : (
-                          <button
-                            onClick={() => openRevisionModal(record)}
-                            className="text-blue-600 hover:text-blue-800"
-                          >
-                            수정 요청
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
       {/* 업무중지 사유 선택 모달 */}
       {showPauseModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40">

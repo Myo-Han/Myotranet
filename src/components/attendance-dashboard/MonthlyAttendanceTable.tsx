@@ -4,6 +4,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../supabaseClient';
+import { getRevisionStatusLabel } from '../../utils/attendanceLabels';
 
 type AttendanceRow = {
   id: string;
@@ -87,13 +88,22 @@ const calcNightHours = (checkIn: string | null, checkOut: string | null) => {
   return total;
 };
 
-const MonthlyAttendanceTable: React.FC = () => {
+type MonthlyAttendanceTableProps = {
+  onRequestRevision?: (record: AttendanceRow) => void;
+  revisionStatusByAttendanceId?: Record<string, any>;
+};
+
+const MonthlyAttendanceTable: React.FC<MonthlyAttendanceTableProps> = ({
+  onRequestRevision,
+  revisionStatusByAttendanceId = {},
+}) => {
   const { user } = useAuth();
   const [month, setMonth] = useState(() => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
   });
   const [rows, setRows] = useState<AttendanceRow[]>([]);
+  const [revisionDateKey, setRevisionDateKey] = useState('');
   const [leaves, setLeaves] = useState<LeaveRow[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -171,10 +181,51 @@ const MonthlyAttendanceTable: React.FC = () => {
 
   return (
     <div className="bg-white shadow rounded-lg overflow-hidden">
-      <div className="flex items-center justify-center gap-4 p-4 border-b">
-        <button type="button" onClick={() => shiftMonth(-1)} className="px-2 py-1 rounded hover:bg-gray-100">‹</button>
-        <div className="font-bold">{month.replace('-', '년 ')}월</div>
-        <button type="button" onClick={() => shiftMonth(1)} className="px-2 py-1 rounded hover:bg-gray-100">›</button>
+      <div className="flex items-center justify-between gap-4 p-4 border-b flex-wrap">
+        <div className="w-24" />
+        <div className="flex items-center gap-4">
+          <button type="button" onClick={() => shiftMonth(-1)} className="px-2 py-1 rounded hover:bg-gray-100">‹</button>
+          <div className="font-bold">{month.replace('-', '년 ')}월</div>
+          <button type="button" onClick={() => shiftMonth(1)} className="px-2 py-1 rounded hover:bg-gray-100">›</button>
+        </div>
+
+        {onRequestRevision && (
+          <div className="flex items-center gap-2">
+            <select
+              value={revisionDateKey}
+              onChange={(e) => setRevisionDateKey(e.target.value)}
+              className="border border-gray-300 rounded px-2 py-1 text-xs"
+            >
+              <option value="">날짜 선택</option>
+              {dayList
+                .filter(({ dateKey }) => rowsByDate[dateKey])
+                .map(({ dateKey, dow }) => (
+                  <option key={dateKey} value={dateKey}>
+                    {dateKey.slice(5)}({dow})
+                  </option>
+                ))}
+            </select>
+            <button
+              type="button"
+              disabled={!revisionDateKey || !rowsByDate[revisionDateKey]}
+              onClick={() => {
+                const record = rowsByDate[revisionDateKey];
+                if (record) onRequestRevision(record);
+              }}
+              className="px-3 py-1 text-xs rounded bg-blue-600 text-white disabled:opacity-40"
+            >
+              근태 수정요청
+            </button>
+            {revisionDateKey && rowsByDate[revisionDateKey] && revisionStatusByAttendanceId[rowsByDate[revisionDateKey].id] && (
+              (() => {
+                const { label, colorClass } = getRevisionStatusLabel(
+                  revisionStatusByAttendanceId[rowsByDate[revisionDateKey].id]
+                );
+                return <span className={`px-2 py-0.5 rounded-full text-[11px] ${colorClass}`}>{label}</span>;
+              })()
+            )}
+          </div>
+        )}
       </div>
 
       {loading ? (
