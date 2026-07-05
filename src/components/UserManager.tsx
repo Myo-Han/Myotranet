@@ -58,28 +58,62 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
     }
   };
 
+  // ✅ 테이블을 직접 읽어 병합 후 저장하는 폴백 (RPC를 못 쓰는 경우 대비)
+  const toggleFieldVisibilityViaTable = async (field: string, nextValue: boolean) => {
+    const { data: row, error: fetchError } = await supabase
+      .from('org_settings')
+      .select('id, config')
+      .single();
+    if (fetchError || !row) throw fetchError || new Error('설정을 불러올 수 없습니다');
+
+    const nextConfig = {
+      ...row.config,
+      field_visibility: { ...(row.config.field_visibility || {}), [field]: nextValue },
+    };
+
+    const { error: updateError } = await supabase
+      .from('org_settings')
+      .update({ config: nextConfig })
+      .eq('id', row.id);
+
+    if (updateError) throw updateError;
+    return nextConfig.field_visibility;
+  };
+
   const toggleFieldVisibility = async (field: string) => {
     const nextValue = !(fieldVisibility[field] ?? true);
     const prev = fieldVisibility;
     setFieldVisibility({ ...fieldVisibility, [field]: nextValue });
     setSavingVisibility(field);
     try {
-      // ✅ 읽기->수정->쓰기를 클라이언트에서 나눠 하지 않고, DB 함수(RPC)에서 원자적으로 처리
-      // (경합 상태를 없애고, 관리자가 아닐 때는 조용히 무시되는 대신 명확한 에러를 받도록 함)
+      // ✅ DB 함수(RPC)로 원자적으로 처리 (경합 상태 방지 + 관리자가 아닐 때 명확한 에러)
       const { data, error } = await supabase.rpc('set_field_visibility', {
         p_field: field,
         p_value: nextValue,
       });
 
-      if (error) throw error;
+      if (error) {
+        // RPC를 찾을 수 없는 경우(PostgREST 스키마 캐시 지연 등)에는 테이블 직접 업데이트로 폴백
+        const notFound =
+          error.code === 'PGRST202' ||
+          /could not find the function/i.test(error.message || '');
+        if (notFound) {
+          console.warn('set_field_visibility RPC를 찾을 수 없어 테이블 직접 업데이트로 대체합니다:', error);
+          const updatedVisibility = await toggleFieldVisibilityViaTable(field, nextValue);
+          setFieldVisibility({ ...FIELD_VISIBILITY_DEFAULTS, ...updatedVisibility });
+          return;
+        }
+        throw error;
+      }
 
       // 서버가 반환한 최신 config 기준으로 동기화 (다른 관리자의 동시 변경도 함께 반영)
       if (data?.field_visibility) {
         setFieldVisibility({ ...FIELD_VISIBILITY_DEFAULTS, ...data.field_visibility });
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error('공개 범위 설정 저장 실패:', e);
-      alert('공개 범위 설정 저장에 실패했습니다. 관리자 권한을 확인해주세요.');
+      const detail = e?.message || e?.error_description || e?.details || e?.hint || JSON.stringify(e);
+      alert(`공개 범위 설정 저장에 실패했습니다.\n\n(상세: ${detail})`);
       setFieldVisibility(prev);
     } finally {
       setSavingVisibility(null);
