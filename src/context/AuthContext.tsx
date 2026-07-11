@@ -9,6 +9,7 @@ const WARNING_TIME = 5 * 60 * 1000;
 interface AuthContextType {
   user: User | null;
   loading: boolean;
+  login: () => void;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
   timeRemaining: number;
@@ -126,6 +127,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => clearInterval(interval);
   }, [user, lastActivity]);
 
+  // 이미 계정이 있는 사람(기존 직원, 관리자 포함)이 세션 만료 등으로 다시 로그인해야 할 때 사용.
+  // 초대받지 않은 사람이 눌러도 fetchUser의 public.users 매칭 검사에서 막히므로
+  // 이 버튼 자체가 노출된다고 해서 아무나 들어올 수 있는 건 아님.
+  const login = async () => {
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: window.location.origin,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          }
+        }
+      });
+
+      if (error) {
+        console.error('OAuth Sign-In Error:');
+        console.dir(error);
+        alert('로그인 오류: ' + error.message);
+      }
+    } catch (err) {
+      console.error('Login Unexpected Error:');
+      console.dir(err);
+    }
+  };
+
   const logout = async () => {
     await supabase.auth.signOut();
     setUser(null);
@@ -137,7 +165,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, logout, refreshUser, timeRemaining, showWarning, extendSession }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, refreshUser, timeRemaining, showWarning, extendSession }}>
       {children}
     </AuthContext.Provider>
   );
