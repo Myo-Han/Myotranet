@@ -95,11 +95,32 @@ const LeaveWorkQueue: React.FC = () => {
     setSubmittingId(r.leave_approval_id);
 
     try {
-      const { error: rpcErr } = await supabase.rpc('approve_leave_step', {
+      const { data: rpcData, error: rpcErr } = await supabase.rpc('approve_leave_step', {
         p_leave_approval_id: r.leave_approval_id,
         p_notes: null,
       });
       if (rpcErr) throw rpcErr;
+
+      // ✅ 이 승인이 최종 승인이었다면(모든 결재 단계 완료), 회사 구글 캘린더에 자동으로
+      // 휴가 일정을 등록한다. 캘린더 등록이 실패해도 승인 자체는 이미 완료된 상태라
+      // 사용자에게는 성공으로 안내하고, 캘린더 실패만 조용히 콘솔에 남긴다
+      // (서비스 계정에 캘린더 쓰기 권한이 아직 공유되지 않았을 수 있음).
+      if ((rpcData as any)?.final) {
+        try {
+          const { data: sessionData } = await supabase.auth.getSession();
+          const token = sessionData?.session?.access_token;
+          await fetch('/api/calendar/create-leave-event', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+            body: JSON.stringify({ leaveId: r.leave_id }),
+          });
+        } catch (calErr) {
+          console.warn('캘린더 자동 등록 실패 (승인 처리 자체는 완료됨):', calErr);
+        }
+      }
 
       setSuccess('승인 처리되었습니다.');
       await fetchQueue();
