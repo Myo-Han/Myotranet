@@ -23,6 +23,7 @@ import ResignationCertificate from '../components/documents/ResignationCertifica
 import PayslipManager from '../components/documents/PayslipManager';
 import WithholdingManager from '../components/documents/WithholdingManager';
 import LeaveRequestForm from '../components/documents/LeaveRequestForm';
+import CompanyEventManager from '../components/CompanyEventManager';
 
 type WorkMenuItem = {
   id: string;
@@ -625,6 +626,10 @@ const Work: React.FC = () => {
 
           {selectedMenu === 'doc-withholding' && (
             <WithholdingManager />
+          )}
+
+          {selectedMenu === 'company-events' && (
+            <CompanyEventManager />
           )}
 
           {submitting && (
