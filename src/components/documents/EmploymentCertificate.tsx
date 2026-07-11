@@ -13,6 +13,13 @@ type UserRow = {
   position: string | null;
   hire_date: string | null;
   is_active: boolean | null;
+  employment_status: 'active' | 'on_leave' | 'resigned' | null;
+};
+
+const EMPLOYMENT_STATUS_LABEL: Record<string, string> = {
+  active: '재직 중',
+  on_leave: '휴직 중',
+  resigned: '퇴사',
 };
 
 const getTodayKey = () => {
@@ -41,7 +48,7 @@ const EmploymentCertificate: React.FC = () => {
       try {
         const { data, error: uErr } = await supabase
           .from('users')
-          .select('id, name, department, position, hire_date, is_active')
+          .select('id, name, department, position, hire_date, is_active, employment_status')
           .order('name', { ascending: true });
         if (uErr) throw uErr;
         setUsers((data ?? []) as UserRow[]);
@@ -68,12 +75,12 @@ const EmploymentCertificate: React.FC = () => {
       { label: '소속', value: selectedUser.department || '-' },
       { label: '직급', value: selectedUser.position || '-' },
       { label: '입사일', value: selectedUser.hire_date || '-' },
-      { label: '재직 상태', value: selectedUser.is_active ? '재직 중' : '비재직' },
+      { label: '재직 상태', value: EMPLOYMENT_STATUS_LABEL[selectedUser.employment_status || ''] || (selectedUser.is_active ? '재직 중' : '비재직') },
     ];
   }, [selectedUser]);
 
   const bodyText = selectedUser
-    ? `위 사람은 ${selectedUser.hire_date || '(입사일 미등록)'}부터 현재까지 당사에 ${selectedUser.is_active ? '재직 중임' : '재직하였음'}을 증명합니다.`
+    ? `위 사람은 ${selectedUser.hire_date || '(입사일 미등록)'}부터 현재까지 당사에 ${selectedUser.employment_status === 'resigned' ? '재직하였음' : '재직 중임'}을 증명합니다.`
     : '';
 
   const handlePrint = () => window.print();

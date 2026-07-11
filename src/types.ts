@@ -13,6 +13,7 @@ export interface User {
   annual_leave_balance?: number;
   monthly_leave_balance?: number;
   is_active?: boolean;
+  employment_status?: 'active' | 'on_leave' | 'resigned';
   gender?: 'male' | 'female' | 'other' | null;
   birth_date?: string | null;
   employee_number?: string | null;

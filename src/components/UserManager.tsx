@@ -178,7 +178,7 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
     const { data, error } = await supabase
       .from('users_with_employee_number')
       .select(
-        'id, name, email, role, annual_leave_balance, profile_picture, is_active, gender, hire_date, current_status, department, position, project, part, weekly_required_hours, weekly_max_hours, employee_number, phone, birth_date, status_message'
+        'id, name, email, role, annual_leave_balance, profile_picture, is_active, employment_status, gender, hire_date, current_status, department, position, project, part, weekly_required_hours, weekly_max_hours, employee_number, phone, birth_date, status_message'
       )
       .order('name', { ascending: true });
 
@@ -192,6 +192,7 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
       | keyof User
       | 'annual_leave_balance'
       | 'is_active'
+      | 'employment_status'
       | 'gender'
       | 'hire_date'
       | 'current_status'
@@ -288,7 +289,9 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
           name: selectedUser.name,
           email: selectedUser.email,
           role: selectedUser.role,
-          is_active: (selectedUser as any).is_active ?? true,
+          // ✅ is_active(로그인 허용 여부)는 DB 트리거(sync_is_active_from_employment_status)가
+          // employment_status 값에 맞춰 자동으로 계산해준다 (퇴사=false, 그 외=true).
+          employment_status: (selectedUser as any).employment_status ?? 'active',
           profile_picture: selectedUser.profile_picture || null,
           gender: (selectedUser as any).gender || null,
           hire_date: (selectedUser as any).hire_date || null,
@@ -306,7 +309,7 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
         const { data: refreshed } = await supabase
           .from('users_with_employee_number')
           .select(
-            'id, name, email, role, annual_leave_balance, profile_picture, is_active, gender, hire_date, current_status, department, position, project, part, weekly_required_hours, weekly_max_hours, employee_number, phone, birth_date, status_message',
+            'id, name, email, role, annual_leave_balance, profile_picture, is_active, employment_status, gender, hire_date, current_status, department, position, project, part, weekly_required_hours, weekly_max_hours, employee_number, phone, birth_date, status_message',
           )
           .order('name', { ascending: true });
 
@@ -407,14 +410,17 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
             <div className="mb-2 flex items-center justify-between">
               <h2 className="text-sm font-semibold text-gray-700">선택된 직원 설정</h2>
               <label className="flex items-center gap-2 text-xs font-medium text-gray-600">
-                <input
-                  id="is_active"
-                  type="checkbox"
-                  checked={(selectedUser as any).is_active ?? true}
-                  onChange={e => handleUserChange('is_active', e.target.checked)}
-                  className="h-4 w-4 rounded border-gray-300 text-indigo-600"
-                />
-                활성 계정
+                재직 상태
+                <select
+                  id="employment_status"
+                  value={(selectedUser as any).employment_status ?? 'active'}
+                  onChange={e => handleUserChange('employment_status', e.target.value)}
+                  className="rounded border-gray-300 text-xs py-1 pl-2 pr-7 focus:border-indigo-500 focus:ring-indigo-500"
+                >
+                  <option value="active">재직중</option>
+                  <option value="on_leave">휴직중</option>
+                  <option value="resigned">퇴사</option>
+                </select>
               </label>
             </div>
 
