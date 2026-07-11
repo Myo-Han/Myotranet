@@ -12,6 +12,8 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
   const [savingUser, setSavingUser] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [photoError, setPhotoError] = useState('');
+  const [deletingUser, setDeletingUser] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
   const [orgConfig, setOrgConfig] = useState({
     departments: [],
     projects: [],
@@ -163,12 +165,38 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
 
   const handleDeleteUser = async () => {
     if (!selectedUser?.id) return;
-    if (!window.confirm('해당 직원을 삭제하시겠습니까?')) return;
+    if (!window.confirm('해당 직원을 삭제하시겠습니까? 로그인 계정까지 완전히 삭제되어, 다시 등록하려면 처음부터 새로 초대해야 합니다.')) return;
 
-    await supabase.from('users').delete().eq('id', selectedUser.id);
+    setDeleteError('');
+    setDeletingUser(true);
+    try {
+      // ✅ public.users만 지우면 auth.users에 계정이 남아 나중에 재초대 시
+      //    "이미 가입된 이메일" 에러가 났음 -> 서버(service role)에서
+      //    프로필 + 로그인 계정(auth.users)을 함께 완전히 삭제하도록 변경
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
 
-    setUsers(prev => prev.filter(u => u.id !== selectedUser.id));
-    setSelectedUser(null);
+      const response = await fetch('/api/delete-auth-user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ userId: selectedUser.id }),
+      });
+
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body.error || '삭제 실패');
+      }
+
+      setUsers(prev => prev.filter(u => u.id !== selectedUser.id));
+      setSelectedUser(null);
+    } catch (e: any) {
+      setDeleteError(e?.message || '삭제 중 오류가 발생했습니다.');
+    } finally {
+      setDeletingUser(false);
+    }
   };
 
   const handleProfilePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -587,14 +615,19 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
               </div>
             </div>
 
+            {deleteError && (
+              <p className="mt-3 text-xs text-red-600">{deleteError}</p>
+            )}
+
             <div className="flex justify-between mt-4">
               {selectedUser.id && (
                 <button
                   type="button"
                   onClick={handleDeleteUser}
-                  className="px-4 py-2 text-xs font-semibold rounded-md border border-red-300 text-red-600 hover:bg-red-50"
+                  disabled={deletingUser}
+                  className="px-4 py-2 text-xs font-semibold rounded-md border border-red-300 text-red-600 hover:bg-red-50 disabled:opacity-50"
                 >
-                  삭제
+                  {deletingUser ? '삭제 중...' : '삭제'}
                 </button>
               )}
               <button
