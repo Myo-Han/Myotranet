@@ -8,6 +8,7 @@ import Attendance from './pages/Attendance';
 import Leave from './pages/Leave';
 import Admin from './pages/Admin';
 import Works from './pages/Works';
+import Board from './pages/Board';
 
 function App() {
   return (
@@ -25,6 +26,7 @@ function App() {
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="works" element={<Works />} />
+            <Route path="board" element={<Board />} />
             <Route path="attendance" element={<Attendance />} />
             <Route path="leave" element={<Leave />} />
             <Route

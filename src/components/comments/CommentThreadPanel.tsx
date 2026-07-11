@@ -108,6 +108,7 @@ const CommentThreadPanel: React.FC<Props> = ({ open, onClose, root, onChanged })
 
     const { error } = await supabase.from('notice_comments').insert({
       notice_id: rootNode.notice_id,
+      entity_type: rootNode.entity_type,
       user_id: me,
       parent_id: rootNode.id,
       content,

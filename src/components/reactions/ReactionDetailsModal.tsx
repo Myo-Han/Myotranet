@@ -12,10 +12,11 @@ type Props = {
   open: boolean;
   onClose: () => void;
   noticeId: number;
+  entityType?: 'notice' | 'post';
   emoji: ReactionEmoji;
 };
 
-const ReactionDetailsModal: React.FC<Props> = ({ open, onClose, noticeId, emoji }) => {
+const ReactionDetailsModal: React.FC<Props> = ({ open, onClose, noticeId, entityType = 'notice', emoji }) => {
   const [loading, setLoading] = useState(false);
   const [users, setUsers] = useState<UserRow[]>([]);
   const [err, setErr] = useState<string | null>(null);
@@ -37,6 +38,7 @@ const ReactionDetailsModal: React.FC<Props> = ({ open, onClose, noticeId, emoji 
         .from('notice_reactions')
         .select('user_id, created_at')
         .eq('notice_id', noticeId)
+        .eq('entity_type', entityType)
         .eq('emoji_id', emoji.id)
         .order('created_at', { ascending: true });
 
@@ -72,7 +74,7 @@ const ReactionDetailsModal: React.FC<Props> = ({ open, onClose, noticeId, emoji 
     };
 
     run();
-  }, [open, noticeId, emoji.id]);
+  }, [open, noticeId, entityType, emoji.id]);
 
   if (!open) return null;
 

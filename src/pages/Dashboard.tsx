@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabaseClient';
 import { User } from '../types';
 import CalendarCard from '../components/CalendarCard';
+import TeamEventsCard from '../components/TeamEventsCard';
 import ProfileModal from '../components/ProfileModal';
 import { ReactionBar } from '../components/reactions';
 import { CommentThread } from '../components/comments';
 import SearchModal from '../components/SearchModal';
 import LettersModal from '../components/LettersModal';
 import { getStatusLabel } from '../utils/attendanceLabels';
-import EvidenceIssueModal from '../components/EvidenceIssueModal';
 import { markAsRead } from '../../api/readLog';
 
 type Notice = {
@@ -86,9 +87,9 @@ const HiddenBadge = ({ hidden }: { hidden: boolean }) =>
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isLettersOpen, setIsLettersOpen] = useState(false);
-  const [isEvidenceIssueOpen, setIsEvidenceIssueOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<User[]>([]);
   const [searching, setSearching] = useState(false);
@@ -893,6 +894,9 @@ const Dashboard: React.FC = () => {
         <CalendarCard title="캘린더" />
       </div>
 
+      {/* 생일 / 경조사 */}
+      <TeamEventsCard />
+
       {/* Quick Actions */}
       {/* Notice Modal */}
       {
@@ -941,17 +945,18 @@ const Dashboard: React.FC = () => {
       }
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <button
-          onClick={() => setIsEvidenceIssueOpen(true)}
+          onClick={() => navigate('/board')}
           className="bg-white p-6 rounded-lg shadow hover:shadow-md transition duration-200 text-left"
         >
-          <div className="text-blue-600 mb-3">
+          <div className="text-emerald-600 mb-3">
             <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
             </svg>
           </div>
-          <h3 className="text-lg font-semibold text-gray-900">증빙서 발급</h3>
-          <p className="text-sm text-gray-500 mt-1">출퇴근 등 서류 발급</p>
+          <h3 className="text-lg font-semibold text-gray-900">자유게시판</h3>
+          <p className="text-sm text-gray-500 mt-1">실명으로 자유롭게 소통</p>
         </button>
+
         <a
           href="https://www.notion.so/2ce8b0cc5ed08039a648ecbcb2cb5ee8?source=copy_link"
           target="_blank"
@@ -1042,10 +1047,6 @@ const Dashboard: React.FC = () => {
       <LettersModal
         isOpen={isLettersOpen}
         onClose={() => setIsLettersOpen(false)}
-      />
-      <EvidenceIssueModal
-        isOpen={isEvidenceIssueOpen}
-        onClose={() => setIsEvidenceIssueOpen(false)}
       />
     </div >
   );

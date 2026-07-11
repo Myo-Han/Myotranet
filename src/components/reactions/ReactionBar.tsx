@@ -53,11 +53,12 @@ type UserRow = { id: string; name: string | null };
 
 type Props = {
     noticeId: number;
+    entityType?: 'notice' | 'post';
     limit?: number; // 기본 5
     currentUserId?: string; // 필요하면 외부에서 주입 가능
 };
 
-const ReactionBar: React.FC<Props> = ({ noticeId, limit = 5, currentUserId }) => {
+const ReactionBar: React.FC<Props> = ({ noticeId, entityType = 'notice', limit = 5, currentUserId }) => {
     const { user } = useAuth();
     const me = currentUserId ?? user?.id ?? null;
 
@@ -104,7 +105,8 @@ const ReactionBar: React.FC<Props> = ({ noticeId, limit = 5, currentUserId }) =>
         const { data: rData } = await supabase
             .from('notice_reactions')
             .select('emoji_id, user_id')
-            .eq('notice_id', noticeId);
+            .eq('notice_id', noticeId)
+            .eq('entity_type', entityType);
 
         const rows = (rData as any[]) ?? [];
 
@@ -138,7 +140,7 @@ const ReactionBar: React.FC<Props> = ({ noticeId, limit = 5, currentUserId }) =>
 
         setAggs(nextAggs);
         setLoading(false);
-    }, [noticeId, me]);
+    }, [noticeId, entityType, me]);
 
     useEffect(() => {
         fetchAll();
@@ -213,6 +215,7 @@ const ReactionBar: React.FC<Props> = ({ noticeId, limit = 5, currentUserId }) =>
                 .from('notice_reactions')
                 .delete()
                 .eq('notice_id', noticeId)
+                .eq('entity_type', entityType)
                 .eq('emoji_id', emojiId)
                 .eq('user_id', me);
 
@@ -220,7 +223,7 @@ const ReactionBar: React.FC<Props> = ({ noticeId, limit = 5, currentUserId }) =>
         } else {
             const { error } = await supabase
                 .from('notice_reactions')
-                .insert({ notice_id: noticeId, emoji_id: emojiId, user_id: me });
+                .insert({ notice_id: noticeId, entity_type: entityType, emoji_id: emojiId, user_id: me });
 
             if (error) await fetchAll();
         }
@@ -233,6 +236,7 @@ const ReactionBar: React.FC<Props> = ({ noticeId, limit = 5, currentUserId }) =>
             .from('notice_reactions')
             .select('user_id')
             .eq('notice_id', noticeId)
+            .eq('entity_type', entityType)
             .eq('emoji_id', emojiId)
             .limit(11); // 10명 + overflow 감지
 
@@ -382,6 +386,7 @@ const ReactionBar: React.FC<Props> = ({ noticeId, limit = 5, currentUserId }) =>
                     open={!!detailsEmoji}
                     onClose={() => setDetailsEmoji(null)}
                     noticeId={noticeId}
+                    entityType={entityType}
                     emoji={detailsEmoji}
                 />
             )}

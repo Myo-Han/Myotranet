@@ -563,7 +563,12 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, userId, cu
                             ) : (
                                 <div className="flex items-center justify-between">
                                     <p className="text-base text-gray-900">
-                                        {user.birth_date ? new Date(user.birth_date).toLocaleDateString('ko-KR') : '미지정'}
+                                        {user.birth_date
+                                            ? (isOwnProfile
+                                                ? new Date(user.birth_date).toLocaleDateString('ko-KR')
+                                                // ✅ 타인 프로필 조회 시에는 연도를 빼고 월/일만 노출 (나이 노출 방지)
+                                                : `${new Date(user.birth_date).getMonth() + 1}월 ${new Date(user.birth_date).getDate()}일`)
+                                            : '미지정'}
                                     </p>
                                     {canEdit && (
                                         <button

@@ -11,6 +11,7 @@ export type UserMini = {
 export type NoticeComment = {
   id: string;
   notice_id: number;
+  entity_type: 'notice' | 'post';
   user_id: string;
   parent_id: string | null;
   content: string;

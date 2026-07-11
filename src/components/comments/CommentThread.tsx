@@ -8,6 +8,7 @@ import CommentThreadPanel from './CommentThreadPanel';
 
 type Props = {
   noticeId: number;
+  entityType?: 'notice' | 'post';
 };
 
 function buildTree(comments: (NoticeComment & { author?: UserMini | null })[]): CommentNode[] {
@@ -35,7 +36,7 @@ function buildTree(comments: (NoticeComment & { author?: UserMini | null })[]): 
   return roots;
 }
 
-const CommentThread: React.FC<Props> = ({ noticeId }) => {
+const CommentThread: React.FC<Props> = ({ noticeId, entityType = 'notice' }) => {
   const { user } = useAuth();
   const me = user?.id ?? null;
 
@@ -53,6 +54,7 @@ const CommentThread: React.FC<Props> = ({ noticeId }) => {
       .from('notice_comments')
       .select('*')
       .eq('notice_id', noticeId)
+      .eq('entity_type', entityType)
       .order('created_at', { ascending: true });
 
     if (cErr) {
@@ -84,7 +86,7 @@ const CommentThread: React.FC<Props> = ({ noticeId }) => {
   useEffect(() => {
     fetchComments();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [noticeId]);
+  }, [noticeId, entityType]);
 
   const totalCount = useMemo(() => {
     const flatten = (nodes: CommentNode[]): number =>
@@ -97,6 +99,7 @@ const CommentThread: React.FC<Props> = ({ noticeId }) => {
 
     await supabase.from('notice_comments').insert({
       notice_id: noticeId,
+      entity_type: entityType,
       user_id: me,
       parent_id: null,
       content,
