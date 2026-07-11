@@ -6,6 +6,53 @@ interface UserManagerProps {
   currentUserId?: string;
 }
 
+// ✅ 컴포넌트 함수 밖(모듈 최상위)에서 선언해야 함.
+// UserManager 렌더 함수 안에서 선언하면 렌더될 때마다 VisibilityIcon/VisibilityRow가
+// "새로운 컴포넌트 타입"이 되어(참조가 매번 바뀜) React가 매번 이 버튼들을
+// 통째로 언마운트 후 재마운트한다. UserManager는 상위(Works.tsx)가 세션 타이머 때문에
+// 1초마다 리렌더되므로, 실제 마우스 클릭(mousedown~mouseup 사이 텀이 있음)이
+// 하필 그 재마운트 타이밍과 겹치면 클릭 이벤트 자체가 유실되어 "클릭은 되는데 토글 안 됨"
+// 현상이 발생했다. 모듈 최상위로 빼서 컴포넌트 타입 참조를 고정시키면 해결된다.
+const VisibilityIcon: React.FC<{ visible: boolean }> = ({ visible }) => (
+  <span
+    className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border transition ${
+      visible
+        ? 'border-indigo-200 bg-indigo-50 text-indigo-600'
+        : 'border-gray-200 bg-gray-50 text-gray-400'
+    }`}
+  >
+    {visible ? (
+      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+      </svg>
+    ) : (
+      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
+      </svg>
+    )}
+  </span>
+);
+
+const VisibilityRow: React.FC<{
+  field: string;
+  label: string;
+  visible: boolean;
+  busy: boolean;
+  onToggle: (field: string) => void;
+}> = ({ field, label, visible, busy, onToggle }) => (
+  <button
+    type="button"
+    disabled={busy}
+    onClick={() => onToggle(field)}
+    title={visible ? '전체 공개 중 (클릭 시 관리자 전용으로 전환)' : '관리자 전용 (클릭 시 전체 공개로 전환)'}
+    className="flex w-full items-center justify-between rounded-md border border-gray-200 bg-white px-3 py-2.5 text-left transition hover:border-indigo-300 hover:bg-indigo-50/40 disabled:opacity-50"
+  >
+    <span className="text-xs font-medium text-gray-600">{label}</span>
+    <VisibilityIcon visible={visible} />
+  </button>
+);
+
 const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
   const [users, setUsers] = useState<User[]>([]);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -274,49 +321,6 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
     }
   };
 
-  // 아이콘은 순수 표시 용도(버튼 아님) - 실제 클릭은 행 전체(VisibilityRow)에서 처리해서
-  // 클릭 가능한 영역을 훨씬 넓게 만듦 (작은 아이콘만 눌러야 하는 문제 방지)
-  const VisibilityIcon = ({ field }: { field: string }) => {
-    const visible = fieldVisibility[field] ?? true;
-    return (
-      <span
-        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border transition ${
-          visible
-            ? 'border-indigo-200 bg-indigo-50 text-indigo-600'
-            : 'border-gray-200 bg-gray-50 text-gray-400'
-        }`}
-      >
-        {visible ? (
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-          </svg>
-        ) : (
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
-          </svg>
-        )}
-      </span>
-    );
-  };
-
-  const VisibilityRow = ({ field, label }: { field: string; label: string }) => {
-    const visible = fieldVisibility[field] ?? true;
-    const busy = savingVisibility === field;
-    return (
-      <button
-        type="button"
-        disabled={busy}
-        onClick={() => toggleFieldVisibility(field)}
-        title={visible ? '전체 공개 중 (클릭 시 관리자 전용으로 전환)' : '관리자 전용 (클릭 시 전체 공개로 전환)'}
-        className="flex w-full items-center justify-between rounded-md border border-gray-200 bg-white px-3 py-2.5 text-left transition hover:border-indigo-300 hover:bg-indigo-50/40 disabled:opacity-50"
-      >
-        <span className="text-xs font-medium text-gray-600">{label}</span>
-        <VisibilityIcon field={field} />
-      </button>
-    );
-  };
-
   const FieldLabel = ({ text }: { text: string }) => (
     <label className="mb-1 block text-xs font-medium text-gray-500">{text}</label>
   );
@@ -345,7 +349,14 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUserId }) => {
         )}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
           {Object.entries(FIELD_VISIBILITY_LABELS).map(([field, label]) => (
-            <VisibilityRow key={field} field={field} label={label} />
+            <VisibilityRow
+              key={field}
+              field={field}
+              label={label}
+              visible={fieldVisibility[field] ?? true}
+              busy={savingVisibility === field}
+              onToggle={toggleFieldVisibility}
+            />
           ))}
         </div>
       </div>
