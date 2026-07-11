@@ -183,28 +183,50 @@ export function useLeaveRequest(user: User | null) {
         unpaidDays = daysRequested;
       }
 
-      const { error: insertError } = await supabase.from('leaves').insert({
-        user_id: user.id,
-        start_date: form.startDate,
-        end_date: isAnnual ? form.endDate : form.startDate,
-        type: form.leaveType,
-        half_day_period: isHalfDay ? form.halfDayPeriod : null,
-        quarter_start_time: isQuarterDay ? `${form.quarterStartTime}:00` : null,
-        days_requested: daysRequested,
-        paid_days: paidDays,
-        unpaid_days: unpaidDays,
-        reason: form.reason,
-        status: 'pending',
-        requester_project: (user as any).project ?? null,
-        requester_part: (user as any).part ?? null,
-        requester_department: (user as any).department ?? null,
-      });
+      const { data: inserted, error: insertError } = await supabase
+        .from('leaves')
+        .insert({
+          user_id: user.id,
+          start_date: form.startDate,
+          end_date: isAnnual ? form.endDate : form.startDate,
+          type: form.leaveType,
+          half_day_period: isHalfDay ? form.halfDayPeriod : null,
+          quarter_start_time: isQuarterDay ? `${form.quarterStartTime}:00` : null,
+          days_requested: daysRequested,
+          paid_days: paidDays,
+          unpaid_days: unpaidDays,
+          reason: form.reason,
+          status: 'pending',
+          requester_project: (user as any).project ?? null,
+          requester_part: (user as any).part ?? null,
+          requester_department: (user as any).department ?? null,
+        })
+        .select('id')
+        .single();
 
       if (insertError) throw insertError;
 
-      setSuccess('휴가 신청이 제출되었습니다.');
+      // ✅ 신청 직후 소속에 맞는 결재선을 자동 매칭해서 결재 인스턴스를 생성한다.
+      // (결재선이 없으면 신청 자체는 성공하되, 결재 대기열에 뜨지 않는다는 걸 안내)
+      let noMatchingLine = false;
+      try {
+        const { data: approvalResult, error: approvalError } = await supabase.rpc('initiate_leave_approval', {
+          p_leave_id: inserted!.id,
+        });
+        if (approvalError) throw approvalError;
+        noMatchingLine = (approvalResult as any)?.created === false && (approvalResult as any)?.reason === 'no_matching_line';
+      } catch {
+        // 결재 인스턴스 생성 실패는 신청 자체를 막지 않음 (관리자가 결재선 설정 후 재확인 가능)
+        noMatchingLine = true;
+      }
+
+      setSuccess(
+        noMatchingLine
+          ? '휴가 신청이 제출되었습니다. (단, 해당 소속에 설정된 결재선이 없어 결재 대기열에는 표시되지 않습니다. 관리자에게 문의하세요)'
+          : '휴가 신청이 제출되었습니다.'
+      );
       resetForm();
-      setTimeout(() => setSuccess(''), 3000);
+      setTimeout(() => setSuccess(''), noMatchingLine ? 6000 : 3000);
       return true;
     } catch (e: any) {
       setError(e?.message || '신청 실패');
