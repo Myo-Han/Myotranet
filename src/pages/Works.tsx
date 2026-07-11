@@ -15,6 +15,7 @@ import LeaveEmployeeOverview from '../components/LeaveEmployeeOverview';
 import LeaveBalanceAdjust from '../components/LeaveBalanceAdjust';
 import LettersInbox from '../components/LettersInbox';
 import AttendanceRevisionInbox from '../components/AttendanceRevisionInbox';
+import OvertimeRequestInbox from '../components/OvertimeRequestInbox';
 import AttendanceAdminEditor from '../components/AttendanceAdminEditor';
 import AttendanceReportAdmin from '../components/attendance-reports/AttendanceReportAdmin';
 import EmploymentCertificate from '../components/documents/EmploymentCertificate';
@@ -598,6 +599,10 @@ const Work: React.FC = () => {
 
           {selectedMenu === 'attendance-revision-inbox' && (
             <AttendanceRevisionInbox />
+          )}
+
+          {selectedMenu === 'overtime-approval' && (
+            <OvertimeRequestInbox />
           )}
 
           {selectedMenu === 'attendance-admin-editor' && (

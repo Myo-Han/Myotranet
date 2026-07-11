@@ -20,7 +20,6 @@ const Navbar: React.FC = () => {
     { path: '/attendance', label: '근태관리' },
     { path: '/works', label: '업무' },
     { path: '/board', label: '게시판' },
-    { path: '/leave', label: '휴가관리' },
     ...(user?.role === 'Admin' ? [{ path: '/admin', label: '관리자' }] : []),
   ];
 

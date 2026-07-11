@@ -21,6 +21,14 @@ type LeaveRow = {
   type: string;
 };
 
+// ✅ 승인된 연장근무 신청. "연장근무" 칸은 이 승인된 시간대와 실제 출퇴근 시간이
+// 겹치는 구간만 계산해 보여준다 (사전 승인제: 승인되지 않은 초과근무는 표시되지 않음).
+type OvertimeRow = {
+  work_date: string;
+  requested_start_at: string;
+  requested_end_at: string;
+};
+
 const LEAVE_TYPE_LABEL: Record<string, string> = {
   annual_leave: '연차',
   half_day: '반차',
@@ -91,11 +99,15 @@ const calcNightHours = (checkIn: string | null, checkOut: string | null) => {
 type MonthlyAttendanceTableProps = {
   onRequestRevision?: (record: AttendanceRow) => void;
   revisionStatusByAttendanceId?: Record<string, any>;
+  onLeaveRequestClick?: () => void;
+  onOvertimeRequestClick?: () => void;
 };
 
 const MonthlyAttendanceTable: React.FC<MonthlyAttendanceTableProps> = ({
   onRequestRevision,
   revisionStatusByAttendanceId = {},
+  onLeaveRequestClick,
+  onOvertimeRequestClick,
 }) => {
   const { user } = useAuth();
   const [month, setMonth] = useState(() => {
@@ -104,10 +116,8 @@ const MonthlyAttendanceTable: React.FC<MonthlyAttendanceTableProps> = ({
   });
   const [rows, setRows] = useState<AttendanceRow[]>([]);
   const [leaves, setLeaves] = useState<LeaveRow[]>([]);
+  const [approvedOvertime, setApprovedOvertime] = useState<OvertimeRow[]>([]);
   const [loading, setLoading] = useState(true);
-
-  const requiredHours = user?.weekly_required_hours ?? 40;
-  const dailyStandardHours = requiredHours / 5; // 주 5일 근무 가정 하 일 표준 근무시간
 
   useEffect(() => {
     if (!user?.id) return;
@@ -134,18 +144,38 @@ const MonthlyAttendanceTable: React.FC<MonthlyAttendanceTableProps> = ({
           .gte('end_date', startKey);
         if (leaveErr) throw leaveErr;
 
+        const { data: otData, error: otErr } = await supabase
+          .from('overtime_requests')
+          .select('work_date, requested_start_at, requested_end_at')
+          .eq('user_id', user.id)
+          .eq('status', 'approved')
+          .gte('work_date', startKey)
+          .lte('work_date', endKey);
+        if (otErr) throw otErr;
+
         setRows((attData || []) as AttendanceRow[]);
         setLeaves((leaveData || []) as LeaveRow[]);
+        setApprovedOvertime((otData || []) as OvertimeRow[]);
       } catch (e) {
         console.error('월간 근태 로드 실패:', e);
         setRows([]);
         setLeaves([]);
+        setApprovedOvertime([]);
       } finally {
         setLoading(false);
       }
     };
     load();
   }, [user?.id, month]);
+
+  const overtimeByDate = useMemo(() => {
+    const map: Record<string, OvertimeRow[]> = {};
+    approvedOvertime.forEach((o) => {
+      if (!map[o.work_date]) map[o.work_date] = [];
+      map[o.work_date].push(o);
+    });
+    return map;
+  }, [approvedOvertime]);
 
   const dayList = useMemo(() => {
     const { daysInMonth } = getMonthRange(month);
@@ -180,10 +210,37 @@ const MonthlyAttendanceTable: React.FC<MonthlyAttendanceTableProps> = ({
 
   return (
     <div className="bg-white shadow rounded-lg overflow-hidden">
-      <div className="flex items-center justify-center gap-4 p-4 border-b">
-        <button type="button" onClick={() => shiftMonth(-1)} className="px-2 py-1 rounded hover:bg-gray-100">‹</button>
-        <div className="font-bold">{month.replace('-', '년 ')}월</div>
-        <button type="button" onClick={() => shiftMonth(1)} className="px-2 py-1 rounded hover:bg-gray-100">›</button>
+      <div className="flex items-center justify-between gap-4 p-4 border-b flex-wrap">
+        <div className="w-24 hidden sm:block" />
+        <div className="flex items-center gap-4">
+          <button type="button" onClick={() => shiftMonth(-1)} className="px-2 py-1 rounded hover:bg-gray-100">‹</button>
+          <div className="font-bold">{month.replace('-', '년 ')}월</div>
+          <button type="button" onClick={() => shiftMonth(1)} className="px-2 py-1 rounded hover:bg-gray-100">›</button>
+        </div>
+        {(onLeaveRequestClick || onOvertimeRequestClick) ? (
+          <div className="flex items-center gap-2">
+            {onLeaveRequestClick && (
+              <button
+                type="button"
+                onClick={onLeaveRequestClick}
+                className="px-3 py-1.5 text-xs font-medium rounded bg-indigo-600 text-white hover:bg-indigo-700"
+              >
+                연차신청
+              </button>
+            )}
+            {onOvertimeRequestClick && (
+              <button
+                type="button"
+                onClick={onOvertimeRequestClick}
+                className="px-3 py-1.5 text-xs font-medium rounded bg-amber-600 text-white hover:bg-amber-700"
+              >
+                연장근무 신청
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="w-24 hidden sm:block" />
+        )}
       </div>
       {onRequestRevision && (
         <p className="px-4 pt-3 text-xs text-gray-400">근무시간 상세 칸을 클릭하면 해당 날짜의 출퇴근 수정을 요청할 수 있습니다.</p>
@@ -212,7 +269,20 @@ const MonthlyAttendanceTable: React.FC<MonthlyAttendanceTableProps> = ({
                 const record = rowsByDate[dateKey];
                 const leave = leaveForDate(dateKey);
                 const workedHours = (record?.total_work_seconds || 0) / 3600;
-                const overtimeHours = Math.max(workedHours - dailyStandardHours, 0);
+                // ✅ 연장근무는 사전 승인제: 승인된 연장근무 신청 시간대와 실제 출퇴근 시간이
+                // 겹치는 구간만 계산한다. 승인받은 시간보다 일찍 퇴근하면 실제 퇴근시각까지만
+                // 자동으로 줄어들고, 총근무시간(정규+연장 합산)은 기존처럼 total_work_seconds 그대로다.
+                const overtimeHours = (() => {
+                  if (!record?.check_in) return 0;
+                  const workStart = new Date(record.check_in).getTime();
+                  const workEnd = record.check_out ? new Date(record.check_out).getTime() : workStart;
+                  const approvedList = overtimeByDate[dateKey] || [];
+                  return approvedList.reduce((sum, ot) => {
+                    const otStart = new Date(ot.requested_start_at).getTime();
+                    const otEnd = new Date(ot.requested_end_at).getTime();
+                    return sum + overlapHours(workStart, workEnd, otStart, otEnd);
+                  }, 0);
+                })();
                 const nightHours = calcNightHours(record?.check_in || null, record?.check_out || null);
 
                 // 근무시간 상세 bar: 06:00~24:00 범위를 기준으로 출퇴근 구간 비율 표시
