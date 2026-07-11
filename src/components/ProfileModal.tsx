@@ -11,6 +11,18 @@ interface ProfileModalProps {
     readOnly?: boolean;
 }
 
+// ✅ 모듈 최상위에서 선언 (컴포넌트 함수 내부에 선언하면 렌더될 때마다 새 컴포넌트
+// 타입으로 취급되어 매번 재마운트됨 - UserManager.tsx의 토글 버그와 동일한 함정)
+const HiddenBadge = ({ hidden }: { hidden: boolean }) =>
+    hidden ? (
+        <span
+            className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-500"
+            title="관리자 전용으로 설정됨 (일반 직원에게는 보이지 않음)"
+        >
+            🔒 비공개
+        </span>
+    ) : null;
+
 const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, userId, currentUserId, readOnly = false }) => {
     const [user, setUser] = useState<any>(null);
     const [statusMessage, setStatusMessage] = useState('');
@@ -40,6 +52,10 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, userId, cu
     const [fieldVisibility, setFieldVisibility] = useState<Record<string, boolean>>({});
     const canSee = (field: string) =>
         isOwnProfile || authUser?.role === 'Admin' || (fieldVisibility[field] ?? true);
+    // ✅ 관리자가 이 화면에서 "이 항목은 일반 직원에게 숨겨져 있다"는 걸 눈으로 확인할 수 있도록
+    // (canSee는 관리자에게 항상 true라서 숨김 여부가 걸으로 티가 안 났음)
+    const isHiddenFromOthers = (field: string) => !(fieldVisibility[field] ?? true);
+    const showHiddenBadge = (field: string) => authUser?.role === 'Admin' && isHiddenFromOthers(field);
 
     const getOrgName = (list: OrgItem[] | undefined, code: any) => {
         const c = String(code ?? '').trim();
@@ -413,21 +429,30 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, userId, cu
                         <div className="grid grid-cols-2 gap-4">
                             {canSee('employee_no') && (
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-500 mb-1">사번</label>
+                                    <div className="flex items-center gap-1 mb-1">
+                                        <label className="block text-sm font-medium text-gray-500">사번</label>
+                                        {showHiddenBadge('employee_no') && <HiddenBadge hidden />}
+                                    </div>
                                     <p className="text-base text-gray-900">{user.employee_number || '미지정'}</p>
                                 </div>
                             )}
 
                             {canSee('email') && (
                                 <div className={canSee('employee_no') ? '' : 'col-span-2'}>
-                                    <label className="block text-sm font-medium text-gray-500 mb-1">이메일</label>
+                                    <div className="flex items-center gap-1 mb-1">
+                                        <label className="block text-sm font-medium text-gray-500">이메일</label>
+                                        {showHiddenBadge('email') && <HiddenBadge hidden />}
+                                    </div>
                                     <p className="text-base text-gray-900">{user.email || '미지정'}</p>
                                 </div>
                             )}
 
                             {canSee('affiliation') && (
                                 <div className="col-span-2">
-                                    <label className="block text-sm font-medium text-gray-500 mb-1">소속</label>
+                                    <div className="flex items-center gap-1 mb-1">
+                                        <label className="block text-sm font-medium text-gray-500">소속</label>
+                                        {showHiddenBadge('affiliation') && <HiddenBadge hidden />}
+                                    </div>
                                     <p className="text-base text-gray-900">
                                         {[
                                             getOrgName(orgConfig?.departments, user.department),
@@ -443,7 +468,10 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, userId, cu
 
                             {canSee('hire_date') && (
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-500 mb-1">입사일</label>
+                                    <div className="flex items-center gap-1 mb-1">
+                                        <label className="block text-sm font-medium text-gray-500">입사일</label>
+                                        {showHiddenBadge('hire_date') && <HiddenBadge hidden />}
+                                    </div>
                                     <p className="text-base text-gray-900">
                                         {user.hire_date ? new Date(user.hire_date).toLocaleDateString('ko-KR') : '미지정'}
                                     </p>
@@ -454,7 +482,10 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, userId, cu
                         {/* 휴대폰 번호 */}
                         {canSee('phone') && (
                         <div>
-                            <label className="block text-sm font-medium text-gray-500 mb-1">휴대폰 번호</label>
+                            <div className="flex items-center gap-1 mb-1">
+                                <label className="block text-sm font-medium text-gray-500">휴대폰 번호</label>
+                                {showHiddenBadge('phone') && <HiddenBadge hidden />}
+                            </div>
                             {isOwnProfile && editingPhone ? (
                                 <div className="flex items-center space-x-2">
                                     <input
@@ -500,7 +531,10 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, userId, cu
                         {/* 생일 */}
                         {canSee('birth_date') && (
                         <div>
-                            <label className="block text-sm font-medium text-gray-500 mb-1">생일</label>
+                            <div className="flex items-center gap-1 mb-1">
+                                <label className="block text-sm font-medium text-gray-500">생일</label>
+                                {showHiddenBadge('birth_date') && <HiddenBadge hidden />}
+                            </div>
                             {isOwnProfile && editingBirthDate ? (
                                 <div className="flex items-center space-x-2">
                                     <input
@@ -547,7 +581,10 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, userId, cu
                         {/* 상태 메시지 */}
                         {canSee('status_message') && (
                         <div>
-                            <label className="block text-sm font-medium text-gray-500 mb-1">상태 메시지</label>
+                            <div className="flex items-center gap-1 mb-1">
+                                <label className="block text-sm font-medium text-gray-500">상태 메시지</label>
+                                {showHiddenBadge('status_message') && <HiddenBadge hidden />}
+                            </div>
                             {isOwnProfile && editingStatus ? (
                                 <div className="space-y-2">
                                     <textarea
