@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { requireAdmin } from './_lib/requireAdmin.js';
 
 export default async function handler(req, res) {
     if (req.method !== 'POST') {
@@ -6,12 +7,9 @@ export default async function handler(req, res) {
     }
 
     try {
-        console.log('Request body:', req.body);
-
         const { userId } = req.body || {};
 
         if (!userId) {
-            console.error('userId missing');
             return res.status(400).json({ error: 'userId is required' });
         }
 
@@ -20,7 +18,19 @@ export default async function handler(req, res) {
             process.env.VITE_SUPABASE_SERVICE_ROLE_KEY
         );
 
-        console.log('Deleting user:', userId);
+        const authCheck = await requireAdmin(supabaseAdmin, req);
+        if (authCheck.error) {
+            return res.status(authCheck.status).json({ error: authCheck.error });
+        }
+
+        // 초대 시 미리 만들어둔 직원 프로필(public.users)이 있다면 함께 정리
+        await supabaseAdmin.from('users').delete().eq('id', userId);
+
+        await supabaseAdmin
+            .from('user_read_logs')
+            .delete()
+            .eq('target_id', userId)
+            .eq('target_type', 'user-invite');
 
         const { error } = await supabaseAdmin.auth.admin.deleteUser(userId);
 

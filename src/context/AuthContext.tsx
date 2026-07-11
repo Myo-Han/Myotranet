@@ -9,7 +9,6 @@ const WARNING_TIME = 5 * 60 * 1000;
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: () => void;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
   timeRemaining: number;
@@ -58,7 +57,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (!dbError && !existing) {
           console.warn('No profile found in users table for this ID');
-          alert("관리자에게 권한을 요청하세요.");
+          alert("초대받지 않은 계정입니다. 관리자에게 문의하세요.");
           await supabase.auth.signOut();
           setUser(null);
           setLoading(false);
@@ -66,7 +65,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
 
         if (!existing || !existing.is_active) {
-          alert("관리자에게 권한을 요청하세요.");
+          alert("비활성화된 계정입니다. 관리자에게 문의하세요.");
           await supabase.auth.signOut();
           setUser(null);
           setLoading(false);
@@ -127,34 +126,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => clearInterval(interval);
   }, [user, lastActivity]);
 
-  const login = async () => {
-    try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: window.location.origin,
-          queryParams: {
-            access_type: 'offline',
-            prompt: 'consent',
-          }
-        }
-      });
-
-      if (error) {
-        console.error('OAuth Sign-In Error:');
-        console.dir(error);
-        alert('로그인 오류: ' + error.message);
-      }
-    } catch (err) {
-      console.error('Login Unexpected Error:');
-      console.dir(err);
-    }
-  };
-
   const logout = async () => {
     await supabase.auth.signOut();
     setUser(null);
-    window.location.href = '/login';
+    window.location.href = '/';
   };
 
   const refreshUser = async () => {
@@ -162,7 +137,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, refreshUser, timeRemaining, showWarning, extendSession }}>
+    <AuthContext.Provider value={{ user, loading, logout, refreshUser, timeRemaining, showWarning, extendSession }}>
       {children}
     </AuthContext.Provider>
   );

@@ -164,20 +164,18 @@ const Work: React.FC = () => {
     const dateStr = sixtyDaysAgo.toISOString();
 
     try {
-      // 1. 공지, 편지, 유저목록, 초대로그, 가입시도자(API)를 한 번에 쿼리
+      // 1. 공지, 편지를 한 번에 쿼리
+      // (예전엔 여기서 '가입 시도자' 여부도 확인했지만, 초대 전용 로그인으로 바뀌면서
+      //  더 이상 승인 대기 중인 가입 시도자 개념이 없어 제거함. 초대 대기 현황은
+      //  관리자 > 직원 초대 탭에서 확인)
       const [
         { data: notices }, { data: noticeLogs },
         { data: letters }, { data: letterLogs },
-        { data: dbUsers }, { data: inviteLogs },
-        authRes
       ] = await Promise.all([
         supabase.from('notices').select('id').gte('created_at', dateStr),
         supabase.from('user_read_logs').select('target_id').eq('user_id', user.id).eq('target_type', 'notice'),
         supabase.from('letters').select('id').gte('created_at', dateStr),
         supabase.from('user_read_logs').select('target_id').eq('user_id', user.id).eq('target_type', 'letter'),
-        supabase.from('users').select('id'),
-        supabase.from('user_read_logs').select('target_id').eq('user_id', user.id).eq('target_type', 'user-invite'),
-        fetch('/api/auth-users').then(res => res.json())
       ]);
 
       const newBadges: Record<string, boolean> = {};
@@ -187,13 +185,6 @@ const Work: React.FC = () => {
 
       // 마음의 편지 체크
       if (letters?.some(l => !letterLogs?.some(log => log.target_id === String(l.id)))) newBadges['letters-inbox'] = true;
-
-      // 직원 초대 체크: DB에 없고(신규), 내가 읽지 않은 Auth 유저가 있는지 확인
-      const dbIds = new Set(dbUsers?.map(u => String(u.id)) || []);
-      const unreadInvites = (authRes.users || []).filter((au: any) => 
-        !dbIds.has(String(au.id)) && !inviteLogs?.some(log => log.target_id === String(au.id))
-      );
-      if (unreadInvites.length > 0) newBadges['user-invite'] = true;
 
       setBadges(newBadges);
     } catch (e) {
