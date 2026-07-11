@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { User } from '../types';
 import { useAuth } from '../context/AuthContext';
@@ -9,9 +9,11 @@ import ProfileModal from './ProfileModal';
 interface SearchModalProps {
   isOpen: boolean;
   onClose: () => void;
+  // ✅ Dashboard 우측 상단 검색창에서 입력된 검색어. 모달이 열릴 때 이 값으로 자동 검색을 실행함
+  initialQuery?: string;
 }
 
-const SearchModal: React.FC<SearchModalProps> = ({ isOpen, onClose }) => {
+const SearchModal: React.FC<SearchModalProps> = ({ isOpen, onClose, initialQuery }) => {
   const { user: authUser } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<User[]>([]);
@@ -19,11 +21,8 @@ const SearchModal: React.FC<SearchModalProps> = ({ isOpen, onClose }) => {
   const [searching, setSearching] = useState(false);
   const [error, setError] = useState('');
 
-  if (!isOpen) return null;
-
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!searchQuery.trim()) return;
+  const runSearch = async (query: string) => {
+    if (!query.trim()) return;
 
     setSearching(true);
     setError('');
@@ -31,7 +30,7 @@ const SearchModal: React.FC<SearchModalProps> = ({ isOpen, onClose }) => {
       const { data, error } = await supabase
         .from('users')
         .select('id, name, email, role, annual_leave_balance, profile_picture')
-        .or(`name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%`);
+        .or(`name.ilike.%${query}%,email.ilike.%${query}%`);
 
       if (error) throw error;
       setSearchResults((data || []) as User[]);
@@ -40,6 +39,22 @@ const SearchModal: React.FC<SearchModalProps> = ({ isOpen, onClose }) => {
     } finally {
       setSearching(false);
     }
+  };
+
+  // ✅ 모달이 열릴 때 initialQuery가 있으면 검색창에 채운 뒤 바로 검색 실행 (우측 상단 검색창용)
+  useEffect(() => {
+    if (isOpen && initialQuery && initialQuery.trim()) {
+      setSearchQuery(initialQuery);
+      void runSearch(initialQuery);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, initialQuery]);
+
+  if (!isOpen) return null;
+
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await runSearch(searchQuery);
   };
 
   return (
