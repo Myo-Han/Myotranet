@@ -145,7 +145,11 @@ const UserInviteManager: React.FC = () => {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || '초대 실패');
 
-      setSuccess(`${form.email} 주소로 초대 메일을 보냈습니다`);
+      setSuccess(
+        data.linkedExisting
+          ? `${form.email}은(는) 이미 로그인 이력이 있는 계정이라, 초대 메일 없이 바로 직원으로 등록했습니다. 기존처럼 Google 로그인으로 접속하면 됩니다.`
+          : `${form.email} 주소로 초대 메일을 보냈습니다`
+      );
       setForm(EMPTY_FORM);
       fetchData();
       setTimeout(() => setSuccess(''), 4000);
