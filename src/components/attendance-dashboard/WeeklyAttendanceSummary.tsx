@@ -124,7 +124,7 @@ const WeeklyAttendanceSummary: React.FC = () => {
       ) : (
         <>
           <p className="text-center text-sm">
-            <span className="font-semibold text-blue-600">{formatHhMm(workedHours)}</span> 근무중 입니다.
+            <span className="font-semibold text-blue-600">{formatHhMm(workedHours)}</span> 근무했습니다.
           </p>
 
           <div className="w-full bg-gray-100 rounded-full h-4 relative overflow-hidden">
