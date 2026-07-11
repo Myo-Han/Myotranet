@@ -59,6 +59,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (!dbError && !existing) {
           console.warn('No profile found in users table for this ID');
           alert("초대받지 않은 계정입니다. 관리자에게 문의하세요.");
+
+          // 초대 안 받은 사람이 구글 로그인으로 인증하면 Supabase가 auth.users에
+          // 계정을 자동 생성해버림. signOut만 하면 그 유령 계정이 DB에 계속 남으므로,
+          // 로그아웃 전에 본인 세션으로 자기 자신의 auth 계정을 즉시 삭제 요청한다.
+          // (public.users에 프로필이 없는 계정만 지워지도록 서버에서 다시 검증함)
+          try {
+            const { data: sessionData } = await supabase.auth.getSession();
+            const token = sessionData?.session?.access_token;
+            if (token) {
+              await fetch('/api/cleanup-unauthorized-session', {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${token}` },
+              });
+            }
+          } catch (cleanupErr) {
+            console.warn('미인가 계정 정리 실패(무시하고 로그아웃 진행):', cleanupErr);
+          }
+
           await supabase.auth.signOut();
           setUser(null);
           setLoading(false);
