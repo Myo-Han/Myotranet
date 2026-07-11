@@ -72,3 +72,17 @@ export const getRevisionStatusLabel = (status: string | null): { label: string; 
   if (status === 'pending') return { label: '대기', colorClass: 'bg-yellow-100 text-yellow-800' };
   return { label: status || '-', colorClass: 'bg-gray-100 text-gray-800' };
 };
+
+// ✅ <input type="datetime-local">에서 나오는 "타임존 정보 없는" 로컬 문자열(예: "2026-07-06T18:30")을
+// 절대시각 ISO(UTC) 문자열로 변환.
+// 반드시 이 함수를 거쳐서 timestamptz 컬럼(attendance.check_in/check_out,
+// attendance_revision_requests.requested_check_in_at/requested_check_out_at 등)에 저장해야 함.
+// 이 변환 없이 datetime-local 원본 문자열을 그대로 insert/update하면, DB 세션 타임존(UTC)이
+// 그 문자열을 곧바로 UTC 시각으로 해석해버려서 실제 사용자가 입력한 한국 시각과
+// 9시간(KST=UTC+9)이 어긋난 채로 저장되는 버그가 발생한다.
+export const localDateTimeInputToIso = (localValue: string): string | null => {
+  if (!localValue) return null;
+  const d = new Date(localValue);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toISOString();
+};

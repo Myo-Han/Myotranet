@@ -6,7 +6,7 @@ import Loading from '../components/Loading';
 import ErrorMessage from '../components/ErrorMessage';
 import SuccessMessage from '../components/SuccessMessage';
 import ProfileModal from '../components/ProfileModal';
-import { getStatusLabel, getStatusColor, getRevisionStatusLabel } from '../utils/attendanceLabels';
+import { getStatusLabel, getStatusColor, getRevisionStatusLabel, localDateTimeInputToIso } from '../utils/attendanceLabels';
 import WeeklyAttendanceSummary from '../components/attendance-dashboard/WeeklyAttendanceSummary';
 import MonthlyAttendanceTable from '../components/attendance-dashboard/MonthlyAttendanceTable';
 
@@ -537,14 +537,17 @@ const Attendance: React.FC = () => {
     }
 
     try {
+      // ✅ datetime-local 입력값(타임존 정보 없음)을 절대시각 ISO(UTC)로 변환한 뒤 저장해야 함.
+      // 변환 없이 그대로 저장하면 DB가 UTC로 잘못 해석해서 9시간(KST 기준) 어긋난 시각으로
+      // 저장되고, 이후 관리자가 그대로 승인만 해도 전혀 다른 시각으로 덮어써지는 버그가 있었음.
       const { error } = await supabase.from('attendance_revision_requests').insert({
         attendance_id: selectedRecord.id,
         user_id: user.id,
         requested_date: selectedRecord.date,
         original_check_in: selectedRecord.check_in || null,
         original_check_out: selectedRecord.check_out || null,
-        requested_check_in_at: revisionForm.requestedCheckIn || null,
-        requested_check_out_at: revisionForm.requestedCheckOut || null,
+        requested_check_in_at: localDateTimeInputToIso(revisionForm.requestedCheckIn),
+        requested_check_out_at: localDateTimeInputToIso(revisionForm.requestedCheckOut),
         reason: revisionForm.reason,
         status: 'pending',
       });
@@ -1027,7 +1030,7 @@ const Attendance: React.FC = () => {
       {/* 이번 주 근무 현황 */}
       <WeeklyAttendanceSummary />
 
-      {/* 월간 근태 상세 (우측 상단에 근태 수정요청 버튼 포함) */}
+      {/* 월간 근태 상세 (각 행의 "근무시간 상세" 칸을 클릭하면 해당 날짜 출퇴근 수정 요청 모달이 바로 열림) */}
       <MonthlyAttendanceTable
         onRequestRevision={(record) => openRevisionModal(record as any)}
         revisionStatusByAttendanceId={revisionRequests}

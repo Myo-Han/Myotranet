@@ -103,7 +103,6 @@ const MonthlyAttendanceTable: React.FC<MonthlyAttendanceTableProps> = ({
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
   });
   const [rows, setRows] = useState<AttendanceRow[]>([]);
-  const [revisionDateKey, setRevisionDateKey] = useState('');
   const [leaves, setLeaves] = useState<LeaveRow[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -181,52 +180,14 @@ const MonthlyAttendanceTable: React.FC<MonthlyAttendanceTableProps> = ({
 
   return (
     <div className="bg-white shadow rounded-lg overflow-hidden">
-      <div className="flex items-center justify-between gap-4 p-4 border-b flex-wrap">
-        <div className="w-24" />
-        <div className="flex items-center gap-4">
-          <button type="button" onClick={() => shiftMonth(-1)} className="px-2 py-1 rounded hover:bg-gray-100">‹</button>
-          <div className="font-bold">{month.replace('-', '년 ')}월</div>
-          <button type="button" onClick={() => shiftMonth(1)} className="px-2 py-1 rounded hover:bg-gray-100">›</button>
-        </div>
-
-        {onRequestRevision && (
-          <div className="flex items-center gap-2">
-            <select
-              value={revisionDateKey}
-              onChange={(e) => setRevisionDateKey(e.target.value)}
-              className="border border-gray-300 rounded px-2 py-1 text-xs"
-            >
-              <option value="">날짜 선택</option>
-              {dayList
-                .filter(({ dateKey }) => rowsByDate[dateKey])
-                .map(({ dateKey, dow }) => (
-                  <option key={dateKey} value={dateKey}>
-                    {dateKey.slice(5)}({dow})
-                  </option>
-                ))}
-            </select>
-            <button
-              type="button"
-              disabled={!revisionDateKey || !rowsByDate[revisionDateKey]}
-              onClick={() => {
-                const record = rowsByDate[revisionDateKey];
-                if (record) onRequestRevision(record);
-              }}
-              className="px-3 py-1 text-xs rounded bg-blue-600 text-white disabled:opacity-40"
-            >
-              근태 수정요청
-            </button>
-            {revisionDateKey && rowsByDate[revisionDateKey] && revisionStatusByAttendanceId[rowsByDate[revisionDateKey].id] && (
-              (() => {
-                const { label, colorClass } = getRevisionStatusLabel(
-                  revisionStatusByAttendanceId[rowsByDate[revisionDateKey].id]
-                );
-                return <span className={`px-2 py-0.5 rounded-full text-[11px] ${colorClass}`}>{label}</span>;
-              })()
-            )}
-          </div>
-        )}
+      <div className="flex items-center justify-center gap-4 p-4 border-b">
+        <button type="button" onClick={() => shiftMonth(-1)} className="px-2 py-1 rounded hover:bg-gray-100">‹</button>
+        <div className="font-bold">{month.replace('-', '년 ')}월</div>
+        <button type="button" onClick={() => shiftMonth(1)} className="px-2 py-1 rounded hover:bg-gray-100">›</button>
       </div>
+      {onRequestRevision && (
+        <p className="px-4 pt-3 text-xs text-gray-400">근무시간 상세 칸을 클릭하면 해당 날짜의 출퇴근 수정을 요청할 수 있습니다.</p>
+      )}
 
       {loading ? (
         <p className="text-sm text-gray-400 text-center py-6">불러오는 중...</p>
@@ -286,14 +247,29 @@ const MonthlyAttendanceTable: React.FC<MonthlyAttendanceTableProps> = ({
                     <td className="px-3 py-2">{formatHM(record?.check_in || null)}</td>
                     <td className="px-3 py-2">{formatHM(record?.check_out || null)}</td>
                     <td className="px-3 py-2">
-                      <div className="w-full bg-gray-100 rounded h-3 relative">
-                        {record?.check_in && (
-                          <div
-                            className="absolute h-3 bg-blue-400 rounded"
-                            style={{ left: `${barLeftPct}%`, width: `${barWidthPct}%` }}
-                          />
-                        )}
-                      </div>
+                      {record && onRequestRevision ? (
+                        <button
+                          type="button"
+                          onClick={() => onRequestRevision(record)}
+                          title="클릭하여 출퇴근 수정 요청"
+                          className="w-full flex items-center gap-2 bg-transparent p-0 border-0 cursor-pointer group text-left"
+                        >
+                          <div className="flex-1 bg-gray-100 rounded h-3 relative group-hover:ring-2 group-hover:ring-blue-300 transition">
+                            {record.check_in && (
+                              <div
+                                className="absolute h-3 bg-blue-400 rounded"
+                                style={{ left: `${barLeftPct}%`, width: `${barWidthPct}%` }}
+                              />
+                            )}
+                          </div>
+                          {revisionStatusByAttendanceId[record.id] && (() => {
+                            const { label, colorClass } = getRevisionStatusLabel(revisionStatusByAttendanceId[record.id]);
+                            return <span className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] ${colorClass}`}>{label}</span>;
+                          })()}
+                        </button>
+                      ) : (
+                        <div className="w-full bg-gray-100 rounded h-3" />
+                      )}
                     </td>
                     <td className="px-3 py-2">{overtimeHours > 0 ? formatDurationHM(overtimeHours) : '00:00'}</td>
                     <td className="px-3 py-2">{nightHours > 0 ? formatDurationHM(nightHours) : '00:00'}</td>

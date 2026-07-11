@@ -6,7 +6,7 @@ import Loading from './Loading';
 import ErrorMessage from './ErrorMessage';
 import SuccessMessage from './SuccessMessage';
 import ProfileModal from './ProfileModal';
-import { getStatusLabel, getStatusColor, getRevisionStatusLabel } from '../utils/attendanceLabels';
+import { getStatusLabel, getStatusColor, getRevisionStatusLabel, localDateTimeInputToIso } from '../utils/attendanceLabels';
 
 type UserRow = {
   id: string;
@@ -81,12 +81,8 @@ const isoToLocalInput = (iso: string | null) => {
   return `${yyyy}-${mm}-${dd}T${hh}:${mi}`;
 };
 
-const localInputToIso = (localValue: string) => {
-  if (!localValue) return null;
-  const d = new Date(localValue);
-  if (Number.isNaN(d.getTime())) return null;
-  return d.toISOString();
-};
+// ✅ 중복 구현 방지: datetime-local -> ISO 변환은 attendanceLabels.ts의 공용 함수를 그대로 사용
+const localInputToIso = localDateTimeInputToIso;
 
 const calcWorkSecondsWithPause = async (
   attendanceId: string,
