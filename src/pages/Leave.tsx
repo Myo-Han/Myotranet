@@ -2,15 +2,24 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabaseClient';
 import { Leave as LeaveType, LeaveBalanceHistory } from '../types';
-import { LeavePolicy } from '../components/LeavePolicyManager';
 import Loading from '../components/Loading';
 import ErrorMessage from '../components/ErrorMessage';
 import SuccessMessage from '../components/SuccessMessage';
+import { useLeaveRequest, todayKey } from '../hooks/useLeaveRequest';
+
+// ✅ leave_balance_history.policy_code는 "휴가 신청 유형"(annual/half_day/quarter_day)이 아니라
+// 실제로 증감된 "잔액 풀"(annual_leave=연차 잔액 / monthly_leave=월차 잔액)을 가리킨다.
+// (leave_policies에는 애초에 'annual_leave'/'monthly_leave'라는 policy_code가 존재하지 않음)
+const POOL_LABEL: Record<string, string> = {
+  annual_leave: '연차(잔액)',
+  monthly_leave: '월차(잔액)',
+};
+const getPoolLabel = (code: string) => POOL_LABEL[code] || code;
 
 const Leave: React.FC = () => {
   const { user } = useAuth();
+  const lr = useLeaveRequest(user);
   const [leaves, setLeaves] = useState<LeaveType[]>([]);
-  const [policies, setPolicies] = useState<LeavePolicy[]>([]);
   const [balanceHistory, setBalanceHistory] = useState<LeaveBalanceHistory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -66,15 +75,6 @@ const Leave: React.FC = () => {
     changeType: 'all',
   });
 
-  const [form, setForm] = useState({
-    startDate: '',
-    endDate: '',
-    leaveType: 'annual_leave',
-    halfDayPeriod: 'am', // 오전/오후
-    daysRequested: 1,
-    reason: '',
-  });
-
   useEffect(() => {
     fetchData();
   }, []);
@@ -83,20 +83,6 @@ const Leave: React.FC = () => {
     setLoading(true);
     setError('');
     try {
-      // 정책 목록 가져오기
-      const { data: policiesData, error: policiesError } = await supabase
-        .from('leave_policies')
-        .select('*')
-        .eq('enabled', true)
-        .order('created_at', { ascending: true });
-
-      if (policiesError) throw policiesError;
-
-      const sortedPolicies = (policiesData || []).sort((a, b) =>
-        (a.config.deduction_priority || 999) - (b.config.deduction_priority || 999)
-      );
-      setPolicies(sortedPolicies);
-
       // 휴가 신청 내역 가져오기
       await fetchLeaves();
 
@@ -212,121 +198,14 @@ const Leave: React.FC = () => {
     }
   }, [historyFilter, user]);
 
-  const calculateDays = (startDate: string, endDate: string, leaveType: string) => {
-    if (!startDate || !endDate) return 0;
-
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-
-    // 날짜 검증
-    if (end < start) {
-      return 0;
-    }
-
-    // 반차는 무조건 0.5일
-    if (leaveType === 'half_day') {
-      return 0.5;
-    }
-
-    const diffTime = end.getTime() - start.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-    return diffDays;
-  };
-
-  // startDate, endDate, leaveType 변경 시에만 일수 재계산
-  useEffect(() => {
-    const days = calculateDays(form.startDate, form.endDate, form.leaveType);
-    setForm(prev => ({ ...prev, daysRequested: days }));
-  }, [form.startDate, form.endDate, form.leaveType]);
-
-  const submitLeaveRequest = async () => {
-    if (!user || !form.startDate || !form.endDate || !form.reason) {
-      setError('모든 필드를 입력해주세요');
-      return;
-    }
-
-    // 날짜 검증
-    const start = new Date(form.startDate);
-    const end = new Date(form.endDate);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    if (start < today) {
-      setError('과거 날짜는 신청할 수 없습니다');
-      return;
-    }
-
-    if (end < start) {
-      setError('종료일은 시작일보다 이전일 수 없습니다');
-      return;
-    }
-
-    // 너무 먼 미래 방지 (2년 이내)
-    const twoYearsLater = new Date();
-    twoYearsLater.setFullYear(twoYearsLater.getFullYear() + 2);
-    if (start > twoYearsLater) {
-      setError('2년 이내의 날짜만 신청 가능합니다');
-      return;
-    }
-
-    try {
-      // 선택한 정책 찾기
-      const selectedPolicy = policies.find(p => p.policy_code === form.leaveType);
-      if (!selectedPolicy) {
-        setError('선택한 휴가 정책을 찾을 수 없습니다');
-        return;
-      }
-
-      // paid_days, unpaid_days 계산
-      let paidDays = 0;
-      let unpaidDays = 0;
-
-      if (selectedPolicy.config.is_paid) {
-        paidDays = Math.min(form.daysRequested, selectedPolicy.config.paid_days || 0);
-        unpaidDays = Math.max(0, form.daysRequested - paidDays);
-      } else {
-        unpaidDays = form.daysRequested;
-      }
-
-      const { error } = await supabase.from('leaves').insert({
-        user_id: user.id,
-        start_date: form.startDate,
-        end_date: form.endDate,
-        type: form.leaveType,
-        days_requested: form.daysRequested,
-        paid_days: paidDays,
-        unpaid_days: unpaidDays,
-        reason: form.reason,
-        status: 'pending',
-
-        // ✅ 신청 당시 소속 스냅샷 저장 (결재 매칭/목록 표시용)
-        requester_project: (user as any).project ?? null,
-        requester_part: (user as any).part ?? null,
-        requester_department: (user as any).department ?? null,
-      });
-
-      if (error) throw error;
-
-      setSuccess('휴가 신청이 제출되었습니다');
+  const handleSubmitLeaveRequest = async () => {
+    const ok = await lr.submit();
+    if (ok) {
       setShowModal(false);
-      setForm({
-        startDate: '',
-        endDate: '',
-        leaveType: 'annual_leave',
-        halfDayPeriod: 'am',
-        daysRequested: 1,
-        reason: '',
-      });
+      setSuccess('휴가 신청이 제출되었습니다');
       fetchLeaves();
       setTimeout(() => setSuccess(''), 3000);
-    } catch (err: any) {
-      setError(err.message || '신청 실패');
     }
-  };
-
-  const getPolicyName = (policyCode: string) => {
-    const policy = policies.find(p => p.policy_code === policyCode);
-    return policy?.policy_name || policyCode;
   };
 
   const getChangeTypeLabel = (changeType: string) => {
@@ -481,13 +360,8 @@ const Leave: React.FC = () => {
                 className="text-sm border border-gray-300 rounded-md px-2 py-1"
               >
                 <option value="all">전체 휴가</option>
-                {policies
-                  .filter(p => ['annual_leave', 'monthly_leave'].includes(p.policy_code))
-                  .map(p => (
-                    <option key={p.policy_code} value={p.policy_code}>
-                      {p.policy_name}
-                    </option>
-                  ))}
+                <option value="annual_leave">{POOL_LABEL.annual_leave}</option>
+                <option value="monthly_leave">{POOL_LABEL.monthly_leave}</option>
               </select>
 
               <select
@@ -523,7 +397,7 @@ const Leave: React.FC = () => {
                     {new Date(history.created_at).toLocaleDateString('ko-KR')}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {getPolicyName(history.policy_code)}
+                    {getPoolLabel(history.policy_code)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span
@@ -601,7 +475,17 @@ const Leave: React.FC = () => {
                     {new Date(leave.end_date).toLocaleDateString('ko-KR')}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {getPolicyName(leave.type)}
+                    {lr.getPolicyName(leave.type)}
+                    {leave.type === 'half_day' && leave.half_day_period && (
+                      <span className="text-xs text-gray-500 ml-1">
+                        ({leave.half_day_period === 'am' ? '오전' : '오후'})
+                      </span>
+                    )}
+                    {leave.type === 'quarter_day' && leave.quarter_start_time && (
+                      <span className="text-xs text-gray-500 ml-1">
+                        ({leave.quarter_start_time.slice(0, 5)}~)
+                      </span>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {leave.days_requested}일
@@ -747,53 +631,67 @@ const Leave: React.FC = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
             <h3 className="text-xl font-semibold mb-4">휴가 신청</h3>
+
+            {lr.error && <div className="mb-3"><ErrorMessage message={lr.error} /></div>}
+
             <div className="space-y-4">
+              {lr.balancePoolLabel && (
+                <div className="text-sm bg-blue-50 border border-blue-100 rounded-md px-3 py-2 text-blue-800">
+                  현재 {lr.balancePoolLabel} 잔여일수: <span className="font-semibold">{lr.availableBalance}일</span>
+                </div>
+              )}
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">휴가 유형</label>
-                <select
-                  value={form.leaveType}
-                  onChange={(e) => setForm({ ...form, leaveType: e.target.value })}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2"
-                >
-                  {policies.map((policy) => (
-                    <option key={policy.policy_code} value={policy.policy_code}>
-                      {policy.policy_name}
-                      {policy.config.is_paid && ` (유급 ${policy.config.paid_days}일)`}
-                    </option>
-                  ))}
-                </select>
+                {lr.policies.length === 0 ? (
+                  <p className="text-sm text-red-600">사용 가능한 휴가 정책이 없습니다. 관리자에게 문의하세요.</p>
+                ) : (
+                  <select
+                    value={lr.form.leaveType}
+                    onChange={(e) => lr.setForm({ ...lr.form, leaveType: e.target.value })}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2"
+                  >
+                    {lr.policies.map((policy) => (
+                      <option key={policy.policy_code} value={policy.policy_code}>
+                        {policy.policy_name}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">시작일</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  {lr.isAnnual ? '시작일' : '사용일'}
+                </label>
                 <input
                   type="date"
-                  value={form.startDate}
-                  onChange={(e) => setForm({ ...form, startDate: e.target.value })}
-                  min={new Date().toISOString().split('T')[0]}
+                  value={lr.form.startDate}
+                  onChange={(e) => lr.setForm({ ...lr.form, startDate: e.target.value })}
+                  min={todayKey()}
                   className="w-full border border-gray-300 rounded-md px-3 py-2"
                 />
               </div>
 
-              {form.leaveType !== 'half_day' && (
+              {lr.isAnnual && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">종료일</label>
                   <input
                     type="date"
-                    value={form.endDate}
-                    onChange={(e) => setForm({ ...form, endDate: e.target.value })}
-                    min={form.startDate || new Date().toISOString().split('T')[0]}
+                    value={lr.form.endDate}
+                    onChange={(e) => lr.setForm({ ...lr.form, endDate: e.target.value })}
+                    min={lr.form.startDate || todayKey()}
                     className="w-full border border-gray-300 rounded-md px-3 py-2"
                   />
                 </div>
               )}
 
-              {form.leaveType === 'half_day' && (
+              {lr.isHalfDay && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">반차 구분</label>
                   <select
-                    value={form.halfDayPeriod}
-                    onChange={(e) => setForm({ ...form, halfDayPeriod: e.target.value })}
+                    value={lr.form.halfDayPeriod}
+                    onChange={(e) => lr.setForm({ ...lr.form, halfDayPeriod: e.target.value as 'am' | 'pm' })}
                     className="w-full border border-gray-300 rounded-md px-3 py-2"
                   >
                     <option value="am">오전 반차</option>
@@ -802,11 +700,23 @@ const Leave: React.FC = () => {
                 </div>
               )}
 
+              {lr.isQuarterDay && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">시작 시각</label>
+                  <input
+                    type="time"
+                    value={lr.form.quarterStartTime}
+                    onChange={(e) => lr.setForm({ ...lr.form, quarterStartTime: e.target.value })}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2"
+                  />
+                </div>
+              )}
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">일수</label>
                 <input
                   type="number"
-                  value={form.daysRequested}
+                  value={lr.daysRequested}
                   readOnly
                   className="w-full border border-gray-300 rounded-md px-3 py-2 bg-gray-50"
                 />
@@ -815,8 +725,8 @@ const Leave: React.FC = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">사유</label>
                 <textarea
-                  value={form.reason}
-                  onChange={(e) => setForm({ ...form, reason: e.target.value })}
+                  value={lr.form.reason}
+                  onChange={(e) => lr.setForm({ ...lr.form, reason: e.target.value })}
                   rows={3}
                   className="w-full border border-gray-300 rounded-md px-3 py-2"
                   placeholder="휴가 사유를 입력하세요"
@@ -826,22 +736,17 @@ const Leave: React.FC = () => {
 
             <div className="mt-6 flex space-x-2">
               <button
-                onClick={submitLeaveRequest}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                onClick={handleSubmitLeaveRequest}
+                disabled={!lr.canSubmit || lr.submitting}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-40"
               >
-                신청
+                {lr.submitting ? '제출 중...' : '신청'}
               </button>
               <button
                 onClick={() => {
                   setShowModal(false);
-                  setForm({
-                    startDate: '',
-                    endDate: '',
-                    leaveType: 'annual_leave',
-                    halfDayPeriod: 'am',
-                    daysRequested: 1,
-                    reason: '',
-                  });
+                  lr.resetForm();
+                  lr.setError('');
                 }}
                 className="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
               >

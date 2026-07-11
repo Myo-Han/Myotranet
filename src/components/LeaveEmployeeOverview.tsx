@@ -24,7 +24,9 @@ type LeaveRow = {
   user_id: string;
   start_date: string; // date
   end_date: string; // date
-  leave_type: string;
+  // ✅ 실제 leaves 테이블 컬럼명은 'type' (leave_type이 아님 - 이전엔 존재하지 않는 컬럼을
+  // 참조해서 휴가 유형이 항상 빈칸으로 표시되는 버그가 있었음)
+  type: string;
   days_requested: number;
   reason: string | null;
   created_at: string;
@@ -529,7 +531,7 @@ const LeaveEmployeeOverview: React.FC = () => {
                               <td className="px-4 py-3 text-sm text-gray-900">
                                 {l.start_date} ~ {l.end_date}
                               </td>
-                              <td className="px-4 py-3 text-sm text-gray-700">{l.leave_type}</td>
+                              <td className="px-4 py-3 text-sm text-gray-700">{l.type}</td>
                               <td className="px-4 py-3 text-sm text-right font-semibold">{l.days_requested}일</td>
                               <td className="px-4 py-3 text-sm text-gray-700">{l.status || 'pending'}</td>
                               <td className="px-4 py-3 text-sm text-gray-500">{l.reason || '-'}</td>

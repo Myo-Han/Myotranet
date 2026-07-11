@@ -84,19 +84,9 @@ const LeaveWorkQueue: React.FC = () => {
     }
   };
 
-  const getMaxStep = async (approvalLineId: string) => {
-    const { data, error } = await supabase
-      .from('approval_line_steps')
-      .select('step_order')
-      .eq('approval_line_id', approvalLineId)
-      .order('step_order', { ascending: false })
-      .limit(1)
-      .single();
-
-    if (error) throw error;
-    return Number(data?.step_order || 1);
-  };
-
+  // ✅ 승인/반려는 approve_leave_step / reject_leave_step RPC로 처리한다.
+  // (RLS상 승인자가 신청자 본인이 아니면 신청자의 users.잔액/leave_balance_history를
+  //  직접 갱신할 권한이 없어서, 마지막 단계 승인 시 잔액 자동 차감까지 DB 함수 안에서 원자적으로 처리)
   const handleApprove = async (r: QueueRow) => {
     if (!user?.id) return;
 
@@ -105,30 +95,11 @@ const LeaveWorkQueue: React.FC = () => {
     setSubmittingId(r.leave_approval_id);
 
     try {
-      const maxStep = await getMaxStep(r.approval_line_id);
-
-      const { error: logErr } = await supabase.from('leave_approval_actions').insert({
-        leave_approval_id: r.leave_approval_id,
-        step_order: r.current_step_order,
-        actor_user_id: user.id,
-        action: 'approved',
-        notes: null,
+      const { error: rpcErr } = await supabase.rpc('approve_leave_step', {
+        p_leave_approval_id: r.leave_approval_id,
+        p_notes: null,
       });
-      if (logErr) throw logErr;
-
-      if (r.current_step_order >= maxStep) {
-        const { error: upErr } = await supabase
-          .from('leave_approvals')
-          .update({ status: 'approved', updated_at: new Date().toISOString() })
-          .eq('id', r.leave_approval_id);
-        if (upErr) throw upErr;
-      } else {
-        const { error: upErr } = await supabase
-          .from('leave_approvals')
-          .update({ current_step_order: r.current_step_order + 1, updated_at: new Date().toISOString() })
-          .eq('id', r.leave_approval_id);
-        if (upErr) throw upErr;
-      }
+      if (rpcErr) throw rpcErr;
 
       setSuccess('승인 처리되었습니다.');
       await fetchQueue();
@@ -149,20 +120,11 @@ const LeaveWorkQueue: React.FC = () => {
     setSubmittingId(r.leave_approval_id);
 
     try {
-      const { error: logErr } = await supabase.from('leave_approval_actions').insert({
-        leave_approval_id: r.leave_approval_id,
-        step_order: r.current_step_order,
-        actor_user_id: user.id,
-        action: 'rejected',
-        notes: notes || null,
+      const { error: rpcErr } = await supabase.rpc('reject_leave_step', {
+        p_leave_approval_id: r.leave_approval_id,
+        p_notes: notes || null,
       });
-      if (logErr) throw logErr;
-
-      const { error: upErr } = await supabase
-        .from('leave_approvals')
-        .update({ status: 'rejected', updated_at: new Date().toISOString() })
-        .eq('id', r.leave_approval_id);
-      if (upErr) throw upErr;
+      if (rpcErr) throw rpcErr;
 
       setSuccess('반려 처리되었습니다.');
       await fetchQueue();

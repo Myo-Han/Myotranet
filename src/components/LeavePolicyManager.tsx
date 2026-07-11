@@ -673,6 +673,7 @@ const LeavePolicyManager: React.FC<LeavePolicyManagerProps> = ({ canEdit = true 
                       onChange={(e) => updateConfig('min_usage_unit', parseFloat(e.target.value))}
                       className="w-full border border-gray-300 rounded-md px-3 py-2"
                     >
+                      <option value="0.25">0.25일 (반반차)</option>
                       <option value="0.5">0.5일 (반차)</option>
                       <option value="1">1일</option>
                     </select>

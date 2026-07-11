@@ -47,7 +47,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (data?.user) {
         const { data: existing, error: dbError } = await supabase
           .from("users")
-          .select("id, name, profile_picture, role, is_active, created_at, weekly_required_hours, weekly_max_hours")
+          .select("id, name, profile_picture, role, is_active, created_at, weekly_required_hours, weekly_max_hours, annual_leave_balance, monthly_leave_balance, hire_date")
           .eq("id", data.user.id)
           .maybeSingle();
 
@@ -101,6 +101,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           created_at: existing?.created_at || undefined,
           weekly_required_hours: (existing as any)?.weekly_required_hours ?? 40,
           weekly_max_hours: (existing as any)?.weekly_max_hours ?? 52,
+          annual_leave_balance: (existing as any)?.annual_leave_balance ?? 0,
+          monthly_leave_balance: (existing as any)?.monthly_leave_balance ?? 0,
+          hire_date: (existing as any)?.hire_date ?? null,
         });
       } else {
         setUser(null);

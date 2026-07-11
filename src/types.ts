@@ -12,6 +12,7 @@ export interface User {
   part?: string | null;
   annual_leave_balance?: number;
   monthly_leave_balance?: number;
+  hire_date?: string | null;
   is_active?: boolean;
   employment_status?: 'active' | 'on_leave' | 'resigned';
   gender?: 'male' | 'female' | 'other' | null;
@@ -94,7 +95,11 @@ export interface Leave {
   user_id: string;
   start_date: string;
   end_date: string;
-  type: 'annual' | 'half_day' | 'monthly_leave' | 'maternity_leave' | 'maternity_leave_multiple' | 'paternity_leave' | 'menstrual_leave' | 'family_care_leave' | 'event_leave_marriage_self' | 'event_leave_marriage_child' | 'event_leave_death_parent' | 'event_leave_death_grandparent';
+  type: 'annual' | 'half_day' | 'quarter_day' | 'monthly_leave' | 'maternity_leave' | 'maternity_leave_multiple' | 'paternity_leave' | 'menstrual_leave' | 'family_care_leave' | 'event_leave_marriage_self' | 'event_leave_marriage_child' | 'event_leave_death_parent' | 'event_leave_death_grandparent';
+  // ✅ 반차(half_day) 신청 시 오전/오후 구분 (annual/quarter_day 등에는 null)
+  half_day_period?: 'am' | 'pm' | null;
+  // ✅ 반반차(quarter_day) 신청 시 사용 시작 시각 (그 외 유형에는 null), "HH:MM:SS" 형식
+  quarter_start_time?: string | null;
   days_requested: number;
   paid_days: number;
   unpaid_days: number;
