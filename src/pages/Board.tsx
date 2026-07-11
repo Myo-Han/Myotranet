@@ -8,9 +8,10 @@ import ErrorMessage from '../components/ErrorMessage';
 import ReactionBar from '../components/reactions/ReactionBar';
 import CommentThread from '../components/comments/CommentThread';
 
-type Category = 'free' | 'info' | 'other';
+type Category = 'notice' | 'free' | 'info' | 'other';
 
 const CATEGORY_LABEL: Record<Category, string> = {
+  notice: '공지',
   free: '자유',
   info: '정보공유',
   other: '기타',
@@ -36,7 +37,7 @@ type AuthorMini = {
 
 type ViewMode = 'list' | 'write' | 'detail';
 
-const emptyDraft = () => ({ title: '', content: '', category: 'free' as Category });
+const emptyDraft = () => ({ title: '', content: '', category: 'free' as Category, is_pinned: false });
 
 const Board: React.FC = () => {
   const { user } = useAuth();
@@ -102,7 +103,7 @@ const Board: React.FC = () => {
 
   const openEdit = (post: Post) => {
     setEditingPost(post);
-    setDraft({ title: post.title, content: post.content, category: post.category });
+    setDraft({ title: post.title, content: post.content, category: post.category, is_pinned: post.is_pinned });
     setView('write');
   };
 
@@ -121,6 +122,11 @@ const Board: React.FC = () => {
     setSaving(true);
     setError('');
     try {
+      // '공지' 카테고리가 아니면 상단 고정 옵션은 무의미하므로 항상 false로 저장한다
+      // (카테고리를 공지->다른 카테고리로 바꿨다가 저장하는 경우 이전에 체크했던 고정값이
+      // 그대로 남아있지 않도록 방지)
+      const effectiveIsPinned = draft.category === 'notice' ? draft.is_pinned : false;
+
       if (editingPost) {
         const { error: updErr } = await supabase
           .from('posts')
@@ -128,6 +134,7 @@ const Board: React.FC = () => {
             title: draft.title.trim(),
             content: draft.content.trim(),
             category: draft.category,
+            is_pinned: effectiveIsPinned,
             updated_at: new Date().toISOString(),
           })
           .eq('id', editingPost.id);
@@ -137,6 +144,7 @@ const Board: React.FC = () => {
           title: draft.title.trim(),
           content: draft.content.trim(),
           category: draft.category,
+          is_pinned: effectiveIsPinned,
           author_id: user.id,
         });
         if (insErr) throw insErr;
@@ -199,7 +207,7 @@ const Board: React.FC = () => {
       {view === 'list' && (
         <>
           <div className="flex gap-2">
-            {(['all', 'free', 'info', 'other'] as const).map((c) => (
+            {(['all', 'notice', 'free', 'info', 'other'] as const).map((c) => (
               <button
                 key={c}
                 type="button"
@@ -278,6 +286,21 @@ const Board: React.FC = () => {
               placeholder="제목을 입력하세요"
             />
           </div>
+
+          {draft.category === 'notice' && (
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="board-pin-checkbox"
+                checked={draft.is_pinned}
+                onChange={(e) => setDraft({ ...draft, is_pinned: e.target.checked })}
+                className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
+              />
+              <label htmlFor="board-pin-checkbox" className="text-xs text-gray-600">
+                상단 고정 (전체 목록 맨 위에 노출)
+              </label>
+            </div>
+          )}
 
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">내용</label>

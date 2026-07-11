@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabaseClient';
 import { User } from '../types';
@@ -87,7 +86,6 @@ const HiddenBadge = ({ hidden }: { hidden: boolean }) =>
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
-  const navigate = useNavigate();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isLettersOpen, setIsLettersOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -600,7 +598,7 @@ const Dashboard: React.FC = () => {
     <div className="space-y-6">
       {/* User Profile Card */}
       {/* Profile + Notice Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch h-[520px]">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch h-[570px]">
         {/* User Profile Card */}
         <div className="bg-white shadow rounded-lg overflow-hidden h-full flex flex-col">
           <div className="bg-gradient-to-r from-[#6D6F72] to-[#4A4D50] px-6 py-4">
@@ -830,7 +828,7 @@ const Dashboard: React.FC = () => {
         {/* Notice Container */}
         <div className="bg-white shadow rounded-lg overflow-hidden h-full flex flex-col">
           <div className="bg-gradient-to-r from-[#5C5E66] to-[#4B4E51] px-6 py-4 flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-white">공지</h2>
+            <h2 className="text-xl font-semibold text-white">게시판</h2>
             <div className="flex items-center gap-3">
               {notices.length > 0 && (
                 <span className="text-xs text-yellow-100">
@@ -943,20 +941,7 @@ const Dashboard: React.FC = () => {
           </div>
         )
       }
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <button
-          onClick={() => navigate('/board')}
-          className="bg-white p-6 rounded-lg shadow hover:shadow-md transition duration-200 text-left"
-        >
-          <div className="text-emerald-600 mb-3">
-            <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
-            </svg>
-          </div>
-          <h3 className="text-lg font-semibold text-gray-900">자유게시판</h3>
-          <p className="text-sm text-gray-500 mt-1">실명으로 자유롭게 소통</p>
-        </button>
-
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <a
           href="https://www.notion.so/2ce8b0cc5ed08039a648ecbcb2cb5ee8?source=copy_link"
           target="_blank"
