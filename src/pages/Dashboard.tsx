@@ -530,11 +530,12 @@ const Dashboard: React.FC = () => {
   };
 
   const deptCode = String((userExtra?.department ?? (user as any)?.department ?? '')).trim();
+  const projCode = String((userExtra?.project ?? (user as any)?.project ?? '')).trim();
 
-  // ✅ 같은 부서 팀원 상태 (부서가 지정되어 있지 않으면 아무도 표시하지 않음)
+  // ✅ 같은 프로젝트 팀원 상태 (프로젝트가 지정되어 있지 않으면 아무도 표시하지 않음)
   useEffect(() => {
     const fetchTeamMembers = async () => {
-      if (!deptCode || !user?.id) {
+      if (!projCode || !user?.id) {
         setTeamMembers([]);
         return;
       }
@@ -542,7 +543,7 @@ const Dashboard: React.FC = () => {
       const { data, error } = await supabase
         .from('users')
         .select('id, name, profile_picture, current_status')
-        .eq('department', deptCode)
+        .eq('project', projCode)
         .eq('is_active', true)
         .neq('id', user.id)
         .order('name', { ascending: true });
@@ -553,9 +554,8 @@ const Dashboard: React.FC = () => {
     };
 
     fetchTeamMembers();
-  }, [deptCode, user?.id]);
+  }, [projCode, user?.id]);
 
-  const projCode = String((userExtra?.project ?? (user as any)?.project ?? '')).trim();
   const partCode = String((userExtra?.part ?? (user as any)?.part ?? '')).trim();
   const posCode = String((userExtra?.position ?? (user as any)?.position ?? '')).trim();
 
@@ -780,13 +780,13 @@ const Dashboard: React.FC = () => {
               )}
             </div>
 
-            {/* ✅ 같은 부서 팀원 상태 (부서 미지정 시 표시 안 함) */}
-            {deptCode && (
+            {/* ✅ 같은 프로젝트 팀원 상태 (프로젝트 미지정 시 표시 안 함) */}
+            {projCode && (
               <div className="mt-6 pt-6 border-t border-gray-200">
-                <p className="mb-3 text-xs font-medium text-gray-500">같은 부서 팀원</p>
+                <p className="mb-3 text-xs font-medium text-gray-500">같은 프로젝트 팀원</p>
 
                 {teamMembers.length === 0 ? (
-                  <p className="text-sm text-gray-400">같은 부서에 다른 팀원이 없습니다.</p>
+                  <p className="text-sm text-gray-400">같은 프로젝트에 다른 팀원이 없습니다.</p>
                 ) : (
                   <div className="flex flex-wrap gap-3">
                     {teamMembers.map((member) => {

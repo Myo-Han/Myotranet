@@ -23,7 +23,12 @@ type WorkMenuItem = {
   is_folder: boolean;
 };
 
-const WorkMenuManager: React.FC = () => {
+type WorkMenuManagerProps = {
+  menuKey?: 'work_menu' | 'admin_menu';
+  title?: string;
+};
+
+const WorkMenuManager: React.FC<WorkMenuManagerProps> = ({ menuKey = 'work_menu', title = 'Work 메뉴 관리' }) => {
   const [menuItems, setMenuItems] = useState<WorkMenuItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -95,7 +100,7 @@ const WorkMenuManager: React.FC = () => {
 
       if (error) throw error;
 
-      const menu = data.config.work_menu || [];
+      const menu = data.config[menuKey] || [];
       setMenuItems(menu.sort((a: WorkMenuItem, b: WorkMenuItem) => a.order - b.order));
     } catch (e: any) {
       setError(e.message || 'メニュー読み込み失敗');
@@ -146,7 +151,7 @@ const WorkMenuManager: React.FC = () => {
 
       if (error) throw error;
 
-      let menu = data.config.work_menu || [];
+      let menu = data.config[menuKey] || [];
 
       if (editingItem) {
         // 수정
@@ -162,7 +167,7 @@ const WorkMenuManager: React.FC = () => {
       const { error: updateError } = await supabase
         .from('org_settings')
         .update({
-          config: { ...data.config, work_menu: menu },
+          config: { ...data.config, [menuKey]: menu },
           updated_at: new Date().toISOString(),
         })
         .eq('id', data.id);
@@ -170,7 +175,7 @@ const WorkMenuManager: React.FC = () => {
       if (updateError) throw updateError;
 
       // 캐시 강제 삭제 (다음 접근 시 최신 데이터 로드)
-      localStorage.removeItem('work_menu_cache');
+      localStorage.removeItem(`${menuKey}_cache`);
 
       setSuccess(editingItem ? '메뉴가 수정되었습니다' : '메뉴가 추가되었습니다');
       setShowModal(false);
@@ -192,12 +197,12 @@ const WorkMenuManager: React.FC = () => {
 
       if (error) throw error;
 
-      const menu = data.config.work_menu.filter((item: WorkMenuItem) => item.id !== itemId);
+      const menu = (data.config[menuKey] || []).filter((item: WorkMenuItem) => item.id !== itemId);
 
       const { error: updateError } = await supabase
         .from('org_settings')
         .update({
-          config: { ...data.config, work_menu: menu },
+          config: { ...data.config, [menuKey]: menu },
           updated_at: new Date().toISOString(),
         })
         .eq('id', data.id);
@@ -282,7 +287,7 @@ const WorkMenuManager: React.FC = () => {
 
       if (error) throw error;
 
-      let menu = [...data.config.work_menu];
+      let menu = [...(data.config[menuKey] || [])];
 
       // 같은 parent 내에서만 이동 가능하도록 체크
       if (draggedItem.parent_id !== targetItem.parent_id) {
@@ -313,7 +318,7 @@ const WorkMenuManager: React.FC = () => {
       const { error: updateError } = await supabase
         .from('org_settings')
         .update({
-          config: { ...data.config, work_menu: menu },
+          config: { ...data.config, [menuKey]: menu },
           updated_at: new Date().toISOString(),
         })
         .eq('id', data.id);
@@ -565,7 +570,7 @@ const WorkMenuManager: React.FC = () => {
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-xl font-bold">Work 메뉴 관리</h2>
+          <h2 className="text-xl font-bold">{title}</h2>
           <p className="text-sm text-gray-500 mt-1">드래그하여 순서를 변경할 수 있습니다</p>
         </div>
         <button

@@ -38,6 +38,10 @@ const OrganizationManager: React.FC = () => {
     code: '',
   });
 
+  // 드래그 앤 드롭 순서 변경용 상태
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [dropTargetId, setDropTargetId] = useState<string | null>(null);
+
   useEffect(() => {
     fetchConfig();
   }, []);
@@ -165,6 +169,69 @@ const OrganizationManager: React.FC = () => {
 
   const currentItems = config[activeSection];
 
+  // 드래그 앤 드롭으로 순서 변경 (배열 순서 = 표시 순서)
+  const handleDragStart = (e: React.DragEvent, itemId: string) => {
+    setDraggedId(itemId);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e: React.DragEvent, itemId: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (draggedId && draggedId !== itemId) {
+      setDropTargetId(itemId);
+    }
+  };
+
+  const handleDragLeave = () => {
+    setDropTargetId(null);
+  };
+
+  const handleDrop = async (e: React.DragEvent, targetId: string) => {
+    e.preventDefault();
+    setDropTargetId(null);
+    const sourceId = draggedId;
+    setDraggedId(null);
+
+    if (!sourceId || sourceId === targetId) return;
+
+    const items = [...currentItems];
+    const fromIndex = items.findIndex((it) => it.id === sourceId);
+    const toIndex = items.findIndex((it) => it.id === targetId);
+    if (fromIndex === -1 || toIndex === -1) return;
+
+    const [moved] = items.splice(fromIndex, 1);
+    items.splice(toIndex, 0, moved);
+
+    // 낙관적 업데이트로 즉시 반영
+    setConfig((prev) => ({ ...prev, [activeSection]: items }));
+
+    try {
+      const { data, error } = await supabase
+        .from('org_settings')
+        .select('id, config')
+        .single();
+
+      if (error) throw error;
+
+      const { error: updateError } = await supabase
+        .from('org_settings')
+        .update({
+          config: { ...data.config, [activeSection]: items },
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', data.id);
+
+      if (updateError) throw updateError;
+
+      setSuccess('순서가 변경되었습니다');
+      setTimeout(() => setSuccess(''), 2000);
+    } catch (e: any) {
+      setError(e.message || '순서 변경 실패');
+      fetchConfig();
+    }
+  };
+
   if (loading) return <Loading />;
 
   return (
@@ -247,7 +314,8 @@ const OrganizationManager: React.FC = () => {
       {activeTab === 'org' ? (
         <>
           {/* 추가 버튼 */}
-          <div className="flex justify-end">
+          <div className="flex justify-between items-center">
+            <p className="text-xs text-gray-500">행을 드래그하여 순서를 바꿀 수 있습니다</p>
             <button
               onClick={openAddModal}
               className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
@@ -261,6 +329,7 @@ const OrganizationManager: React.FC = () => {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
+                  <th className="w-8 px-2 py-3"></th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">이름</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">코드</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">작업</th>
@@ -268,7 +337,16 @@ const OrganizationManager: React.FC = () => {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {currentItems.map((item) => (
-                  <tr key={item.id}>
+                  <tr
+                    key={item.id}
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, item.id)}
+                    onDragOver={(e) => handleDragOver(e, item.id)}
+                    onDrop={(e) => handleDrop(e, item.id)}
+                    onDragLeave={handleDragLeave}
+                    className={`cursor-move transition ${draggedId === item.id ? 'opacity-30' : ''} ${dropTargetId === item.id ? 'bg-blue-50' : ''}`}
+                  >
+                    <td className="px-2 py-3 text-gray-300 select-none">⠿⠿</td>
                     <td className="px-4 py-3 text-sm font-medium">{item.name}</td>
                     <td className="px-4 py-3 text-sm text-gray-500">{item.code}</td>
                     <td className="px-4 py-3 text-sm space-x-2">
@@ -289,7 +367,7 @@ const OrganizationManager: React.FC = () => {
                 ))}
                 {currentItems.length === 0 && (
                   <tr>
-                    <td colSpan={3} className="px-4 py-8 text-center text-sm text-gray-500">
+                    <td colSpan={4} className="px-4 py-8 text-center text-sm text-gray-500">
                       등록된 {getSectionLabel()}이(가) 없습니다.
                     </td>
                   </tr>
