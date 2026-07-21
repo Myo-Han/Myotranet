@@ -159,9 +159,9 @@ const LeaveRequestPage: React.FC = () => {
             setOpenPicker((prev) => (prev === target ? null : target));
             setPickerQuery('');
           }}
-          className="h-7 w-7 flex items-center justify-center rounded-md border border-gray-300 text-gray-600 hover:bg-gray-50"
+          className="flex items-center gap-1 h-9 px-3 rounded-md border border-gray-300 text-sm text-gray-700 hover:bg-gray-50 active:bg-gray-100"
         >
-          +
+          <span className="text-base leading-none">+</span> 추가
         </button>
       </div>
 
@@ -190,7 +190,7 @@ const LeaveRequestPage: React.FC = () => {
                   key={u.id}
                   type="button"
                   onClick={() => addPerson(target, u)}
-                  className="w-full text-left px-2 py-1.5 rounded hover:bg-white text-sm flex items-center justify-between"
+                  className="w-full text-left px-3 py-2.5 rounded hover:bg-white active:bg-gray-100 text-sm flex items-center justify-between"
                 >
                   <span className="font-medium text-gray-800">{u.name}</span>
                   <span className="text-xs text-gray-400">{getTeamLabel(u)}</span>
