@@ -96,19 +96,39 @@ const StatusBadge: React.FC<{ status: ApprovalStatus | null }> = ({ status }) =>
   );
 };
 
-const SectionCard: React.FC<{ title: string; count: number; children: React.ReactNode }> = ({ title, count, children }) => (
-  <div className="bg-white shadow rounded-lg overflow-hidden">
-    <div className="px-6 py-4 border-b flex items-center justify-between">
-      <h3 className="font-bold text-gray-900">{title}</h3>
-      <span className="text-sm text-gray-400">{count}건</span>
+const SectionCard: React.FC<{ title: string; count: number; children: React.ReactNode }> = ({ title, count, children }) => {
+  const [expanded, setExpanded] = useState(true);
+
+  return (
+    <div className="bg-white shadow rounded-lg overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setExpanded((prev) => !prev)}
+        className="w-full px-6 py-4 border-b flex items-center justify-between text-left"
+      >
+        <h3 className="font-bold text-gray-900">{title}</h3>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-gray-400">{count}건</span>
+          <svg
+            className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </div>
+      </button>
+      {expanded && (
+        count === 0 ? (
+          <p className="text-sm text-gray-400 text-center py-6">신청 내역이 없습니다.</p>
+        ) : (
+          <div className="divide-y">{children}</div>
+        )
+      )}
     </div>
-    {count === 0 ? (
-      <p className="text-sm text-gray-400 text-center py-6">신청 내역이 없습니다.</p>
-    ) : (
-      <div className="divide-y">{children}</div>
-    )}
-  </div>
-);
+  );
+};
 
 const MyApprovals: React.FC = () => {
   const { user } = useAuth();
