@@ -47,11 +47,7 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
-    const { leaveId } = req.body || {};
-    if (!leaveId) {
-      res.status(400).json({ error: 'leaveId가 필요합니다' });
-      return;
-    }
+    const { leaveId, deleteEventId } = req.body || {};
 
     const supabaseAdmin = createClient(
       process.env.VITE_SUPABASE_URL as string,
@@ -64,6 +60,41 @@ export default async function handler(req: any, res: any) {
       return;
     }
     const callerId = (authCheck as any).userId as string;
+
+    // ✅ 휴가 신청 수정/삭제(useLeaveRequest.ts) 시, 이미 승인 완료되어 캘린더에 등록된 일정이
+    // 있었다면 그 일정을 취소해야 한다. Vercel Hobby 플랜의 서버리스 함수 개수 제한(12개) 때문에
+    // 별도 엔드포인트를 새로 만드는 대신 이 함수에 삭제 분기를 추가해서 재사용한다.
+    // 신뢰 경계: leave 행을 다시 조회해 권한을 검증할 수 없는 경우도 있으므로(delete는 leave가
+    // 이미 삭제된 뒤), 로그인 여부만 확인한다. eventId는 delete_leave_request/update_leave_request
+    // RPC가 소유권(본인 또는 관리자)을 이미 검증한 뒤에만 프론트로 내려주는 값이라 실질적 위험은 낮다.
+    if (deleteEventId) {
+      const calendarId = process.env.GOOGLE_CALENDAR_ID_MYOHAN;
+      if (!calendarId) throw new Error('Missing env: GOOGLE_CALENDAR_ID_MYOHAN');
+
+      const sa = getServiceAccountFromEnv();
+      const auth = new google.auth.JWT({
+        email: sa.client_email,
+        key: sa.private_key,
+        scopes: ['https://www.googleapis.com/auth/calendar.events'],
+      });
+      const calendar = google.calendar({ version: 'v3', auth });
+
+      try {
+        await calendar.events.delete({ calendarId, eventId: deleteEventId });
+      } catch (delErr: any) {
+        // 이미 캘린더에서 수동으로 지워졌거나 존재하지 않는 이벤트면(410/404) 성공으로 간주 (멱등 처리)
+        const code = delErr?.code || delErr?.response?.status;
+        if (code !== 410 && code !== 404) throw delErr;
+      }
+
+      res.status(200).json({ ok: true });
+      return;
+    }
+
+    if (!leaveId) {
+      res.status(400).json({ error: 'leaveId가 필요합니다' });
+      return;
+    }
 
     const { data: leave, error: leaveErr } = await supabaseAdmin
       .from('leaves')

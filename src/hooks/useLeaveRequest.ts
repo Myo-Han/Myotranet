@@ -48,13 +48,13 @@ export async function deleteLeaveRequest(leaveId: string): Promise<{ ok: boolean
       try {
         const { data: sessionData } = await supabase.auth.getSession();
         const token = sessionData?.session?.access_token;
-        await fetch('/api/calendar/delete-leave-event', {
+        await fetch('/api/calendar/create-leave-event', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
-          body: JSON.stringify({ eventId: calendarEventId }),
+          body: JSON.stringify({ deleteEventId: calendarEventId }),
         });
       } catch (calErr) {
         console.warn('캘린더 일정 삭제 실패 (휴가 삭제 자체는 완료됨):', calErr);
@@ -440,13 +440,13 @@ export function useLeaveRequest(user: User | null) {
         try {
           const { data: sessionData } = await supabase.auth.getSession();
           const token = sessionData?.session?.access_token;
-          await fetch('/api/calendar/delete-leave-event', {
+          await fetch('/api/calendar/create-leave-event', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
               ...(token ? { Authorization: `Bearer ${token}` } : {}),
             },
-            body: JSON.stringify({ eventId: calendarEventId }),
+            body: JSON.stringify({ deleteEventId: calendarEventId }),
           });
         } catch (calErr) {
           console.warn('캘린더 일정 삭제 실패 (수정 자체는 완료됨):', calErr);
