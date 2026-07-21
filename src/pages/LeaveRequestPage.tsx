@@ -1,7 +1,7 @@
 // 연차 신청 전용 페이지 (기존에는 Leave.tsx 안의 모달이었음).
-// 신청 폼 + "결재라인" 섹션(결재 순서/통보/참조를 신청자가 직접 구성)을 함께 보여준다.
+// 신청 폼 + "결재라인" 섹션(결재 순서/참조를 신청자가 직접 구성)을 가로로 나란히 보여준다.
 // 결재 순서에 추가한 사람들은 기존 자동매칭 결재선 뒤에 "추가로" 붙는 결재 단계가 되고,
-// 통보/참조에 추가한 사람들은 결재와 무관하게 알림(알림벨)만 받는다.
+// 참조에 추가한 사람들은 결재와 무관하게 알림(알림벨)만 받는다.
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -34,10 +34,9 @@ const LeaveRequestPage: React.FC = () => {
   const [departments, setDepartments] = useState<OrgItem[]>([]);
 
   const [approvers, setApprovers] = useState<PersonEntry[]>([]);
-  const [notifyUsers, setNotifyUsers] = useState<PersonEntry[]>([]);
   const [ccUsers, setCcUsers] = useState<PersonEntry[]>([]);
 
-  const [openPicker, setOpenPicker] = useState<'approver' | 'notify' | 'cc' | null>(null);
+  const [openPicker, setOpenPicker] = useState<'approver' | 'cc' | null>(null);
   const [pickerQuery, setPickerQuery] = useState('');
 
   const [draggedKey, setDraggedKey] = useState<string | null>(null);
@@ -75,7 +74,7 @@ const LeaveRequestPage: React.FC = () => {
     return '소속 없음';
   };
 
-  const addPerson = (target: 'approver' | 'notify' | 'cc', u: UserLite) => {
+  const addPerson = (target: 'approver' | 'cc', u: UserLite) => {
     const entry: PersonEntry = {
       key: `${target}_${u.id}_${Date.now()}`,
       userId: u.id,
@@ -84,8 +83,6 @@ const LeaveRequestPage: React.FC = () => {
     };
     if (target === 'approver') {
       setApprovers((prev) => (prev.some((p) => p.userId === u.id) ? prev : [...prev, entry]));
-    } else if (target === 'notify') {
-      setNotifyUsers((prev) => (prev.some((p) => p.userId === u.id) ? prev : [...prev, entry]));
     } else {
       setCcUsers((prev) => (prev.some((p) => p.userId === u.id) ? prev : [...prev, entry]));
     }
@@ -93,9 +90,8 @@ const LeaveRequestPage: React.FC = () => {
     setPickerQuery('');
   };
 
-  const removePerson = (target: 'approver' | 'notify' | 'cc', key: string) => {
+  const removePerson = (target: 'approver' | 'cc', key: string) => {
     if (target === 'approver') setApprovers((prev) => prev.filter((p) => p.key !== key));
-    else if (target === 'notify') setNotifyUsers((prev) => prev.filter((p) => p.key !== key));
     else setCcUsers((prev) => prev.filter((p) => p.key !== key));
   };
 
@@ -125,22 +121,19 @@ const LeaveRequestPage: React.FC = () => {
   const filteredPickerUsers = useMemo(() => {
     const q = pickerQuery.trim().toLowerCase();
     const excludeIds = new Set(
-      openPicker === 'approver' ? approvers.map((p) => p.userId)
-        : openPicker === 'notify' ? notifyUsers.map((p) => p.userId)
-          : ccUsers.map((p) => p.userId)
+      openPicker === 'approver' ? approvers.map((p) => p.userId) : ccUsers.map((p) => p.userId)
     );
     return users
       .filter((u) => u.id !== user?.id)
       .filter((u) => !excludeIds.has(u.id))
       .filter((u) => !q || (u.name || '').toLowerCase().includes(q))
       .slice(0, 30);
-  }, [users, pickerQuery, openPicker, approvers, notifyUsers, ccUsers, user?.id]);
+  }, [users, pickerQuery, openPicker, approvers, ccUsers, user?.id]);
 
   const handleSubmit = async () => {
     setSubmitError('');
     const ok = await lr.submit({
       approverIds: approvers.map((p) => p.userId),
-      notifyIds: notifyUsers.map((p) => p.userId),
       ccIds: ccUsers.map((p) => p.userId),
     });
     if (ok) {
@@ -151,7 +144,7 @@ const LeaveRequestPage: React.FC = () => {
   };
 
   const PersonCard: React.FC<{
-    target: 'approver' | 'notify' | 'cc';
+    target: 'approver' | 'cc';
     title: string;
     entries: PersonEntry[];
     draggable?: boolean;
@@ -243,7 +236,7 @@ const LeaveRequestPage: React.FC = () => {
   );
 
   return (
-    <div className="max-w-3xl mx-auto p-6 space-y-6">
+    <div className="max-w-6xl mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900">연차 신청</h1>
         <button
@@ -257,115 +250,118 @@ const LeaveRequestPage: React.FC = () => {
 
       {(submitError || lr.error) && <ErrorMessage message={submitError || lr.error} />}
 
-      <div className="bg-white shadow rounded-lg p-6 space-y-4">
-        {lr.balancePoolLabel && (
-          <div className="text-sm bg-blue-50 border border-blue-100 rounded-md px-3 py-2 text-blue-800">
-            현재 {lr.balancePoolLabel} 잔여일수: <span className="font-semibold">{lr.availableBalance}일</span>
-          </div>
-        )}
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">휴가 유형</label>
-          {lr.policies.length === 0 ? (
-            <p className="text-sm text-red-600">사용 가능한 휴가 정책이 없습니다. 관리자에게 문의하세요.</p>
-          ) : (
-            <select
-              value={lr.form.leaveType}
-              onChange={(e) => lr.setForm({ ...lr.form, leaveType: e.target.value })}
-              className="w-full border border-gray-300 rounded-md px-3 py-2"
-            >
-              {lr.policies.map((policy) => (
-                <option key={policy.policy_code} value={policy.policy_code}>
-                  {policy.policy_name}
-                </option>
-              ))}
-            </select>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+        <div className="bg-white shadow rounded-lg p-6 space-y-4">
+          {lr.balancePoolLabel && (
+            <div className="text-sm bg-blue-50 border border-blue-100 rounded-md px-3 py-2 text-blue-800">
+              현재 {lr.balancePoolLabel} 잔여일수: <span className="font-semibold">{lr.availableBalance}일</span>
+            </div>
           )}
-        </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            {lr.isAnnual ? '시작일' : '사용일'}
-          </label>
-          <input
-            type="date"
-            value={lr.form.startDate}
-            onChange={(e) => lr.setForm({ ...lr.form, startDate: e.target.value })}
-            min={todayKey()}
-            className="w-full border border-gray-300 rounded-md px-3 py-2"
-          />
-        </div>
-
-        {lr.isAnnual && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">종료일</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">휴가 유형</label>
+            {lr.policies.length === 0 ? (
+              <p className="text-sm text-red-600">사용 가능한 휴가 정책이 없습니다. 관리자에게 문의하세요.</p>
+            ) : (
+              <select
+                value={lr.form.leaveType}
+                onChange={(e) => lr.setForm({ ...lr.form, leaveType: e.target.value })}
+                className="w-full border border-gray-300 rounded-md px-3 py-2"
+              >
+                {lr.policies.map((policy) => (
+                  <option key={policy.policy_code} value={policy.policy_code}>
+                    {policy.policy_name}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              {lr.isAnnual ? '시작일' : '사용일'}
+            </label>
             <input
               type="date"
-              value={lr.form.endDate}
-              onChange={(e) => lr.setForm({ ...lr.form, endDate: e.target.value })}
-              min={lr.form.startDate || todayKey()}
+              value={lr.form.startDate}
+              onChange={(e) => lr.setForm({ ...lr.form, startDate: e.target.value })}
+              min={todayKey()}
               className="w-full border border-gray-300 rounded-md px-3 py-2"
             />
           </div>
-        )}
 
-        {lr.isHalfDay && (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">반차 구분</label>
-            <select
-              value={lr.form.halfDayPeriod}
-              onChange={(e) => lr.setForm({ ...lr.form, halfDayPeriod: e.target.value as 'am' | 'pm' })}
-              className="w-full border border-gray-300 rounded-md px-3 py-2"
-            >
-              <option value="am">오전 반차</option>
-              <option value="pm">오후 반차</option>
-            </select>
-          </div>
-        )}
+          {lr.isAnnual && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">종료일</label>
+              <input
+                type="date"
+                value={lr.form.endDate}
+                onChange={(e) => lr.setForm({ ...lr.form, endDate: e.target.value })}
+                min={lr.form.startDate || todayKey()}
+                className="w-full border border-gray-300 rounded-md px-3 py-2"
+              />
+            </div>
+          )}
 
-        {lr.isQuarterDay && (
+          {lr.isHalfDay && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">반차 구분</label>
+              <select
+                value={lr.form.halfDayPeriod}
+                onChange={(e) => lr.setForm({ ...lr.form, halfDayPeriod: e.target.value as 'am' | 'pm' })}
+                className="w-full border border-gray-300 rounded-md px-3 py-2"
+              >
+                <option value="am">오전 반차</option>
+                <option value="pm">오후 반차</option>
+              </select>
+            </div>
+          )}
+
+          {lr.isQuarterDay && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">시작 시각</label>
+              <input
+                type="time"
+                value={lr.form.quarterStartTime}
+                onChange={(e) => lr.setForm({ ...lr.form, quarterStartTime: e.target.value })}
+                className="w-full border border-gray-300 rounded-md px-3 py-2"
+              />
+            </div>
+          )}
+
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">시작 시각</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">일수</label>
             <input
-              type="time"
-              value={lr.form.quarterStartTime}
-              onChange={(e) => lr.setForm({ ...lr.form, quarterStartTime: e.target.value })}
-              className="w-full border border-gray-300 rounded-md px-3 py-2"
+              type="number"
+              value={lr.daysRequested}
+              readOnly
+              className="w-full border border-gray-300 rounded-md px-3 py-2 bg-gray-50"
             />
           </div>
-        )}
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">일수</label>
-          <input
-            type="number"
-            value={lr.daysRequested}
-            readOnly
-            className="w-full border border-gray-300 rounded-md px-3 py-2 bg-gray-50"
-          />
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">사유</label>
+            <textarea
+              value={lr.form.reason}
+              onChange={(e) => lr.setForm({ ...lr.form, reason: e.target.value })}
+              rows={3}
+              className="w-full border border-gray-300 rounded-md px-3 py-2"
+              placeholder="휴가 사유를 입력하세요"
+            />
+          </div>
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">사유</label>
-          <textarea
-            value={lr.form.reason}
-            onChange={(e) => lr.setForm({ ...lr.form, reason: e.target.value })}
-            rows={3}
-            className="w-full border border-gray-300 rounded-md px-3 py-2"
-            placeholder="휴가 사유를 입력하세요"
-          />
+        <div className="space-y-4">
+          <div>
+            <h2 className="text-lg font-bold text-gray-900">결재라인</h2>
+            <p className="text-xs text-gray-500 mt-1">
+              여기서 추가한 사람은 소속 기준으로 자동 매칭되는 결재선에 추가로 덧붙습니다. 비워두면 기존 자동매칭 결재선만 적용됩니다.
+            </p>
+          </div>
+
+          <PersonCard target="approver" title="결재 순서" entries={approvers} draggable stepLabel />
+          <PersonCard target="cc" title="참조" entries={ccUsers} />
         </div>
-      </div>
-
-      <div className="space-y-4">
-        <h2 className="text-lg font-bold text-gray-900">결재라인</h2>
-        <p className="text-xs text-gray-500 -mt-2">
-          여기서 추가한 사람은 소속 기준으로 자동 매칭되는 결재선에 추가로 덧붙습니다. 비워두면 기존 자동매칭 결재선만 적용됩니다.
-        </p>
-
-        <PersonCard target="approver" title="결재 순서" entries={approvers} draggable stepLabel />
-        <PersonCard target="notify" title="통보" entries={notifyUsers} />
-        <PersonCard target="cc" title="참조" entries={ccUsers} />
       </div>
 
       <div className="flex gap-2 pb-6">
