@@ -9,6 +9,7 @@ import Leave from './pages/Leave';
 import Admin from './pages/Admin';
 import Works from './pages/Works';
 import Board from './pages/Board';
+import Members from './pages/Members';
 
 function App() {
   return (
@@ -29,6 +30,7 @@ function App() {
             <Route path="board" element={<Board />} />
             <Route path="attendance" element={<Attendance />} />
             <Route path="leave" element={<Leave />} />
+            <Route path="members" element={<Members />} />
             <Route
               path="admin/*"
               element={
