@@ -2,6 +2,13 @@
 // 신청 폼 + "결재라인" 섹션(결재 순서/참조를 신청자가 직접 구성)을 가로로 나란히 보여준다.
 // 결재 순서에 추가한 사람들은 기존 자동매칭 결재선 뒤에 "추가로" 붙는 결재 단계가 되고,
 // 참조에 추가한 사람들은 결재와 무관하게 알림(알림벨)만 받는다.
+//
+// 주의: PersonCard는 반드시 이 파일의 모듈 스코프(컴포넌트 함수 밖)에 정의해야 한다.
+// 예전에는 LeaveRequestPage 함수 안에서 정의했는데, 그러면 부모가 리렌더될 때마다
+// PersonCard가 "새로운 컴포넌트 타입"으로 취급되어 React가 매번 그 서브트리 전체를
+// 언마운트 후 재마운트한다. 사용자가 "+ 추가" 버튼을 눌러도 mousedown과 mouseup 사이에
+// 리렌더가 끼면 클릭 이벤트 자체가 유실되어 "버튼이 눌리는 것 같은데 아무 반응이 없는"
+// 증상이 나타난다.
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -24,6 +31,137 @@ type PersonEntry = {
   teamLabel: string;
 };
 
+type PickerTarget = 'approver' | 'cc';
+
+const PersonCard: React.FC<{
+  target: PickerTarget;
+  title: string;
+  entries: PersonEntry[];
+  draggable?: boolean;
+  stepLabel?: boolean;
+  openPicker: PickerTarget | null;
+  pickerQuery: string;
+  filteredPickerUsers: UserLite[];
+  draggedKey: string | null;
+  dropTargetKey: string | null;
+  getTeamLabel: (u: UserLite) => string;
+  onTogglePicker: (target: PickerTarget) => void;
+  onQueryChange: (q: string) => void;
+  onAddPerson: (target: PickerTarget, u: UserLite) => void;
+  onRemovePerson: (target: PickerTarget, key: string) => void;
+  onDragStart: (key: string) => void;
+  onDragOver: (e: React.DragEvent, key: string) => void;
+  onDragLeave: () => void;
+  onDrop: (key: string) => void;
+}> = ({
+  target,
+  title,
+  entries,
+  draggable,
+  stepLabel,
+  openPicker,
+  pickerQuery,
+  filteredPickerUsers,
+  draggedKey,
+  dropTargetKey,
+  getTeamLabel,
+  onTogglePicker,
+  onQueryChange,
+  onAddPerson,
+  onRemovePerson,
+  onDragStart,
+  onDragOver,
+  onDragLeave,
+  onDrop,
+}) => (
+  <div className="bg-white rounded-lg border border-gray-200 p-5">
+    <div className="flex items-center justify-between mb-3">
+      <h3 className="font-semibold text-gray-900">{title}</h3>
+      <button
+        type="button"
+        onClick={() => onTogglePicker(target)}
+        className="flex items-center gap-1 h-9 px-3 rounded-md border border-gray-300 text-sm text-gray-700 hover:bg-gray-50 active:bg-gray-100"
+      >
+        <span className="text-base leading-none">+</span> 추가
+      </button>
+    </div>
+
+    {openPicker === target && (
+      <div className="mb-3 border border-gray-200 rounded-md p-2 bg-gray-50">
+        <input
+          type="text"
+          autoFocus
+          value={pickerQuery}
+          onChange={(e) => onQueryChange(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && filteredPickerUsers.length > 0) {
+              e.preventDefault();
+              onAddPerson(target, filteredPickerUsers[0]);
+            }
+          }}
+          placeholder="이름으로 검색"
+          className="w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm mb-2"
+        />
+        <div className="max-h-48 overflow-y-auto space-y-1">
+          {filteredPickerUsers.length === 0 ? (
+            <p className="text-xs text-gray-400 px-1 py-2">검색 결과가 없습니다.</p>
+          ) : (
+            filteredPickerUsers.map((u) => (
+              <button
+                key={u.id}
+                type="button"
+                onClick={() => onAddPerson(target, u)}
+                className="w-full text-left px-3 py-2.5 rounded hover:bg-white active:bg-gray-100 text-sm flex items-center justify-between"
+              >
+                <span className="font-medium text-gray-800">{u.name}</span>
+                <span className="text-xs text-gray-400">{getTeamLabel(u)}</span>
+              </button>
+            ))
+          )}
+        </div>
+      </div>
+    )}
+
+    {entries.length === 0 ? (
+      <p className="text-sm text-gray-400 py-3">추가된 사람이 없습니다.</p>
+    ) : (
+      <div className="divide-y divide-gray-100">
+        {entries.map((p, idx) => (
+          <div
+            key={p.key}
+            draggable={draggable}
+            onDragStart={() => draggable && onDragStart(p.key)}
+            onDragOver={(e) => draggable && onDragOver(e, p.key)}
+            onDragLeave={() => draggable && onDragLeave()}
+            onDrop={() => draggable && onDrop(p.key)}
+            className={`flex items-center justify-between py-2.5 ${draggable ? 'cursor-move' : ''} ${draggedKey === p.key ? 'opacity-30' : ''
+              } ${dropTargetKey === p.key ? 'bg-blue-50' : ''}`}
+          >
+            <div className="flex items-center gap-2">
+              {draggable && <span className="text-gray-300 select-none">⠿⠿</span>}
+              <div>
+                {stepLabel && (
+                  <div className="text-xs font-medium text-blue-600">{idx + 1}. 결재</div>
+                )}
+                <div className="text-sm text-gray-800">
+                  {p.name} <span className="text-gray-400">/ {p.teamLabel}</span>
+                </div>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => onRemovePerson(target, p.key)}
+              className="text-gray-400 hover:text-red-600 px-2"
+            >
+              삭제
+            </button>
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+);
+
 const LeaveRequestPage: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -36,7 +174,7 @@ const LeaveRequestPage: React.FC = () => {
   const [approvers, setApprovers] = useState<PersonEntry[]>([]);
   const [ccUsers, setCcUsers] = useState<PersonEntry[]>([]);
 
-  const [openPicker, setOpenPicker] = useState<'approver' | 'cc' | null>(null);
+  const [openPicker, setOpenPicker] = useState<PickerTarget | null>(null);
   const [pickerQuery, setPickerQuery] = useState('');
 
   const [draggedKey, setDraggedKey] = useState<string | null>(null);
@@ -74,7 +212,7 @@ const LeaveRequestPage: React.FC = () => {
     return '소속 없음';
   };
 
-  const addPerson = (target: 'approver' | 'cc', u: UserLite) => {
+  const addPerson = (target: PickerTarget, u: UserLite) => {
     const entry: PersonEntry = {
       key: `${target}_${u.id}_${Date.now()}`,
       userId: u.id,
@@ -90,9 +228,14 @@ const LeaveRequestPage: React.FC = () => {
     setPickerQuery('');
   };
 
-  const removePerson = (target: 'approver' | 'cc', key: string) => {
+  const removePerson = (target: PickerTarget, key: string) => {
     if (target === 'approver') setApprovers((prev) => prev.filter((p) => p.key !== key));
     else setCcUsers((prev) => prev.filter((p) => p.key !== key));
+  };
+
+  const togglePicker = (target: PickerTarget) => {
+    setOpenPicker((prev) => (prev === target ? null : target));
+    setPickerQuery('');
   };
 
   const handleDragStart = (key: string) => setDraggedKey(key);
@@ -142,104 +285,6 @@ const LeaveRequestPage: React.FC = () => {
       setSubmitError(lr.error || '신청에 실패했습니다');
     }
   };
-
-  const PersonCard: React.FC<{
-    target: 'approver' | 'cc';
-    title: string;
-    entries: PersonEntry[];
-    draggable?: boolean;
-    stepLabel?: boolean;
-  }> = ({ target, title, entries, draggable, stepLabel }) => (
-    <div className="bg-white rounded-lg border border-gray-200 p-5">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="font-semibold text-gray-900">{title}</h3>
-        <button
-          type="button"
-          onClick={() => {
-            setOpenPicker((prev) => (prev === target ? null : target));
-            setPickerQuery('');
-          }}
-          className="flex items-center gap-1 h-9 px-3 rounded-md border border-gray-300 text-sm text-gray-700 hover:bg-gray-50 active:bg-gray-100"
-        >
-          <span className="text-base leading-none">+</span> 추가
-        </button>
-      </div>
-
-      {openPicker === target && (
-        <div className="mb-3 border border-gray-200 rounded-md p-2 bg-gray-50">
-          <input
-            type="text"
-            autoFocus
-            value={pickerQuery}
-            onChange={(e) => setPickerQuery(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && filteredPickerUsers.length > 0) {
-                e.preventDefault();
-                addPerson(target, filteredPickerUsers[0]);
-              }
-            }}
-            placeholder="이름으로 검색"
-            className="w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm mb-2"
-          />
-          <div className="max-h-48 overflow-y-auto space-y-1">
-            {filteredPickerUsers.length === 0 ? (
-              <p className="text-xs text-gray-400 px-1 py-2">검색 결과가 없습니다.</p>
-            ) : (
-              filteredPickerUsers.map((u) => (
-                <button
-                  key={u.id}
-                  type="button"
-                  onClick={() => addPerson(target, u)}
-                  className="w-full text-left px-3 py-2.5 rounded hover:bg-white active:bg-gray-100 text-sm flex items-center justify-between"
-                >
-                  <span className="font-medium text-gray-800">{u.name}</span>
-                  <span className="text-xs text-gray-400">{getTeamLabel(u)}</span>
-                </button>
-              ))
-            )}
-          </div>
-        </div>
-      )}
-
-      {entries.length === 0 ? (
-        <p className="text-sm text-gray-400 py-3">추가된 사람이 없습니다.</p>
-      ) : (
-        <div className="divide-y divide-gray-100">
-          {entries.map((p, idx) => (
-            <div
-              key={p.key}
-              draggable={draggable}
-              onDragStart={() => draggable && handleDragStart(p.key)}
-              onDragOver={(e) => draggable && handleDragOver(e, p.key)}
-              onDragLeave={() => draggable && handleDragLeave()}
-              onDrop={() => draggable && handleDrop(p.key)}
-              className={`flex items-center justify-between py-2.5 ${draggable ? 'cursor-move' : ''} ${draggedKey === p.key ? 'opacity-30' : ''
-                } ${dropTargetKey === p.key ? 'bg-blue-50' : ''}`}
-            >
-              <div className="flex items-center gap-2">
-                {draggable && <span className="text-gray-300 select-none">⠿⠿</span>}
-                <div>
-                  {stepLabel && (
-                    <div className="text-xs font-medium text-blue-600">{idx + 1}. 결재</div>
-                  )}
-                  <div className="text-sm text-gray-800">
-                    {p.name} <span className="text-gray-400">/ {p.teamLabel}</span>
-                  </div>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => removePerson(target, p.key)}
-                className="text-gray-400 hover:text-red-600 px-2"
-              >
-                삭제
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
 
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-6">
@@ -365,8 +410,46 @@ const LeaveRequestPage: React.FC = () => {
             </p>
           </div>
 
-          <PersonCard target="approver" title="결재 라인" entries={approvers} draggable stepLabel />
-          <PersonCard target="cc" title="참조" entries={ccUsers} />
+          <PersonCard
+            target="approver"
+            title="결재 라인"
+            entries={approvers}
+            draggable
+            stepLabel
+            openPicker={openPicker}
+            pickerQuery={pickerQuery}
+            filteredPickerUsers={filteredPickerUsers}
+            draggedKey={draggedKey}
+            dropTargetKey={dropTargetKey}
+            getTeamLabel={getTeamLabel}
+            onTogglePicker={togglePicker}
+            onQueryChange={setPickerQuery}
+            onAddPerson={addPerson}
+            onRemovePerson={removePerson}
+            onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+          />
+          <PersonCard
+            target="cc"
+            title="참조"
+            entries={ccUsers}
+            openPicker={openPicker}
+            pickerQuery={pickerQuery}
+            filteredPickerUsers={filteredPickerUsers}
+            draggedKey={draggedKey}
+            dropTargetKey={dropTargetKey}
+            getTeamLabel={getTeamLabel}
+            onTogglePicker={togglePicker}
+            onQueryChange={setPickerQuery}
+            onAddPerson={addPerson}
+            onRemovePerson={removePerson}
+            onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+          />
         </div>
       </div>
 
