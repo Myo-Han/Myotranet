@@ -100,14 +100,12 @@ type MonthlyAttendanceTableProps = {
   onRequestRevision?: (record: AttendanceRow) => void;
   revisionStatusByAttendanceId?: Record<string, any>;
   onLeaveRequestClick?: () => void;
-  onOvertimeRequestClick?: () => void;
 };
 
 const MonthlyAttendanceTable: React.FC<MonthlyAttendanceTableProps> = ({
   onRequestRevision,
   revisionStatusByAttendanceId = {},
   onLeaveRequestClick,
-  onOvertimeRequestClick,
 }) => {
   const { user } = useAuth();
   const [month, setMonth] = useState(() => {
@@ -217,26 +215,15 @@ const MonthlyAttendanceTable: React.FC<MonthlyAttendanceTableProps> = ({
           <div className="font-bold">{month.replace('-', '년 ')}월</div>
           <button type="button" onClick={() => shiftMonth(1)} className="px-2 py-1 rounded hover:bg-gray-100">›</button>
         </div>
-        {(onLeaveRequestClick || onOvertimeRequestClick) ? (
+        {onLeaveRequestClick ? (
           <div className="flex items-center gap-2">
-            {onLeaveRequestClick && (
-              <button
-                type="button"
-                onClick={onLeaveRequestClick}
-                className="px-3 py-1.5 text-xs font-medium rounded bg-indigo-600 text-white hover:bg-indigo-700"
-              >
-                연차신청
-              </button>
-            )}
-            {onOvertimeRequestClick && (
-              <button
-                type="button"
-                onClick={onOvertimeRequestClick}
-                className="px-3 py-1.5 text-xs font-medium rounded bg-amber-600 text-white hover:bg-amber-700"
-              >
-                연장근무 신청
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={onLeaveRequestClick}
+              className="px-3 py-1.5 text-xs font-medium rounded bg-indigo-600 text-white hover:bg-indigo-700"
+            >
+              근태신청
+            </button>
           </div>
         ) : (
           <div className="w-24 hidden sm:block" />

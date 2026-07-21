@@ -56,16 +56,6 @@ const Attendance: React.FC = () => {
     reason: '',
   });
 
-  // ✅ 연장근무 사전 신청 (근태관리+휴가관리 탭 통합에 따라 근태관리 상단에서 바로 신청)
-  const [showOvertimeModal, setShowOvertimeModal] = useState(false);
-  const [overtimeSubmitting, setOvertimeSubmitting] = useState(false);
-  const [overtimeForm, setOvertimeForm] = useState({
-    workDate: getTodayDate(),
-    startTime: '18:00',
-    endTime: '20:00',
-    reason: '',
-  });
-
   // 오늘 상태/휴가/업무중지 모달용 상태
   const [todayStatus, setTodayStatus] = useState<string | null>(null);
   const [isTodayOnLeave, setIsTodayOnLeave] = useState(false);
@@ -575,58 +565,6 @@ const Attendance: React.FC = () => {
     }
   };
 
-  // ✅ 연장근무 신청 제출: 날짜+시작/종료 시각을 하나의 로컬 datetime 문자열로 합친 뒤
-  // localDateTimeInputToIso로 변환해서 저장한다 (출퇴근 수정요청과 동일하게, 타임존 버그 재발 방지).
-  // 종료 시각이 시작 시각보다 이르거나 같으면 자정을 넘긴 근무로 보고 종료일을 다음날로 계산한다.
-  const submitOvertimeRequest = async () => {
-    if (!user) return;
-    if (!overtimeForm.workDate || !overtimeForm.startTime || !overtimeForm.endTime) {
-      setError('날짜와 시간을 모두 입력해주세요');
-      return;
-    }
-    if (!overtimeForm.reason.trim()) {
-      setError('사유를 입력해주세요');
-      return;
-    }
-
-    setOvertimeSubmitting(true);
-    setError('');
-    try {
-      let endDateStr = overtimeForm.workDate;
-      if (overtimeForm.endTime <= overtimeForm.startTime) {
-        endDateStr = shiftDate(overtimeForm.workDate, 1);
-      }
-
-      const startIso = localDateTimeInputToIso(`${overtimeForm.workDate}T${overtimeForm.startTime}`);
-      const endIso = localDateTimeInputToIso(`${endDateStr}T${overtimeForm.endTime}`);
-
-      if (!startIso || !endIso) {
-        setError('시간을 올바르게 입력해주세요');
-        return;
-      }
-
-      const { error: insertError } = await supabase.from('overtime_requests').insert({
-        user_id: user.id,
-        work_date: overtimeForm.workDate,
-        requested_start_at: startIso,
-        requested_end_at: endIso,
-        reason: overtimeForm.reason,
-        status: 'pending',
-      });
-
-      if (insertError) throw insertError;
-
-      setSuccess('연장근무 신청이 제출되었습니다');
-      setShowOvertimeModal(false);
-      setOvertimeForm({ workDate: getTodayDate(), startTime: '18:00', endTime: '20:00', reason: '' });
-      setTimeout(() => setSuccess(''), 3000);
-    } catch (err: any) {
-      setError(err.message || '연장근무 신청 실패');
-    } finally {
-      setOvertimeSubmitting(false);
-    }
-  };
-
   const formatTime = (dateString: string | null) => {
     if (!dateString) return '-';
     const date = new Date(dateString);
@@ -1099,7 +1037,6 @@ const Attendance: React.FC = () => {
         onRequestRevision={(record) => openRevisionModal(record as any)}
         revisionStatusByAttendanceId={revisionRequests}
         onLeaveRequestClick={() => navigate('/leave')}
-        onOvertimeRequestClick={() => setShowOvertimeModal(true)}
       />
 
       {/* 업무중지 사유 선택 모달 */}
@@ -1215,73 +1152,6 @@ const Attendance: React.FC = () => {
         </div>
       )}
 
-      {/* 연장근무 신청 모달 */}
-      {showOvertimeModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <h3 className="text-xl font-semibold mb-4">연장근무 신청</h3>
-            <p className="text-xs text-gray-500 mb-4">
-              사전 승인된 시간만 근태표의 "연장근무"에 반영됩니다. 승인된 시간보다 일찍 퇴근하면 실제 퇴근시각까지만 반영돼요.
-            </p>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">근무 일자</label>
-                <input
-                  type="date"
-                  value={overtimeForm.workDate}
-                  onChange={(e) => setOvertimeForm({ ...overtimeForm, workDate: e.target.value })}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">시작 시각</label>
-                  <input
-                    type="time"
-                    value={overtimeForm.startTime}
-                    onChange={(e) => setOvertimeForm({ ...overtimeForm, startTime: e.target.value })}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">종료 시각</label>
-                  <input
-                    type="time"
-                    value={overtimeForm.endTime}
-                    onChange={(e) => setOvertimeForm({ ...overtimeForm, endTime: e.target.value })}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">사유</label>
-                <textarea
-                  value={overtimeForm.reason}
-                  onChange={(e) => setOvertimeForm({ ...overtimeForm, reason: e.target.value })}
-                  rows={3}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2"
-                  placeholder="연장근무 사유를 입력하세요"
-                />
-              </div>
-            </div>
-            <div className="mt-6 flex space-x-2">
-              <button
-                onClick={submitOvertimeRequest}
-                disabled={overtimeSubmitting}
-                className="flex-1 px-4 py-2 bg-amber-600 text-white rounded hover:bg-amber-700 disabled:opacity-50"
-              >
-                {overtimeSubmitting ? '제출 중...' : '신청'}
-              </button>
-              <button
-                onClick={() => setShowOvertimeModal(false)}
-                className="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
-              >
-                취소
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
