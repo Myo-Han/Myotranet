@@ -460,28 +460,50 @@ const Leave: React.FC = () => {
       {error && <ErrorMessage message={error} />}
       {success && <SuccessMessage message={success} />}
 
-      {/* 카테고리 탭 */}
-      <div className="flex gap-2 border-b border-gray-200">
-        <button
-          type="button"
-          onClick={() => setCategory('annual')}
-          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition ${category === 'annual'
-            ? 'border-blue-600 text-blue-600'
-            : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
-        >
-          연차
-        </button>
-        <button
-          type="button"
-          onClick={() => setCategory('overtime')}
-          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition ${category === 'overtime'
-            ? 'border-blue-600 text-blue-600'
-            : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
-        >
-          연장근무
-        </button>
+      {/* 카테고리 탭 + 신청 버튼(오른쪽 상단) */}
+      <div className="flex items-center justify-between border-b border-gray-200">
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setCategory('annual')}
+            className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition ${category === 'annual'
+              ? 'border-blue-600 text-blue-600'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+          >
+            연차
+          </button>
+          <button
+            type="button"
+            onClick={() => setCategory('overtime')}
+            className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition ${category === 'overtime'
+              ? 'border-blue-600 text-blue-600'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+          >
+            연장근무
+          </button>
+        </div>
+
+        <div className="pb-2">
+          {category === 'annual' ? (
+            <button
+              type="button"
+              onClick={() => setShowModal(true)}
+              className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700"
+            >
+              휴가 신청
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowOvertimeModal(true)}
+              className="px-4 py-2 bg-amber-600 text-white text-sm rounded-lg hover:bg-amber-700"
+            >
+              연장근무 신청
+            </button>
+          )}
+        </div>
       </div>
 
       {category === 'annual' && (
@@ -743,15 +765,6 @@ const Leave: React.FC = () => {
               </table>
             </div>
           </div>
-
-          <div className="flex justify-end">
-            <button
-              onClick={() => setShowModal(true)}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-            >
-              휴가 신청
-            </button>
-          </div>
         </>
       )}
 
@@ -854,15 +867,6 @@ const Leave: React.FC = () => {
                 </tbody>
               </table>
             </div>
-          </div>
-
-          <div className="flex justify-end">
-            <button
-              onClick={() => setShowOvertimeModal(true)}
-              className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700"
-            >
-              연장근무 신청
-            </button>
           </div>
         </>
       )}
