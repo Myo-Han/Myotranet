@@ -62,6 +62,11 @@ const LeavePolicyManager: React.FC<LeavePolicyManagerProps> = ({ canEdit = true 
   const [showModal, setShowModal] = useState(false);
   const [editingPolicy, setEditingPolicy] = useState<LeavePolicy | null>(null);
 
+  // ✅ 정책 이름 드롭다운 옵션 (org_settings.config.leave_policy_names, 사용자가 직접 추가 가능)
+  const [policyNameOptions, setPolicyNameOptions] = useState<string[]>([]);
+  const [showAddName, setShowAddName] = useState(false);
+  const [newPolicyName, setNewPolicyName] = useState('');
+
   // 폼 상태
   const [form, setForm] = useState<Partial<LeavePolicy>>({
     policy_name: '',
@@ -93,7 +98,54 @@ const LeavePolicyManager: React.FC<LeavePolicyManagerProps> = ({ canEdit = true 
 
   useEffect(() => {
     fetchPolicies();
+    fetchPolicyNameOptions();
   }, []);
+
+  const fetchPolicyNameOptions = async () => {
+    try {
+      const { data, error } = await supabase.from('org_settings').select('config').single();
+      if (error) throw error;
+      setPolicyNameOptions((data?.config?.leave_policy_names as string[]) || []);
+    } catch {
+      // 옵션 로딩 실패는 치명적이지 않음 (드롭다운이 비어있는 정도로 처리)
+    }
+  };
+
+  const handleAddPolicyName = async () => {
+    const name = newPolicyName.trim();
+    if (!name) return;
+
+    if (policyNameOptions.includes(name)) {
+      setForm((prev) => ({ ...prev, policy_name: name }));
+      setShowAddName(false);
+      setNewPolicyName('');
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase.from('org_settings').select('id, config').single();
+      if (error) throw error;
+
+      const next = [...((data.config.leave_policy_names as string[]) || []), name];
+
+      const { error: updErr } = await supabase
+        .from('org_settings')
+        .update({
+          config: { ...data.config, leave_policy_names: next },
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', data.id);
+
+      if (updErr) throw updErr;
+
+      setPolicyNameOptions(next);
+      setForm((prev) => ({ ...prev, policy_name: name }));
+      setShowAddName(false);
+      setNewPolicyName('');
+    } catch (err: any) {
+      setError(err.message || '정책 이름 추가 실패');
+    }
+  };
 
   const fetchPolicies = async () => {
     setLoading(true);
@@ -408,13 +460,62 @@ const LeavePolicyManager: React.FC<LeavePolicyManagerProps> = ({ canEdit = true 
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       정책 이름 *
                     </label>
-                    <input
-                      type="text"
-                      value={form.policy_name}
-                      onChange={(e) => setForm({ ...form, policy_name: e.target.value })}
-                      placeholder="예: 월차, 연차, 리프레시 휴가"
-                      className="w-full border border-gray-300 rounded-md px-3 py-2"
-                    />
+                    {!showAddName ? (
+                      <div className="flex gap-2">
+                        <select
+                          value={form.policy_name}
+                          onChange={(e) => setForm({ ...form, policy_name: e.target.value })}
+                          className="flex-1 border border-gray-300 rounded-md px-3 py-2"
+                        >
+                          <option value="">선택하세요</option>
+                          {Array.from(
+                            new Set([
+                              ...policyNameOptions,
+                              ...(form.policy_name ? [form.policy_name] : []),
+                            ])
+                          ).map((name) => (
+                            <option key={name} value={name}>
+                              {name}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          onClick={() => setShowAddName(true)}
+                          className="px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-600 hover:bg-gray-50 whitespace-nowrap"
+                        >
+                          + 새 이름
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={newPolicyName}
+                          onChange={(e) => setNewPolicyName(e.target.value)}
+                          placeholder="새 정책 이름 입력"
+                          className="flex-1 border border-gray-300 rounded-md px-3 py-2"
+                          autoFocus
+                        />
+                        <button
+                          type="button"
+                          onClick={handleAddPolicyName}
+                          className="px-3 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 whitespace-nowrap"
+                        >
+                          추가
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowAddName(false);
+                            setNewPolicyName('');
+                          }}
+                          className="px-3 py-2 bg-gray-200 text-gray-700 rounded-md text-sm hover:bg-gray-300 whitespace-nowrap"
+                        >
+                          취소
+                        </button>
+                      </div>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
