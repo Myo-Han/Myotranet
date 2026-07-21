@@ -131,7 +131,11 @@ export function useLeaveRequest(user: User | null) {
     return true;
   }, [user, form, isAnnual, isQuarterDay, daysRequested, balancePool, availableBalance]);
 
-  const submit = async (): Promise<boolean> => {
+  const submit = async (customApprovals?: {
+    approverIds?: string[];
+    notifyIds?: string[];
+    ccIds?: string[];
+  }): Promise<boolean> => {
     if (!user) return false;
     setError('');
     setSuccess('');
@@ -218,6 +222,26 @@ export function useLeaveRequest(user: User | null) {
       } catch {
         // 결재 인스턴스 생성 실패는 신청 자체를 막지 않음 (관리자가 결재선 설정 후 재확인 가능)
         noMatchingLine = true;
+      }
+
+      // ✅ 신청자가 직접 지정한 결재 순서/통보/참조가 있으면, 자동매칭된 결재선에 "추가로" 덧붙인다.
+      // (실패해도 이미 접수된 신청 자체는 그대로 유지 - 콘솔에만 경고를 남김)
+      const hasCustom =
+        (customApprovals?.approverIds && customApprovals.approverIds.length > 0) ||
+        (customApprovals?.notifyIds && customApprovals.notifyIds.length > 0) ||
+        (customApprovals?.ccIds && customApprovals.ccIds.length > 0);
+      if (hasCustom) {
+        try {
+          const { error: customError } = await supabase.rpc('add_leave_custom_approvers', {
+            p_leave_id: inserted!.id,
+            p_approver_user_ids: customApprovals?.approverIds && customApprovals.approverIds.length > 0 ? customApprovals.approverIds : null,
+            p_notify_user_ids: customApprovals?.notifyIds && customApprovals.notifyIds.length > 0 ? customApprovals.notifyIds : null,
+            p_cc_user_ids: customApprovals?.ccIds && customApprovals.ccIds.length > 0 ? customApprovals.ccIds : null,
+          });
+          if (customError) throw customError;
+        } catch (customErr) {
+          console.warn('사용자 지정 결재라인/통보/참조 등록 실패 (신청 자체는 완료됨):', customErr);
+        }
       }
 
       setSuccess(

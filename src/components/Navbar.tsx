@@ -2,6 +2,7 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import SessionTimer from './SessionTimer';
+import NotificationBell from './NotificationBell';
 
 const Navbar: React.FC = () => {
   const { user, logout } = useAuth();
@@ -102,6 +103,7 @@ const Navbar: React.FC = () => {
               <div className="hidden md:block text-right">
                 <div className="text-sm font-medium text-gray-800">{user?.name}</div>
               </div>
+              <NotificationBell />
               <button
                 onClick={() => logout()}
                 className="ml-3 px-3 py-2 rounded-md text-sm font-medium text-white hover:opacity-80 transition duration-200"

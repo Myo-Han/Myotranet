@@ -6,6 +6,7 @@ import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
 import Attendance from './pages/Attendance';
 import Leave from './pages/Leave';
+import LeaveRequestPage from './pages/LeaveRequestPage';
 import Admin from './pages/Admin';
 import Works from './pages/Works';
 import Board from './pages/Board';
@@ -30,6 +31,7 @@ function App() {
             <Route path="board" element={<Board />} />
             <Route path="attendance" element={<Attendance />} />
             <Route path="leave" element={<Leave />} />
+            <Route path="leave/new" element={<LeaveRequestPage />} />
             <Route path="members" element={<Members />} />
             <Route
               path="admin/*"

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabaseClient';
 import { Leave as LeaveType, LeaveBalanceHistory } from '../types';
@@ -50,6 +51,7 @@ const formatDateTimeShort = (iso: string) => {
 
 const Leave: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const lr = useLeaveRequest(user);
 
   // ✅ 연차 / 연장근무 카테고리 탭 (근태관리의 "근태신청" 버튼으로 이 페이지에 진입)
@@ -61,7 +63,6 @@ const Leave: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [showModal, setShowModal] = useState(false);
 
   // ✅ 연장근무 신청/조회 상태
   const [myOvertime, setMyOvertime] = useState<OvertimeRequestRow[]>([]);
@@ -357,17 +358,6 @@ const Leave: React.FC = () => {
     }
   };
 
-  const handleSubmitLeaveRequest = async () => {
-    const ok = await lr.submit();
-    if (ok) {
-      setShowModal(false);
-      setSuccess('휴가 신청이 제출되었습니다');
-      fetchLeaves();
-      fetchTeamLeaves();
-      setTimeout(() => setSuccess(''), 3000);
-    }
-  };
-
   const getChangeTypeLabel = (changeType: string) => {
     const labels: Record<string, string> = {
       accrual: '발생',
@@ -489,10 +479,10 @@ const Leave: React.FC = () => {
           {category === 'annual' ? (
             <button
               type="button"
-              onClick={() => setShowModal(true)}
+              onClick={() => navigate('/leave/new')}
               className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700"
             >
-              휴가 신청
+              연차 신청
             </button>
           ) : (
             <button
@@ -978,136 +968,6 @@ const Leave: React.FC = () => {
         </div>
       )}
 
-      {/* 휴가 신청 모달 */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <h3 className="text-xl font-semibold mb-4">휴가 신청</h3>
-
-            {lr.error && <div className="mb-3"><ErrorMessage message={lr.error} /></div>}
-
-            <div className="space-y-4">
-              {lr.balancePoolLabel && (
-                <div className="text-sm bg-blue-50 border border-blue-100 rounded-md px-3 py-2 text-blue-800">
-                  현재 {lr.balancePoolLabel} 잔여일수: <span className="font-semibold">{lr.availableBalance}일</span>
-                </div>
-              )}
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">휴가 유형</label>
-                {lr.policies.length === 0 ? (
-                  <p className="text-sm text-red-600">사용 가능한 휴가 정책이 없습니다. 관리자에게 문의하세요.</p>
-                ) : (
-                  <select
-                    value={lr.form.leaveType}
-                    onChange={(e) => lr.setForm({ ...lr.form, leaveType: e.target.value })}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2"
-                  >
-                    {lr.policies.map((policy) => (
-                      <option key={policy.policy_code} value={policy.policy_code}>
-                        {policy.policy_name}
-                      </option>
-                    ))}
-                  </select>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {lr.isAnnual ? '시작일' : '사용일'}
-                </label>
-                <input
-                  type="date"
-                  value={lr.form.startDate}
-                  onChange={(e) => lr.setForm({ ...lr.form, startDate: e.target.value })}
-                  min={todayKey()}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2"
-                />
-              </div>
-
-              {lr.isAnnual && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">종료일</label>
-                  <input
-                    type="date"
-                    value={lr.form.endDate}
-                    onChange={(e) => lr.setForm({ ...lr.form, endDate: e.target.value })}
-                    min={lr.form.startDate || todayKey()}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2"
-                  />
-                </div>
-              )}
-
-              {lr.isHalfDay && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">반차 구분</label>
-                  <select
-                    value={lr.form.halfDayPeriod}
-                    onChange={(e) => lr.setForm({ ...lr.form, halfDayPeriod: e.target.value as 'am' | 'pm' })}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2"
-                  >
-                    <option value="am">오전 반차</option>
-                    <option value="pm">오후 반차</option>
-                  </select>
-                </div>
-              )}
-
-              {lr.isQuarterDay && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">시작 시각</label>
-                  <input
-                    type="time"
-                    value={lr.form.quarterStartTime}
-                    onChange={(e) => lr.setForm({ ...lr.form, quarterStartTime: e.target.value })}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2"
-                  />
-                </div>
-              )}
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">일수</label>
-                <input
-                  type="number"
-                  value={lr.daysRequested}
-                  readOnly
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 bg-gray-50"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">사유</label>
-                <textarea
-                  value={lr.form.reason}
-                  onChange={(e) => lr.setForm({ ...lr.form, reason: e.target.value })}
-                  rows={3}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2"
-                  placeholder="휴가 사유를 입력하세요"
-                />
-              </div>
-            </div>
-
-            <div className="mt-6 flex space-x-2">
-              <button
-                onClick={handleSubmitLeaveRequest}
-                disabled={!lr.canSubmit || lr.submitting}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-40"
-              >
-                {lr.submitting ? '제출 중...' : '신청'}
-              </button>
-              <button
-                onClick={() => {
-                  setShowModal(false);
-                  lr.resetForm();
-                  lr.setError('');
-                }}
-                className="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
-              >
-                취소
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* 연장근무 신청 모달 */}
       {showOvertimeModal && (
