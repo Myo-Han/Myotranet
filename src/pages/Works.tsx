@@ -25,6 +25,7 @@ import PayslipManager from '../components/documents/PayslipManager';
 import WithholdingManager from '../components/documents/WithholdingManager';
 import LeaveRequestForm from '../components/documents/LeaveRequestForm';
 import CompanyEventManager from '../components/CompanyEventManager';
+import MyApprovals from '../components/MyApprovals';
 
 type WorkMenuItem = {
   id: string;
@@ -143,7 +144,10 @@ const Work: React.FC = () => {
         setMenuItems(sorted);
 
         if (sorted.length > 0 && !selectedMenu) {
-          const firstMenu = sorted.find((m: any) => !m.is_folder) || sorted[0];
+          // ✅ 기본 화면은 '나의 결재'(path: 'My')를 우선으로 하고,
+          // 해당 메뉴가 없거나 권한상 안 보이면 기존 로직(첫 번째 비-폴더 항목)으로 대체
+          const myApprovals = sorted.find((m: any) => m.path === 'My');
+          const firstMenu = myApprovals || sorted.find((m: any) => !m.is_folder) || sorted[0];
           setSelectedMenu(firstMenu.path);
         }
       } catch (e) {
@@ -452,8 +456,8 @@ const Work: React.FC = () => {
       {/* 왼쪽 메뉴 */}
       <div className="w-64 bg-white shadow-lg">
         <div className="p-6 border-b">
-          <h1 className="text-2xl font-bold text-gray-900">업무</h1>
-          <p className="text-xs text-gray-500 mt-1">업무 관리</p>
+          <h1 className="text-2xl font-bold text-gray-900">전자결재</h1>
+          <p className="text-xs text-gray-500 mt-1">전자결재 관리</p>
         </div>
         <nav className="p-4 space-y-1">
           {menuItems.filter(item => !item.parent_id).map((item) => (
@@ -546,6 +550,10 @@ const Work: React.FC = () => {
         <div className="p-6 space-y-4">
           {error && <ErrorMessage message={error} />}
           {success && <SuccessMessage message={success} />}
+
+          {selectedMenu === 'My' && (
+            <MyApprovals />
+          )}
 
           {selectedMenu === 'my' && (
             <div className="bg-white shadow rounded-lg p-6">
