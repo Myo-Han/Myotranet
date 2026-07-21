@@ -172,6 +172,12 @@ const LeaveRequestPage: React.FC = () => {
             autoFocus
             value={pickerQuery}
             onChange={(e) => setPickerQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && filteredPickerUsers.length > 0) {
+                e.preventDefault();
+                addPerson(target, filteredPickerUsers[0]);
+              }
+            }}
             placeholder="이름으로 검색"
             className="w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm mb-2"
           />
@@ -359,7 +365,7 @@ const LeaveRequestPage: React.FC = () => {
             </p>
           </div>
 
-          <PersonCard target="approver" title="결재 순서" entries={approvers} draggable stepLabel />
+          <PersonCard target="approver" title="결재 라인" entries={approvers} draggable stepLabel />
           <PersonCard target="cc" title="참조" entries={ccUsers} />
         </div>
       </div>
