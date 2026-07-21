@@ -17,9 +17,9 @@ const Navbar: React.FC = () => {
 
   const navItems = [
     { path: '/dashboard', label: '묘한', isLogo: true },
-    { path: '/attendance', label: '근태관리' },
-    { path: '/works', label: '전자결재' },
     { path: '/board', label: '게시판' },
+    { path: '/attendance', label: '근태관리' },
+    { path: '/works', label: '결재 관리' },
     ...(user?.role === 'Admin' ? [{ path: '/admin', label: '관리자' }] : []),
   ];
 
