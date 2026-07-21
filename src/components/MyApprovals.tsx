@@ -1,8 +1,12 @@
-// 나의 결재: 내가 신청한 결재건 중 아직 처리되지 않은(진행 중, status='pending') 건들을
-// 유형별(휴가 신청 / 출퇴근 수정 요청 / 연장근무 신청) 목록으로 보여준다.
+// 나의 결재: 내가 신청한 결재건을 유형별(휴가 신청 / 출퇴근 수정 요청 / 연장근무 신청)로
+// 전체(진행 중 + 이미 처리된 건) 보여준다.
+// 정렬 우선순위: 1) 진행 중(pending) 건이 먼저, 2) 그 다음 날짜(신청일시) 최신순.
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabaseClient';
+import { getRevisionStatusLabel } from '../utils/attendanceLabels';
+
+type ApprovalStatus = 'pending' | 'approved' | 'rejected' | string;
 
 type LeaveRow = {
   id: string;
@@ -12,6 +16,7 @@ type LeaveRow = {
   days_requested: number | null;
   reason: string | null;
   created_at: string;
+  status: ApprovalStatus | null;
 };
 
 type RevisionRow = {
@@ -21,6 +26,7 @@ type RevisionRow = {
   requested_check_out_at: string | null;
   reason: string | null;
   created_at: string;
+  status: ApprovalStatus | null;
 };
 
 type OvertimeRow = {
@@ -30,6 +36,7 @@ type OvertimeRow = {
   requested_end_at: string;
   reason: string | null;
   created_at: string;
+  status: ApprovalStatus | null;
 };
 
 const LEAVE_TYPE_LABEL: Record<string, string> = {
@@ -63,9 +70,31 @@ const formatDateTime = (iso: string | null) => {
   return `${d.getMonth() + 1}월 ${d.getDate()}일(${dow}) ${hh}:${mm}`;
 };
 
-const PendingBadge = () => (
-  <span className="shrink-0 px-2 py-0.5 rounded-full text-xs bg-yellow-100 text-yellow-800">결재 대기중</span>
-);
+// ✅ 진행 중(pending) 건이 항상 먼저 오고, 같은 상태 안에서는 신청일시(created_at) 최신순
+const sortByPendingThenDate = <T extends { status: ApprovalStatus | null; created_at: string }>(
+  rows: T[],
+): T[] =>
+  [...rows].sort((a, b) => {
+    const aRank = (a.status || 'pending') === 'pending' ? 0 : 1;
+    const bRank = (b.status || 'pending') === 'pending' ? 0 : 1;
+    if (aRank !== bRank) return aRank - bRank;
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
+
+const StatusBadge: React.FC<{ status: ApprovalStatus | null }> = ({ status }) => {
+  const { colorClass } = getRevisionStatusLabel(status);
+  const displayLabel =
+    status === 'pending' || !status
+      ? '결재 대기중'
+      : status === 'approved'
+        ? '승인됨'
+        : status === 'rejected'
+          ? '반려됨'
+          : status;
+  return (
+    <span className={`shrink-0 px-2 py-0.5 rounded-full text-xs ${colorClass}`}>{displayLabel}</span>
+  );
+};
 
 const SectionCard: React.FC<{ title: string; count: number; children: React.ReactNode }> = ({ title, count, children }) => (
   <div className="bg-white shadow rounded-lg overflow-hidden">
@@ -74,7 +103,7 @@ const SectionCard: React.FC<{ title: string; count: number; children: React.Reac
       <span className="text-sm text-gray-400">{count}건</span>
     </div>
     {count === 0 ? (
-      <p className="text-sm text-gray-400 text-center py-6">진행 중인 건이 없습니다.</p>
+      <p className="text-sm text-gray-400 text-center py-6">신청 내역이 없습니다.</p>
     ) : (
       <div className="divide-y">{children}</div>
     )}
@@ -96,21 +125,18 @@ const MyApprovals: React.FC = () => {
         const [leaveRes, revisionRes, overtimeRes] = await Promise.all([
           supabase
             .from('leaves')
-            .select('id, start_date, end_date, type, days_requested, reason, created_at')
+            .select('id, start_date, end_date, type, days_requested, reason, created_at, status')
             .eq('user_id', user.id)
-            .eq('status', 'pending')
             .order('created_at', { ascending: false }),
           supabase
             .from('attendance_revision_requests')
-            .select('id, requested_date, requested_check_in_at, requested_check_out_at, reason, created_at')
+            .select('id, requested_date, requested_check_in_at, requested_check_out_at, reason, created_at, status')
             .eq('user_id', user.id)
-            .eq('status', 'pending')
             .order('created_at', { ascending: false }),
           supabase
             .from('overtime_requests')
-            .select('id, work_date, requested_start_at, requested_end_at, reason, created_at')
+            .select('id, work_date, requested_start_at, requested_end_at, reason, created_at, status')
             .eq('user_id', user.id)
-            .eq('status', 'pending')
             .order('created_at', { ascending: false }),
         ]);
 
@@ -118,9 +144,9 @@ const MyApprovals: React.FC = () => {
         if (revisionRes.error) throw revisionRes.error;
         if (overtimeRes.error) throw overtimeRes.error;
 
-        setLeaves((leaveRes.data || []) as LeaveRow[]);
-        setRevisions((revisionRes.data || []) as RevisionRow[]);
-        setOvertimes((overtimeRes.data || []) as OvertimeRow[]);
+        setLeaves(sortByPendingThenDate((leaveRes.data || []) as LeaveRow[]));
+        setRevisions(sortByPendingThenDate((revisionRes.data || []) as RevisionRow[]));
+        setOvertimes(sortByPendingThenDate((overtimeRes.data || []) as OvertimeRow[]));
       } catch (e) {
         console.error('나의 결재 로드 실패:', e);
         setLeaves([]);
@@ -134,6 +160,10 @@ const MyApprovals: React.FC = () => {
   }, [user?.id]);
 
   const totalCount = leaves.length + revisions.length + overtimes.length;
+  const pendingCount =
+    leaves.filter((l) => (l.status || 'pending') === 'pending').length +
+    revisions.filter((r) => (r.status || 'pending') === 'pending').length +
+    overtimes.filter((o) => (o.status || 'pending') === 'pending').length;
 
   if (loading) {
     return <p className="text-sm text-gray-400 text-center py-6">불러오는 중...</p>;
@@ -144,10 +174,10 @@ const MyApprovals: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-bold text-gray-900">나의 결재</h2>
-          <p className="text-sm text-gray-500 mt-1">내가 신청한 결재건 중 아직 처리되지 않은 건들입니다.</p>
+          <p className="text-sm text-gray-500 mt-1">내가 신청한 결재 내역입니다. 총 {totalCount}건</p>
         </div>
         <span className="px-3 py-1.5 rounded-full text-sm font-medium bg-blue-50 text-blue-600">
-          진행 중 {totalCount}건
+          진행 중 {pendingCount}건
         </span>
       </div>
 
@@ -164,7 +194,7 @@ const MyApprovals: React.FC = () => {
               </div>
               {l.reason && <div className="text-sm text-gray-400 mt-1">사유: {l.reason}</div>}
             </div>
-            <PendingBadge />
+            <StatusBadge status={l.status} />
           </div>
         ))}
       </SectionCard>
@@ -179,7 +209,7 @@ const MyApprovals: React.FC = () => {
               </div>
               {r.reason && <div className="text-sm text-gray-400 mt-1">사유: {r.reason}</div>}
             </div>
-            <PendingBadge />
+            <StatusBadge status={r.status} />
           </div>
         ))}
       </SectionCard>
@@ -194,7 +224,7 @@ const MyApprovals: React.FC = () => {
               </div>
               {o.reason && <div className="text-sm text-gray-400 mt-1">사유: {o.reason}</div>}
             </div>
-            <PendingBadge />
+            <StatusBadge status={o.status} />
           </div>
         ))}
       </SectionCard>

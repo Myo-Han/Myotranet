@@ -267,7 +267,7 @@ const LeavePolicyManager: React.FC<LeavePolicyManagerProps> = ({ canEdit = true 
       {/* 헤더 */}
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-xl font-semibold text-gray-800">휴가 정책 관리</h2>
+          <h2 className="text-xl font-semibold text-gray-800">정책 관리</h2>
           <p className="text-sm text-gray-500 mt-1">
             회사 휴가 규정을 정리해두는 곳입니다. 실제 연차 발생/지급·차감은 별도 화면에서 처리합니다.
           </p>

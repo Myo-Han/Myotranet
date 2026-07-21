@@ -217,7 +217,6 @@ const Admin: React.FC = () => {
             <div className="w-64 bg-white shadow-lg">
                 <div className="p-6 border-b">
                     <h1 className="text-2xl font-bold text-gray-900">관리자</h1>
-                    <p className="text-xs text-gray-500 mt-1">관리자 전용 페이지입니다.</p>
                     {user && (
                         <p className="text-[11px] text-gray-400 mt-2 truncate">{user.email} · {user.role}</p>
                     )}

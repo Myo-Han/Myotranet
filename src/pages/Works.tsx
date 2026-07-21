@@ -457,7 +457,6 @@ const Work: React.FC = () => {
       <div className="w-64 bg-white shadow-lg">
         <div className="p-6 border-b">
           <h1 className="text-2xl font-bold text-gray-900">결재관리</h1>
-          <p className="text-xs text-gray-500 mt-1">결재관리</p>
         </div>
         <nav className="p-4 space-y-1">
           {menuItems.filter(item => !item.parent_id).map((item) => (
