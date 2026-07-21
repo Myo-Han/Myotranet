@@ -24,6 +24,8 @@ type Post = {
   category: Category;
   author_id: string;
   is_pinned: boolean;
+  allow_reactions: boolean;
+  allow_comments: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -37,7 +39,14 @@ type AuthorMini = {
 
 type ViewMode = 'list' | 'write' | 'detail';
 
-const emptyDraft = () => ({ title: '', content: '', category: 'free' as Category, is_pinned: false });
+const emptyDraft = () => ({
+  title: '',
+  content: '',
+  category: 'free' as Category,
+  is_pinned: false,
+  allow_reactions: true,
+  allow_comments: true,
+});
 
 const Board: React.FC = () => {
   const { user } = useAuth();
@@ -60,7 +69,7 @@ const Board: React.FC = () => {
     try {
       const { data, error: postsErr } = await supabase
         .from('posts')
-        .select('id,title,content,category,author_id,is_pinned,created_at,updated_at')
+        .select('id,title,content,category,author_id,is_pinned,allow_reactions,allow_comments,created_at,updated_at')
         .order('is_pinned', { ascending: false })
         .order('created_at', { ascending: false });
 
@@ -103,7 +112,14 @@ const Board: React.FC = () => {
 
   const openEdit = (post: Post) => {
     setEditingPost(post);
-    setDraft({ title: post.title, content: post.content, category: post.category, is_pinned: post.is_pinned });
+    setDraft({
+      title: post.title,
+      content: post.content,
+      category: post.category,
+      is_pinned: post.is_pinned,
+      allow_reactions: post.allow_reactions,
+      allow_comments: post.allow_comments,
+    });
     setView('write');
   };
 
@@ -126,6 +142,10 @@ const Board: React.FC = () => {
       // (카테고리를 공지->다른 카테고리로 바꿨다가 저장하는 경우 이전에 체크했던 고정값이
       // 그대로 남아있지 않도록 방지)
       const effectiveIsPinned = draft.category === 'notice' ? draft.is_pinned : false;
+      // 리액션/댓글 허용 체크박스도 '공지' 카테고리일 때만 노출되므로, 그 외 카테고리는
+      // 항상 허용(true)으로 저장한다 (기존 게시글 동작을 그대로 유지)
+      const effectiveAllowReactions = draft.category === 'notice' ? draft.allow_reactions : true;
+      const effectiveAllowComments = draft.category === 'notice' ? draft.allow_comments : true;
 
       if (editingPost) {
         const { error: updErr } = await supabase
@@ -135,6 +155,8 @@ const Board: React.FC = () => {
             content: draft.content.trim(),
             category: draft.category,
             is_pinned: effectiveIsPinned,
+            allow_reactions: effectiveAllowReactions,
+            allow_comments: effectiveAllowComments,
             updated_at: new Date().toISOString(),
           })
           .eq('id', editingPost.id);
@@ -145,6 +167,8 @@ const Board: React.FC = () => {
           content: draft.content.trim(),
           category: draft.category,
           is_pinned: effectiveIsPinned,
+          allow_reactions: effectiveAllowReactions,
+          allow_comments: effectiveAllowComments,
           author_id: user.id,
         });
         if (insErr) throw insErr;
@@ -288,17 +312,45 @@ const Board: React.FC = () => {
           </div>
 
           {draft.category === 'notice' && (
-            <div className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                id="board-pin-checkbox"
-                checked={draft.is_pinned}
-                onChange={(e) => setDraft({ ...draft, is_pinned: e.target.checked })}
-                className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
-              />
-              <label htmlFor="board-pin-checkbox" className="text-xs text-gray-600">
-                상단 고정 (전체 목록 맨 위에 노출)
-              </label>
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="board-pin-checkbox"
+                  checked={draft.is_pinned}
+                  onChange={(e) => setDraft({ ...draft, is_pinned: e.target.checked })}
+                  className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
+                />
+                <label htmlFor="board-pin-checkbox" className="text-xs text-gray-600">
+                  상단 고정 (전체 목록 맨 위에 노출)
+                </label>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="board-allow-reactions-checkbox"
+                  checked={draft.allow_reactions}
+                  onChange={(e) => setDraft({ ...draft, allow_reactions: e.target.checked })}
+                  className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
+                />
+                <label htmlFor="board-allow-reactions-checkbox" className="text-xs text-gray-600">
+                  리액션 허용
+                </label>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="board-allow-comments-checkbox"
+                  checked={draft.allow_comments}
+                  onChange={(e) => setDraft({ ...draft, allow_comments: e.target.checked })}
+                  className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
+                />
+                <label htmlFor="board-allow-comments-checkbox" className="text-xs text-gray-600">
+                  댓글 허용
+                </label>
+              </div>
             </div>
           )}
 
@@ -384,13 +436,25 @@ const Board: React.FC = () => {
 
           <div className="text-sm text-gray-800 whitespace-pre-line border-t pt-4">{selectedPost.content}</div>
 
-          <div className="border-t pt-4">
-            <ReactionBar noticeId={selectedPost.id} entityType="post" />
-          </div>
+          {selectedPost.allow_reactions ? (
+            <div className="border-t pt-4">
+              <ReactionBar noticeId={selectedPost.id} entityType="post" />
+            </div>
+          ) : (
+            <div className="border-t pt-4">
+              <p className="text-xs text-gray-400">이 글은 리액션이 비활성화되어 있습니다.</p>
+            </div>
+          )}
 
-          <div className="border-t pt-4">
-            <CommentThread noticeId={selectedPost.id} entityType="post" />
-          </div>
+          {selectedPost.allow_comments ? (
+            <div className="border-t pt-4">
+              <CommentThread noticeId={selectedPost.id} entityType="post" />
+            </div>
+          ) : (
+            <div className="border-t pt-4">
+              <p className="text-xs text-gray-400">이 글은 댓글이 비활성화되어 있습니다.</p>
+            </div>
+          )}
         </div>
       )}
     </div>
