@@ -120,7 +120,7 @@ const TeamEventsCard: React.FC = () => {
                     )}
                   </div>
                   <p className="w-full truncate text-center text-xs text-gray-700">{u.name}</p>
-                  <p className="text-[11px] text-gray-400">{new Date(u.birth_date).getDate()}일</p>
+                  <p className="text-[11px] text-gray-400">{new Date(u.birth_date).getMonth() + 1}월 {new Date(u.birth_date).getDate()}일</p>
                 </div>
               ))}
             </div>
