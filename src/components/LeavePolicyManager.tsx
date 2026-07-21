@@ -2,49 +2,54 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 
 // 휴가 정책 타입 정의
+// ✅ 정책관리는 회사 규정을 문서로 정리해두는 용도로만 쓰고, 실제 자동화(연차 자동 발생 등)는
+// run_leave_accrual() DB 함수와 '휴가 지급/차감' 화면에서 별도로 처리한다. 그래서 config의
+// 발생조건/부여일수/갱신소멸/사용제한/승인권한 등 세부 필드는 화면에서는 더 이상 입력받지 않고,
+// 실제로 아직 코드에서 쓰이는 is_paid/deduction_priority만 내부적으로 기본값을 채워 넣는다.
 export interface LeavePolicy {
   id: string;
   policy_name: string;
   policy_code: string;
+  description?: string | null;
   enabled: boolean;
   config: {
-    // 발생 조건
-    accrual_basis: 'hire_date' | 'calendar_year' | 'event_based' | 'one_time';
-    accrual_period_value?: number; // 몇 개월/년마다
+    // 발생 조건 (더 이상 화면에서 편집하지 않음 - 과거 데이터 호환용으로만 타입 유지)
+    accrual_basis?: 'hire_date' | 'calendar_year' | 'event_based' | 'one_time';
+    accrual_period_value?: number;
     accrual_period_unit?: 'days' | 'months' | 'years';
-    minimum_tenure_value?: number; // 최소 근속 기간
+    minimum_tenure_value?: number;
     minimum_tenure_unit?: 'days' | 'months' | 'years';
 
-    // 부여 일수
-    days_granted: number;
+    // 부여 일수 (더 이상 화면에서 편집하지 않음)
+    days_granted?: number;
 
-    // 유급/무급
-    is_paid: boolean;
+    // 유급/무급 (휴가 신청 시 실제로 사용됨)
+    is_paid?: boolean;
     paid_days?: number;
     unpaid_days?: number;
 
-    // 갱신 주기
-    renewal_type: 'monthly' | 'yearly' | 'one_time' | 'unlimited';
+    // 갱신 주기 (더 이상 화면에서 편집하지 않음)
+    renewal_type?: 'monthly' | 'yearly' | 'one_time' | 'unlimited';
 
-    // 소멸 기간
-    expiration_enabled: boolean;
+    // 소멸 기간 (더 이상 화면에서 편집하지 않음)
+    expiration_enabled?: boolean;
     expiration_value?: number;
     expiration_unit?: 'days' | 'months' | 'years';
 
-    // 사용 제한
-    min_usage_unit: number; // 0.5, 1
+    // 사용 제한 (더 이상 화면에서 편집하지 않음)
+    min_usage_unit?: number;
     max_consecutive_days?: number;
     allow_split?: boolean;
 
-    // 승인 권한
-    approval_type: 'auto' | 'manager' | 'admin';
+    // 승인 권한 (더 이상 화면에서 편집하지 않음)
+    approval_type?: 'auto' | 'manager' | 'admin';
 
-    // 우선순위 (낮을수록 먼저 차감)
-    deduction_priority: number;
+    // 우선순위 (정책 목록/신청 폼 정렬에 실제로 사용됨, 낮을수록 먼저)
+    deduction_priority?: number;
 
-    // 추가 설정
-    carries_over?: boolean; // 이월 가능 여부
-    max_carryover_days?: number; // 최대 이월 일수
+    // 추가 설정 (더 이상 화면에서 편집하지 않음)
+    carries_over?: boolean;
+    max_carryover_days?: number;
   };
   created_at: string;
   updated_at: string;
@@ -67,32 +72,15 @@ const LeavePolicyManager: React.FC<LeavePolicyManagerProps> = ({ canEdit = true 
   const [showAddName, setShowAddName] = useState(false);
   const [newPolicyName, setNewPolicyName] = useState('');
 
-  // 폼 상태
+  // 폼 상태 (기본 정보 + 설명만 입력받음)
   const [form, setForm] = useState<Partial<LeavePolicy>>({
     policy_name: '',
     policy_code: '',
+    description: '',
     enabled: true,
     config: {
-      accrual_basis: 'hire_date',
-      accrual_period_value: 1,
-      accrual_period_unit: 'months',
-      minimum_tenure_value: 0,
-      minimum_tenure_unit: 'months',
-      days_granted: 1,
       is_paid: true,
-      paid_days: 1,
-      unpaid_days: 0,
-      renewal_type: 'monthly',
-      expiration_enabled: true,
-      expiration_value: 12,
-      expiration_unit: 'months',
-      min_usage_unit: 1,
-      max_consecutive_days: 365,
-      allow_split: true,
-      approval_type: 'manager',
       deduction_priority: 1,
-      carries_over: false,
-      max_carryover_days: 0,
     },
   });
 
@@ -160,7 +148,7 @@ const LeavePolicyManager: React.FC<LeavePolicyManagerProps> = ({ canEdit = true 
 
       // 우선순위로 정렬
       const sorted = (data || []).sort((a, b) =>
-        (a.config.deduction_priority || 999) - (b.config.deduction_priority || 999)
+        (a.config?.deduction_priority ?? 999) - (b.config?.deduction_priority ?? 999)
       );
 
       setPolicies(sorted);
@@ -180,28 +168,12 @@ const LeavePolicyManager: React.FC<LeavePolicyManagerProps> = ({ canEdit = true 
       setForm({
         policy_name: '',
         policy_code: '',
+        description: '',
         enabled: true,
         config: {
-          accrual_basis: 'hire_date',
-          accrual_period_value: 1,
-          accrual_period_unit: 'months',
-          minimum_tenure_value: 0,
-          minimum_tenure_unit: 'months',
-          days_granted: 1,
           is_paid: true,
-          paid_days: 1,
-          unpaid_days: 0,
-          renewal_type: 'monthly',
-          expiration_enabled: true,
-          expiration_value: 12,
-          expiration_unit: 'months',
-          min_usage_unit: 1,
-          max_consecutive_days: 365,
-          allow_split: true,
-          approval_type: 'manager',
-          deduction_priority: 1,
-          carries_over: false,
-          max_carryover_days: 0,
+          // 기존 정책들 뒤에 이어지도록 다음 순번을 기본값으로 채워둠 (화면에는 노출하지 않음)
+          deduction_priority: policies.length + 1,
         },
       });
     }
@@ -216,13 +188,13 @@ const LeavePolicyManager: React.FC<LeavePolicyManagerProps> = ({ canEdit = true 
 
     try {
       if (editingPolicy) {
-        // 수정
+        // 수정 (기존 config는 그대로 유지 - 신청 폼 등에서 실제로 쓰는 값이라 덮어쓰지 않음)
         const { error } = await supabase
           .from('leave_policies')
           .update({
             policy_name: form.policy_name,
+            description: form.description ?? null,
             enabled: form.enabled,
-            config: form.config,
             updated_at: new Date().toISOString(),
           })
           .eq('id', editingPolicy.id);
@@ -234,6 +206,7 @@ const LeavePolicyManager: React.FC<LeavePolicyManagerProps> = ({ canEdit = true 
         const { error } = await supabase.from('leave_policies').insert({
           policy_name: form.policy_name,
           policy_code: form.policy_code,
+          description: form.description ?? null,
           enabled: form.enabled,
           config: form.config,
         });
@@ -281,16 +254,6 @@ const LeavePolicyManager: React.FC<LeavePolicyManagerProps> = ({ canEdit = true 
     }
   };
 
-  const updateConfig = (key: string, value: any) => {
-    setForm({
-      ...form,
-      config: {
-        ...form.config!,
-        [key]: value,
-      },
-    });
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -306,7 +269,7 @@ const LeavePolicyManager: React.FC<LeavePolicyManagerProps> = ({ canEdit = true 
         <div>
           <h2 className="text-xl font-semibold text-gray-800">휴가 정책 관리</h2>
           <p className="text-sm text-gray-500 mt-1">
-            휴가 종류별 발생, 소멸, 사용 규칙을 관리합니다
+            회사 휴가 규정을 정리해두는 곳입니다. 실제 연차 발생/지급·차감은 별도 화면에서 처리합니다.
           </p>
         </div>
         {canEdit && (
@@ -344,16 +307,7 @@ const LeavePolicyManager: React.FC<LeavePolicyManagerProps> = ({ canEdit = true 
                   코드
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  발생 조건
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  부여 일수
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  유급/무급
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  우선순위
+                  설명
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                   상태
@@ -374,32 +328,8 @@ const LeavePolicyManager: React.FC<LeavePolicyManagerProps> = ({ canEdit = true 
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {policy.policy_code}
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-500">
-                    {policy.config.accrual_basis === 'hire_date' && (
-                      <>
-                        입사 후 {policy.config.accrual_period_value}
-                        {policy.config.accrual_period_unit === 'months' ? '개월' : '년'}마다
-                      </>
-                    )}
-                    {policy.config.accrual_basis === 'calendar_year' && '연 1회'}
-                    {policy.config.accrual_basis === 'event_based' && '이벤트 발생 시'}
-                    {policy.config.accrual_basis === 'one_time' && '1회성'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {policy.config.days_granted}일
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    {policy.config.is_paid ? (
-                      <span className="text-green-600">
-                        유급 {policy.config.paid_days}일
-                        {policy.config.unpaid_days ? ` / 무급 ${policy.config.unpaid_days}일` : ''}
-                      </span>
-                    ) : (
-                      <span className="text-gray-500">무급</span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {policy.config.deduction_priority}
+                  <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
+                    {policy.description || <span className="text-gray-300">-</span>}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <button
@@ -433,7 +363,7 @@ const LeavePolicyManager: React.FC<LeavePolicyManagerProps> = ({ canEdit = true 
               ))}
               {policies.length === 0 && (
                 <tr>
-                  <td colSpan={canEdit ? 8 : 7} className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan={canEdit ? 5 : 4} className="px-6 py-8 text-center text-gray-500">
                     등록된 정책이 없습니다
                   </td>
                 </tr>
@@ -446,7 +376,7 @@ const LeavePolicyManager: React.FC<LeavePolicyManagerProps> = ({ canEdit = true 
       {/* 정책 추가/수정 모달 */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto">
-          <div className="bg-white rounded-lg p-6 max-w-3xl w-full mx-4 my-8 max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 my-8 max-h-[90vh] overflow-y-auto">
             <h3 className="text-xl font-semibold mb-4">
               {editingPolicy ? '정책 수정' : '새 정책 추가'}
             </h3>
@@ -531,313 +461,18 @@ const LeavePolicyManager: React.FC<LeavePolicyManagerProps> = ({ canEdit = true 
                     />
                   </div>
                 </div>
-              </div>
 
-              {/* 발생 조건 */}
-              <div className="space-y-4">
-                <h4 className="font-semibold text-gray-700 border-b pb-2">발생 조건</h4>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    발생 기준
+                    설명
                   </label>
-                  <select
-                    value={form.config?.accrual_basis}
-                    onChange={(e) => updateConfig('accrual_basis', e.target.value)}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2"
-                  >
-                    <option value="hire_date">입사일 기준</option>
-                    <option value="calendar_year">회계연도 기준</option>
-                    <option value="event_based">이벤트 발생 시</option>
-                    <option value="one_time">1회성</option>
-                  </select>
-                </div>
-
-                {form.config?.accrual_basis === 'hire_date' && (
-                  <>
-                    <div className="grid grid-cols-3 gap-4">
-                      <div className="col-span-2">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          발생 주기
-                        </label>
-                        <div className="flex gap-2">
-                          <input
-                            type="number"
-                            min="1"
-                            value={form.config?.accrual_period_value}
-                            onChange={(e) =>
-                              updateConfig('accrual_period_value', parseInt(e.target.value))
-                            }
-                            className="flex-1 border border-gray-300 rounded-md px-3 py-2"
-                          />
-                          <select
-                            value={form.config?.accrual_period_unit}
-                            onChange={(e) => updateConfig('accrual_period_unit', e.target.value)}
-                            className="border border-gray-300 rounded-md px-3 py-2"
-                          >
-                            <option value="days">일</option>
-                            <option value="months">개월</option>
-                            <option value="years">년</option>
-                          </select>
-                          <span className="flex items-center text-sm text-gray-600">마다</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-4">
-                      <div className="col-span-2">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          최소 근속 기간 (선택)
-                        </label>
-                        <div className="flex gap-2">
-                          <input
-                            type="number"
-                            min="0"
-                            value={form.config?.minimum_tenure_value}
-                            onChange={(e) =>
-                              updateConfig('minimum_tenure_value', parseInt(e.target.value))
-                            }
-                            className="flex-1 border border-gray-300 rounded-md px-3 py-2"
-                          />
-                          <select
-                            value={form.config?.minimum_tenure_unit}
-                            onChange={(e) => updateConfig('minimum_tenure_unit', e.target.value)}
-                            className="border border-gray-300 rounded-md px-3 py-2"
-                          >
-                            <option value="days">일</option>
-                            <option value="months">개월</option>
-                            <option value="years">년</option>
-                          </select>
-                        </div>
-                      </div>
-                    </div>
-                  </>
-                )}
-              </div>
-
-              {/* 부여 일수 */}
-              <div className="space-y-4">
-                <h4 className="font-semibold text-gray-700 border-b pb-2">부여 일수</h4>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    1회 부여 일수
-                  </label>
-                  <input
-                    type="number"
-                    min="0.5"
-                    step="0.5"
-                    value={form.config?.days_granted}
-                    onChange={(e) => updateConfig('days_granted', parseFloat(e.target.value))}
+                  <textarea
+                    value={form.description || ''}
+                    onChange={(e) => setForm({ ...form, description: e.target.value })}
+                    rows={8}
+                    placeholder="이 정책의 발생/사용/소멸 규정을 자유롭게 적어주세요"
                     className="w-full border border-gray-300 rounded-md px-3 py-2"
                   />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={form.config?.is_paid}
-                      onChange={(e) => updateConfig('is_paid', e.target.checked)}
-                      className="mr-2"
-                    />
-                    <span className="text-sm font-medium text-gray-700">유급 휴가</span>
-                  </label>
-
-                  {form.config?.is_paid && (
-                    <div className="grid grid-cols-2 gap-4 ml-6">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          유급 일수
-                        </label>
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.5"
-                          value={form.config?.paid_days}
-                          onChange={(e) => updateConfig('paid_days', parseFloat(e.target.value))}
-                          className="w-full border border-gray-300 rounded-md px-3 py-2"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          무급 일수 (선택)
-                        </label>
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.5"
-                          value={form.config?.unpaid_days || 0}
-                          onChange={(e) => updateConfig('unpaid_days', parseFloat(e.target.value))}
-                          className="w-full border border-gray-300 rounded-md px-3 py-2"
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* 갱신 및 소멸 */}
-              <div className="space-y-4">
-                <h4 className="font-semibold text-gray-700 border-b pb-2">갱신 및 소멸</h4>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    갱신 주기
-                  </label>
-                  <select
-                    value={form.config?.renewal_type}
-                    onChange={(e) => updateConfig('renewal_type', e.target.value)}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2"
-                  >
-                    <option value="monthly">매월</option>
-                    <option value="yearly">매년</option>
-                    <option value="one_time">1회성</option>
-                    <option value="unlimited">무제한</option>
-                  </select>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={form.config?.expiration_enabled}
-                      onChange={(e) => updateConfig('expiration_enabled', e.target.checked)}
-                      className="mr-2"
-                    />
-                    <span className="text-sm font-medium text-gray-700">소멸 기간 설정</span>
-                  </label>
-
-                  {form.config?.expiration_enabled && (
-                    <div className="ml-6 flex gap-2 items-center">
-                      <span className="text-sm text-gray-600">발생 후</span>
-                      <input
-                        type="number"
-                        min="1"
-                        value={form.config?.expiration_value}
-                        onChange={(e) =>
-                          updateConfig('expiration_value', parseInt(e.target.value))
-                        }
-                        className="w-24 border border-gray-300 rounded-md px-3 py-2"
-                      />
-                      <select
-                        value={form.config?.expiration_unit}
-                        onChange={(e) => updateConfig('expiration_unit', e.target.value)}
-                        className="border border-gray-300 rounded-md px-3 py-2"
-                      >
-                        <option value="days">일</option>
-                        <option value="months">개월</option>
-                        <option value="years">년</option>
-                      </select>
-                      <span className="text-sm text-gray-600">후 소멸</span>
-                    </div>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <label className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={form.config?.carries_over}
-                      onChange={(e) => updateConfig('carries_over', e.target.checked)}
-                      className="mr-2"
-                    />
-                    <span className="text-sm font-medium text-gray-700">이월 가능</span>
-                  </label>
-
-                  {form.config?.carries_over && (
-                    <div className="ml-6">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        최대 이월 일수 (0 = 무제한)
-                      </label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={form.config?.max_carryover_days}
-                        onChange={(e) =>
-                          updateConfig('max_carryover_days', parseInt(e.target.value))
-                        }
-                        className="w-full border border-gray-300 rounded-md px-3 py-2"
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* 사용 제한 */}
-              <div className="space-y-4">
-                <h4 className="font-semibold text-gray-700 border-b pb-2">사용 제한</h4>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      최소 사용 단위 (일)
-                    </label>
-                    <select
-                      value={form.config?.min_usage_unit}
-                      onChange={(e) => updateConfig('min_usage_unit', parseFloat(e.target.value))}
-                      className="w-full border border-gray-300 rounded-md px-3 py-2"
-                    >
-                      <option value="0.25">0.25일 (반반차)</option>
-                      <option value="0.5">0.5일 (반차)</option>
-                      <option value="1">1일</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      최대 연속 사용 일수
-                    </label>
-                    <input
-                      type="number"
-                      min="1"
-                      value={form.config?.max_consecutive_days}
-                      onChange={(e) =>
-                        updateConfig('max_consecutive_days', parseInt(e.target.value))
-                      }
-                      className="w-full border border-gray-300 rounded-md px-3 py-2"
-                    />
-                  </div>
-                </div>
-
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={form.config?.allow_split}
-                    onChange={(e) => updateConfig('allow_split', e.target.checked)}
-                    className="mr-2"
-                  />
-                  <span className="text-sm font-medium text-gray-700">분할 사용 허용</span>
-                </label>
-              </div>
-
-              {/* 승인 및 우선순위 */}
-              <div className="space-y-4">
-                <h4 className="font-semibold text-gray-700 border-b pb-2">승인 및 우선순위</h4>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      승인 권한
-                    </label>
-                    <select
-                      value={form.config?.approval_type}
-                      onChange={(e) => updateConfig('approval_type', e.target.value)}
-                      className="w-full border border-gray-300 rounded-md px-3 py-2"
-                    >
-                      <option value="auto">자동 승인</option>
-                      <option value="manager">매니저 승인</option>
-                      <option value="admin">관리자 승인</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      차감 우선순위 (낮을수록 먼저)
-                    </label>
-                    <input
-                      type="number"
-                      min="1"
-                      value={form.config?.deduction_priority}
-                      onChange={(e) =>
-                        updateConfig('deduction_priority', parseInt(e.target.value))
-                      }
-                      className="w-full border border-gray-300 rounded-md px-3 py-2"
-                    />
-                  </div>
                 </div>
               </div>
             </div>
