@@ -10,10 +10,10 @@
 // 리렌더가 끼면 클릭 이벤트 자체가 유실되어 "버튼이 눌리는 것 같은데 아무 반응이 없는"
 // 증상이 나타난다.
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabaseClient';
-import { useLeaveRequest, todayKey } from '../hooks/useLeaveRequest';
+import { useLeaveRequest, todayKey, deleteLeaveRequest } from '../hooks/useLeaveRequest';
 import ErrorMessage from '../components/ErrorMessage';
 
 type OrgItem = { id: string; name: string; code: string };
@@ -165,6 +165,8 @@ const PersonCard: React.FC<{
 const LeaveRequestPage: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { leaveId } = useParams<{ leaveId?: string }>();
+  const isEditMode = Boolean(leaveId);
   const lr = useLeaveRequest(user);
 
   const [users, setUsers] = useState<UserLite[]>([]);
@@ -181,6 +183,9 @@ const LeaveRequestPage: React.FC = () => {
   const [dropTargetKey, setDropTargetKey] = useState<string | null>(null);
 
   const [submitError, setSubmitError] = useState('');
+  const [editLoading, setEditLoading] = useState(isEditMode);
+  const [editBlockedError, setEditBlockedError] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -190,15 +195,54 @@ const LeaveRequestPage: React.FC = () => {
           supabase.from('org_settings').select('config').single(),
         ]);
 
-        setUsers((usersRes.data || []) as UserLite[]);
+        const loadedUsers = (usersRes.data || []) as UserLite[];
+        setUsers(loadedUsers);
         setProjects(((orgRes.data?.config?.projects as OrgItem[]) || []));
         setDepartments(((orgRes.data?.config?.departments as OrgItem[]) || []));
+
+        // ✅ 수정 모드면, 구성원 목록을 다 불러온 뒤 기존 신청 내용 + 결재라인(결재자/참조)을
+        // 불러와서 폼과 PersonCard 상태를 채운다. 구성원 목록이 있어야 user_id로부터
+        // 이름/소속 라벨(PersonEntry)을 만들 수 있어서, 이 안에서 순서대로 처리한다.
+        if (isEditMode && leaveId) {
+          const result = await lr.loadForEdit(leaveId);
+          if (!result.ok) {
+            setEditBlockedError(result.error || '휴가 신청을 불러올 수 없습니다');
+          } else {
+            const findEntry = (target: PickerTarget, uid: string): PersonEntry => {
+              const u = loadedUsers.find((x) => x.id === uid);
+              const projList = (orgRes.data?.config?.projects as OrgItem[]) || [];
+              const deptList = (orgRes.data?.config?.departments as OrgItem[]) || [];
+              const teamLabel = (() => {
+                if (u?.project) {
+                  const p = projList.find((x) => x.code === u.project);
+                  if (p) return p.name;
+                }
+                if (u?.department) {
+                  const d = deptList.find((x) => x.code === u.department);
+                  if (d) return d.name;
+                }
+                return '소속 없음';
+              })();
+              return {
+                key: `${target}_${uid}_${Date.now()}_${Math.random()}`,
+                userId: uid,
+                name: u?.name || uid,
+                teamLabel,
+              };
+            };
+            setApprovers((result.approverUserIds || []).map((uid) => findEntry('approver', uid)));
+            setCcUsers((result.ccUserIds || []).map((uid) => findEntry('cc', uid)));
+          }
+        }
       } catch (e) {
         console.error('구성원 목록 로딩 실패:', e);
+      } finally {
+        if (isEditMode) setEditLoading(false);
       }
     };
     load();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leaveId]);
 
   const getTeamLabel = (u: UserLite) => {
     if (u.project) {
@@ -261,6 +305,19 @@ const LeaveRequestPage: React.FC = () => {
     });
   };
 
+  // ✅ 수정 모드에서는 잔여일수 검증을 hook의 canSubmit(제출 시점 기준 잔액)에 맡기지 않는다.
+  // 이미 승인 완료된 건을 수정할 때는 서버(update_leave_request RPC)가 차감분을 복구한 뒤에야
+  // 정확한 잔액을 알 수 있어서, 프론트가 들고 있는 값은 낡은(복구 전) 잔액일 수 있기 때문이다.
+  // 실제 잔액 검증은 RPC 안에서 이루어지고, 여기서는 폼 자체가 유효한지만 확인한다.
+  const canSubmitForEdit = useMemo(() => {
+    if (!user) return false;
+    if (!lr.form.startDate || !lr.form.reason.trim()) return false;
+    if (lr.isAnnual && !lr.form.endDate) return false;
+    if (lr.isQuarterDay && !lr.form.quarterStartTime) return false;
+    if (lr.daysRequested <= 0) return false;
+    return true;
+  }, [user, lr.form, lr.isAnnual, lr.isQuarterDay, lr.daysRequested]);
+
   const filteredPickerUsers = useMemo(() => {
     const q = pickerQuery.trim().toLowerCase();
     const excludeIds = new Set(
@@ -275,21 +332,62 @@ const LeaveRequestPage: React.FC = () => {
 
   const handleSubmit = async () => {
     setSubmitError('');
-    const ok = await lr.submit({
+    const customApprovals = {
       approverIds: approvers.map((p) => p.userId),
       ccIds: ccUsers.map((p) => p.userId),
-    });
+    };
+    const ok = isEditMode && leaveId
+      ? await lr.updateExisting(leaveId, customApprovals)
+      : await lr.submit(customApprovals);
     if (ok) {
       navigate('/leave');
     } else {
-      setSubmitError(lr.error || '신청에 실패했습니다');
+      setSubmitError(lr.error || (isEditMode ? '수정에 실패했습니다' : '신청에 실패했습니다'));
     }
   };
+
+  const handleDelete = async () => {
+    if (!leaveId) return;
+    if (!window.confirm('이 휴가 신청을 삭제하시겠습니까? 이미 승인된 건이라면 차감된 잔액도 함께 복구됩니다.')) return;
+
+    setDeleting(true);
+    setSubmitError('');
+    const result = await deleteLeaveRequest(leaveId);
+    setDeleting(false);
+    if (result.ok) {
+      navigate('/leave');
+    } else {
+      setSubmitError(result.error || '삭제에 실패했습니다');
+    }
+  };
+
+  if (isEditMode && editLoading) {
+    return (
+      <div className="max-w-6xl mx-auto p-6">
+        <p className="text-sm text-gray-500">불러오는 중...</p>
+      </div>
+    );
+  }
+
+  if (isEditMode && editBlockedError) {
+    return (
+      <div className="max-w-6xl mx-auto p-6 space-y-4">
+        <ErrorMessage message={editBlockedError} />
+        <button
+          type="button"
+          onClick={() => navigate('/leave')}
+          className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+        >
+          돌아가기
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">연차 신청</h1>
+        <h1 className="text-2xl font-bold text-gray-900">{isEditMode ? '연차 신청 수정' : '연차 신청'}</h1>
         <button
           type="button"
           onClick={() => navigate('/leave')}
@@ -298,6 +396,13 @@ const LeaveRequestPage: React.FC = () => {
           취소하고 돌아가기
         </button>
       </div>
+
+      {isEditMode && (
+        <div className="text-sm bg-amber-50 border border-amber-100 rounded-md px-3 py-2 text-amber-800">
+          내용을 수정하면 결재라인(결재자/참조)이 다시 구성되고, 결재는 처음 단계부터 다시 진행됩니다.
+          이미 승인 완료된 건이었다면 차감된 잔액도 함께 복구된 뒤 다시 계산됩니다.
+        </div>
+      )}
 
       {(submitError || lr.error) && <ErrorMessage message={submitError || lr.error} />}
 
@@ -457,11 +562,21 @@ const LeaveRequestPage: React.FC = () => {
         <button
           type="button"
           onClick={handleSubmit}
-          disabled={!lr.canSubmit || lr.submitting}
+          disabled={(isEditMode ? !canSubmitForEdit : !lr.canSubmit) || lr.submitting || deleting}
           className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40"
         >
-          {lr.submitting ? '제출 중...' : '신청'}
+          {lr.submitting ? (isEditMode ? '수정 중...' : '제출 중...') : isEditMode ? '수정 완료' : '신청'}
         </button>
+        {isEditMode && (
+          <button
+            type="button"
+            onClick={handleDelete}
+            disabled={deleting || lr.submitting}
+            className="px-4 py-2.5 bg-red-50 text-red-600 border border-red-200 rounded-lg hover:bg-red-100 disabled:opacity-40"
+          >
+            {deleting ? '삭제 중...' : '삭제'}
+          </button>
+        )}
         <button
           type="button"
           onClick={() => navigate('/leave')}

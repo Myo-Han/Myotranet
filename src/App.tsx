@@ -32,6 +32,7 @@ function App() {
             <Route path="attendance" element={<Attendance />} />
             <Route path="leave" element={<Leave />} />
             <Route path="leave/new" element={<LeaveRequestPage />} />
+            <Route path="leave/edit/:leaveId" element={<LeaveRequestPage />} />
             <Route path="members" element={<Members />} />
             <Route
               path="admin/*"

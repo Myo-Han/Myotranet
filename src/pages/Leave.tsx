@@ -6,7 +6,7 @@ import { Leave as LeaveType, LeaveBalanceHistory } from '../types';
 import Loading from '../components/Loading';
 import ErrorMessage from '../components/ErrorMessage';
 import SuccessMessage from '../components/SuccessMessage';
-import { useLeaveRequest, todayKey } from '../hooks/useLeaveRequest';
+import { useLeaveRequest, todayKey, deleteLeaveRequest, isLeaveEditable } from '../hooks/useLeaveRequest';
 import { getRevisionStatusLabel, localDateTimeInputToIso } from '../utils/attendanceLabels';
 
 // ✅ leave_balance_history.policy_code는 "휴가 신청 유형"(annual/half_day/quarter_day)이 아니라
@@ -118,6 +118,8 @@ const Leave: React.FC = () => {
   const [detailApproval, setDetailApproval] = useState<LeaveApprovalRow | null>(null);
   const [detailSteps, setDetailSteps] = useState<ApprovalLineStepRow[]>([]);
   const [detailActions, setDetailActions] = useState<LeaveApprovalActionRow[]>([]);
+  const [detailLeave, setDetailLeave] = useState<LeaveType | null>(null);
+  const [deletingLeave, setDeletingLeave] = useState(false);
 
   // 필터 상태
   const [historyFilter, setHistoryFilter] = useState({
@@ -391,12 +393,35 @@ const Leave: React.FC = () => {
     return { totalAccrual, totalUsed, totalExpired };
   };
 
+  const handleEditLeave = (leave: LeaveType) => {
+    setDetailOpen(false);
+    navigate(`/leave/edit/${leave.id}`);
+  };
+
+  const handleDeleteLeave = async (leave: LeaveType) => {
+    if (!window.confirm('이 휴가 신청을 삭제하시겠습니까? 이미 승인된 건이라면 차감된 잔액도 함께 복구됩니다.')) return;
+
+    setDeletingLeave(true);
+    const result = await deleteLeaveRequest(leave.id);
+    setDeletingLeave(false);
+
+    if (result.ok) {
+      setDetailOpen(false);
+      setSuccess('휴가 신청이 삭제되었습니다.');
+      setTimeout(() => setSuccess(''), 3000);
+      fetchLeaves();
+    } else {
+      setDetailError(result.error || '삭제에 실패했습니다');
+    }
+  };
+
   const openApprovalDetail = async (leave: LeaveType) => {
     setDetailOpen(true);
     setDetailLoading(true);
     setDetailError('');
     setDetailApproval(null);
     setDetailSteps([]);
+    setDetailLeave(leave);
     setDetailActions([]);
 
     try {
@@ -873,13 +898,37 @@ const Leave: React.FC = () => {
           >
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-xl font-semibold">결재 진행 현황</h3>
-              <button
-                onClick={() => setDetailOpen(false)}
-                className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300"
-              >
-                닫기
-              </button>
+              <div className="flex items-center gap-2">
+                {detailLeave && isLeaveEditable(detailLeave.start_date) && (
+                  <>
+                    <button
+                      onClick={() => handleEditLeave(detailLeave)}
+                      disabled={deletingLeave}
+                      className="px-3 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded hover:bg-blue-100 disabled:opacity-50"
+                    >
+                      수정
+                    </button>
+                    <button
+                      onClick={() => handleDeleteLeave(detailLeave)}
+                      disabled={deletingLeave}
+                      className="px-3 py-1 bg-red-50 text-red-600 border border-red-200 rounded hover:bg-red-100 disabled:opacity-50"
+                    >
+                      {deletingLeave ? '삭제 중...' : '삭제'}
+                    </button>
+                  </>
+                )}
+                <button
+                  onClick={() => setDetailOpen(false)}
+                  className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300"
+                >
+                  닫기
+                </button>
+              </div>
             </div>
+
+            {detailLeave && !isLeaveEditable(detailLeave.start_date) && (
+              <p className="text-xs text-gray-400 mb-3">이미 시작했거나 지난 휴가는 수정/삭제할 수 없습니다.</p>
+            )}
 
             {detailLoading && (
               <div className="py-6 text-center text-gray-600">로딩중</div>
