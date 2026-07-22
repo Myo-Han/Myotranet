@@ -1,4 +1,7 @@
-// 자유게시판. 전 직원이 실명으로 자유롭게 글을 작성하고, 카테고리(자유/정보공유/기타)로 구분한다.
+// 자유게시판.
+// 왼쪽 사이드바에서 카테고리를 선택하는 구조: 전체 / 마음의 편지 / 건의함(버그제보·편의성개선·신규기능제안).
+// 마음의 편지는 작성 시 "익명으로 작성" 체크박스를 제공하며(체크 시 익명, 기본은 실명),
+// 건의함 하위 카테고리는 항상 실명으로 작성된다.
 // 댓글/리액션은 기존 공지사항용 컴포넌트(CommentThread, ReactionBar)를 entityType='post'로 재사용한다.
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../supabaseClient';
@@ -8,14 +11,25 @@ import ErrorMessage from '../components/ErrorMessage';
 import ReactionBar from '../components/reactions/ReactionBar';
 import CommentThread from '../components/comments/CommentThread';
 
-type Category = 'notice' | 'free' | 'info' | 'other';
+// ✅ letter/suggestion_* 가 현재 쓰는 카테고리. notice/free/info/other는 과거 게시글 호환을 위한 라벨만 유지한다
+// (사이드바나 글쓰기 화면에는 더 이상 노출되지 않음).
+type Category = 'letter' | 'suggestion_bug' | 'suggestion_ux' | 'suggestion_feature' | 'notice' | 'free' | 'info' | 'other';
 
 const CATEGORY_LABEL: Record<Category, string> = {
+  letter: '마음의 편지',
+  suggestion_bug: '버그제보',
+  suggestion_ux: '편의성개선',
+  suggestion_feature: '신규기능제안',
   notice: '공지',
   free: '자유',
   info: '정보공유',
   other: '기타',
 };
+
+// 글쓰기 화면에서 선택 가능한 카테고리 (신규 체계)
+const WRITABLE_CATEGORIES: Category[] = ['letter', 'suggestion_bug', 'suggestion_ux', 'suggestion_feature'];
+
+type SidebarKey = 'all' | 'letter' | 'suggestion_bug' | 'suggestion_ux' | 'suggestion_feature';
 
 type Post = {
   id: number;
@@ -23,6 +37,7 @@ type Post = {
   content: string;
   category: Category;
   author_id: string;
+  is_anonymous: boolean;
   is_pinned: boolean;
   allow_reactions: boolean;
   allow_comments: boolean;
@@ -42,11 +57,38 @@ type ViewMode = 'list' | 'write' | 'detail';
 const emptyDraft = () => ({
   title: '',
   content: '',
-  category: 'free' as Category,
-  is_pinned: false,
-  allow_reactions: true,
-  allow_comments: true,
+  category: 'letter' as Category,
+  is_anonymous: false,
 });
+
+const getIcon = (key: SidebarKey | 'folder') => {
+  if (key === 'all') {
+    return (
+      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+      </svg>
+    );
+  }
+  if (key === 'letter') {
+    return (
+      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+      </svg>
+    );
+  }
+  if (key === 'folder') {
+    return (
+      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+      </svg>
+    );
+  }
+  return (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+    </svg>
+  );
+};
 
 const Board: React.FC = () => {
   const { user } = useAuth();
@@ -56,7 +98,8 @@ const Board: React.FC = () => {
   const [authors, setAuthors] = useState<Record<string, AuthorMini>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [filterCategory, setFilterCategory] = useState<Category | 'all'>('all');
+  const [sidebarKey, setSidebarKey] = useState<SidebarKey>('all');
+  const [suggestionExpanded, setSuggestionExpanded] = useState(true);
 
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [editingPost, setEditingPost] = useState<Post | null>(null);
@@ -69,7 +112,7 @@ const Board: React.FC = () => {
     try {
       const { data, error: postsErr } = await supabase
         .from('posts')
-        .select('id,title,content,category,author_id,is_pinned,allow_reactions,allow_comments,created_at,updated_at')
+        .select('id,title,content,category,author_id,is_anonymous,is_pinned,allow_reactions,allow_comments,created_at,updated_at')
         .order('is_pinned', { ascending: false })
         .order('created_at', { ascending: false });
 
@@ -106,7 +149,10 @@ const Board: React.FC = () => {
 
   const openWrite = () => {
     setEditingPost(null);
-    setDraft(emptyDraft());
+    const defaultCategory: Category = WRITABLE_CATEGORIES.includes(sidebarKey as Category)
+      ? (sidebarKey as Category)
+      : 'letter';
+    setDraft({ ...emptyDraft(), category: defaultCategory });
     setView('write');
   };
 
@@ -116,9 +162,7 @@ const Board: React.FC = () => {
       title: post.title,
       content: post.content,
       category: post.category,
-      is_pinned: post.is_pinned,
-      allow_reactions: post.allow_reactions,
-      allow_comments: post.allow_comments,
+      is_anonymous: post.is_anonymous,
     });
     setView('write');
   };
@@ -138,14 +182,8 @@ const Board: React.FC = () => {
     setSaving(true);
     setError('');
     try {
-      // '공지' 카테고리가 아니면 상단 고정 옵션은 무의미하므로 항상 false로 저장한다
-      // (카테고리를 공지->다른 카테고리로 바꿨다가 저장하는 경우 이전에 체크했던 고정값이
-      // 그대로 남아있지 않도록 방지)
-      const effectiveIsPinned = draft.category === 'notice' ? draft.is_pinned : false;
-      // 리액션/댓글 허용 체크박스도 '공지' 카테고리일 때만 노출되므로, 그 외 카테고리는
-      // 항상 허용(true)으로 저장한다 (기존 게시글 동작을 그대로 유지)
-      const effectiveAllowReactions = draft.category === 'notice' ? draft.allow_reactions : true;
-      const effectiveAllowComments = draft.category === 'notice' ? draft.allow_comments : true;
+      // 익명 작성은 '마음의 편지'에서만 허용, 건의함 하위 카테고리는 항상 실명
+      const effectiveIsAnonymous = draft.category === 'letter' ? draft.is_anonymous : false;
 
       if (editingPost) {
         const { error: updErr } = await supabase
@@ -154,9 +192,7 @@ const Board: React.FC = () => {
             title: draft.title.trim(),
             content: draft.content.trim(),
             category: draft.category,
-            is_pinned: effectiveIsPinned,
-            allow_reactions: effectiveAllowReactions,
-            allow_comments: effectiveAllowComments,
+            is_anonymous: effectiveIsAnonymous,
             updated_at: new Date().toISOString(),
           })
           .eq('id', editingPost.id);
@@ -166,9 +202,10 @@ const Board: React.FC = () => {
           title: draft.title.trim(),
           content: draft.content.trim(),
           category: draft.category,
-          is_pinned: effectiveIsPinned,
-          allow_reactions: effectiveAllowReactions,
-          allow_comments: effectiveAllowComments,
+          is_anonymous: effectiveIsAnonymous,
+          is_pinned: false,
+          allow_reactions: true,
+          allow_comments: true,
           author_id: user.id,
         });
         if (insErr) throw insErr;
@@ -202,261 +239,290 @@ const Board: React.FC = () => {
   const isMine = (post: Post) => !!user?.id && post.author_id === user.id;
   const isAdmin = user?.role === 'Admin';
 
-  const filteredPosts = posts.filter((p) => filterCategory === 'all' || p.category === filterCategory);
+  const filteredPosts = posts.filter((p) => sidebarKey === 'all' || p.category === sidebarKey);
 
-  const authorLabel = (id: string) => {
-    const a = authors[id];
+  const authorLabel = (post: Post) => {
+    if (post.category === 'letter' && post.is_anonymous) return '익명';
+    const a = authors[post.author_id];
     return a?.name || '(이름 없음)';
   };
+
+  const sidebarLabel =
+    sidebarKey === 'all'
+      ? '전체'
+      : CATEGORY_LABEL[sidebarKey as Category];
 
   if (loading && view === 'list') return <Loading />;
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold">자유게시판</h1>
-        {view === 'list' && (
+    <div className="flex h-screen bg-gray-50">
+      {/* 왼쪽 카테고리 패널 */}
+      <div className="w-56 bg-white border-r border-gray-200">
+        <div className="px-4 py-4 border-b border-gray-100">
+          <h1 className="text-base font-semibold text-gray-900">자유게시판</h1>
+        </div>
+        <nav className="p-2 space-y-0.5">
           <button
             type="button"
-            onClick={openWrite}
-            className="px-4 py-2 rounded-md bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700"
+            onClick={() => setSidebarKey('all')}
+            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition ${sidebarKey === 'all' ? 'bg-blue-50 text-blue-600 font-medium' : 'text-gray-600 hover:bg-gray-50'
+              }`}
           >
-            새 글쓰기
+            {getIcon('all')}
+            <span>전체</span>
           </button>
-        )}
-      </div>
+          <button
+            type="button"
+            onClick={() => setSidebarKey('letter')}
+            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition ${sidebarKey === 'letter' ? 'bg-blue-50 text-blue-600 font-medium' : 'text-gray-600 hover:bg-gray-50'
+              }`}
+          >
+            {getIcon('letter')}
+            <span>마음의 편지</span>
+          </button>
 
-      {error && <ErrorMessage message={error} />}
-
-      {view === 'list' && (
-        <>
-          <div className="flex gap-2">
-            {(['all', 'notice', 'free', 'info', 'other'] as const).map((c) => (
-              <button
-                key={c}
-                type="button"
-                onClick={() => setFilterCategory(c)}
-                className={`px-3 py-1.5 rounded-full text-xs font-medium border transition ${filterCategory === c
-                  ? 'bg-indigo-600 text-white border-indigo-600'
-                  : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
-                  }`}
+          <div>
+            <button
+              type="button"
+              onClick={() => setSuggestionExpanded((prev) => !prev)}
+              className="w-full flex items-center justify-between px-3 py-2 rounded-md text-sm text-gray-600 hover:bg-gray-50 transition"
+            >
+              <div className="flex items-center gap-2.5">
+                {getIcon('folder')}
+                <span>건의함</span>
+              </div>
+              <svg
+                className={`w-3.5 h-3.5 transition-transform ${suggestionExpanded ? 'rotate-90' : ''}`}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
               >
-                {c === 'all' ? '전체' : CATEGORY_LABEL[c]}
-              </button>
-            ))}
-          </div>
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
 
-          <div className="bg-white shadow rounded-lg overflow-hidden">
-            {filteredPosts.length === 0 ? (
-              <p className="p-10 text-center text-sm text-gray-500">등록된 게시글이 없습니다.</p>
-            ) : (
-              <ul className="divide-y divide-gray-200">
-                {filteredPosts.map((p) => (
-                  <li
-                    key={p.id}
-                    onClick={() => openDetail(p)}
-                    className="px-4 py-3 cursor-pointer hover:bg-gray-50 flex items-center justify-between gap-3"
+            {suggestionExpanded && (
+              <div className="ml-5 mt-0.5 space-y-0.5">
+                {(['suggestion_bug', 'suggestion_ux', 'suggestion_feature'] as const).map((key) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setSidebarKey(key)}
+                    className={`w-full flex items-center px-3 py-1.5 rounded-md text-sm transition ${sidebarKey === key ? 'bg-blue-50 text-blue-600 font-medium' : 'text-gray-600 hover:bg-gray-50'
+                      }`}
                   >
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        {p.is_pinned && (
-                          <span className="shrink-0 text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-800">
-                            고정
-                          </span>
-                        )}
-                        <span className="shrink-0 text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
-                          {CATEGORY_LABEL[p.category]}
-                        </span>
-                        <span className="text-sm font-semibold text-gray-900 truncate">{p.title}</span>
-                      </div>
-                      <p className="mt-1 text-xs text-gray-500">
-                        {authorLabel(p.author_id)} · {new Date(p.created_at).toLocaleString('ko-KR')}
-                      </p>
-                    </div>
-                  </li>
+                    {CATEGORY_LABEL[key]}
+                  </button>
                 ))}
-              </ul>
+              </div>
             )}
           </div>
-        </>
-      )}
+        </nav>
+      </div>
 
-      {view === 'write' && (
-        <div className="bg-white shadow rounded-lg p-6 space-y-4">
-          <h2 className="text-sm font-semibold text-gray-700">{editingPost ? '글 수정' : '새 글쓰기'}</h2>
-
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">카테고리</label>
-            <select
-              value={draft.category}
-              onChange={(e) => setDraft({ ...draft, category: e.target.value as Category })}
-              className="w-full rounded-md border-gray-300 text-sm"
+      {/* 오른쪽 컨텐츠 */}
+      <div className="flex-1 overflow-auto">
+        <div className="px-4 py-4 border-b border-gray-100 bg-white flex items-center justify-between">
+          <h1 className="text-base font-semibold text-gray-900">{sidebarLabel}</h1>
+          {view === 'list' && (
+            <button
+              type="button"
+              onClick={openWrite}
+              className="px-3 py-1.5 rounded-md bg-blue-600 text-white text-xs font-medium hover:bg-blue-700"
             >
-              {(Object.keys(CATEGORY_LABEL) as Category[]).map((c) => (
-                <option key={c} value={c}>
-                  {CATEGORY_LABEL[c]}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">제목</label>
-            <input
-              type="text"
-              value={draft.title}
-              onChange={(e) => setDraft({ ...draft, title: e.target.value })}
-              className="w-full rounded-md border-gray-300 text-sm"
-              placeholder="제목을 입력하세요"
-            />
-          </div>
-
-          {draft.category === 'notice' && (
-            <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-              <div className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  id="board-pin-checkbox"
-                  checked={draft.is_pinned}
-                  onChange={(e) => setDraft({ ...draft, is_pinned: e.target.checked })}
-                  className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
-                />
-                <label htmlFor="board-pin-checkbox" className="text-xs text-gray-600">
-                  상단 고정 (전체 목록 맨 위에 노출)
-                </label>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  id="board-allow-reactions-checkbox"
-                  checked={draft.allow_reactions}
-                  onChange={(e) => setDraft({ ...draft, allow_reactions: e.target.checked })}
-                  className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
-                />
-                <label htmlFor="board-allow-reactions-checkbox" className="text-xs text-gray-600">
-                  리액션 허용
-                </label>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  id="board-allow-comments-checkbox"
-                  checked={draft.allow_comments}
-                  onChange={(e) => setDraft({ ...draft, allow_comments: e.target.checked })}
-                  className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
-                />
-                <label htmlFor="board-allow-comments-checkbox" className="text-xs text-gray-600">
-                  댓글 허용
-                </label>
-              </div>
-            </div>
+              새 글쓰기
+            </button>
           )}
-
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">내용</label>
-            <textarea
-              value={draft.content}
-              onChange={(e) => setDraft({ ...draft, content: e.target.value })}
-              rows={10}
-              className="w-full rounded-md border-gray-300 text-sm"
-              placeholder="내용을 입력하세요"
-            />
-          </div>
-
-          <div className="flex items-center justify-end gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                setView(editingPost ? 'detail' : 'list');
-                setEditingPost(null);
-              }}
-              className="px-3 py-2 rounded-md bg-gray-200 text-gray-700 text-sm font-medium"
-            >
-              취소
-            </button>
-            <button
-              type="button"
-              onClick={handleSubmit}
-              disabled={saving}
-              className="px-4 py-2 rounded-md bg-indigo-600 text-white text-sm font-medium disabled:opacity-50"
-            >
-              {editingPost ? '수정 완료' : '등록'}
-            </button>
-          </div>
         </div>
-      )}
 
-      {view === 'detail' && selectedPost && (
-        <div className="bg-white shadow rounded-lg p-6 space-y-4">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
-                  {CATEGORY_LABEL[selectedPost.category]}
-                </span>
-                <h2 className="text-lg font-bold text-gray-900">{selectedPost.title}</h2>
-              </div>
-              <p className="mt-1 text-xs text-gray-500">
-                {authorLabel(selectedPost.author_id)} · {new Date(selectedPost.created_at).toLocaleString('ko-KR')}
-              </p>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                type="button"
-                onClick={() => {
-                  setView('list');
-                  setSelectedPost(null);
-                }}
-                className="px-3 py-1.5 text-xs rounded-md bg-gray-200 text-gray-700"
-              >
-                목록으로
-              </button>
-              {(isMine(selectedPost) || isAdmin) && (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => openEdit(selectedPost)}
-                    className="px-3 py-1.5 text-xs rounded-md border border-gray-300 hover:bg-gray-50"
-                  >
-                    수정
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(selectedPost)}
-                    className="px-3 py-1.5 text-xs rounded-md border border-red-300 text-red-600 hover:bg-red-50"
-                  >
-                    삭제
-                  </button>
-                </>
+        <div className="p-4 space-y-4">
+          {error && <ErrorMessage message={error} />}
+
+          {view === 'list' && (
+            <div className="bg-white border border-gray-200 rounded-md overflow-hidden">
+              {filteredPosts.length === 0 ? (
+                <p className="p-10 text-center text-xs text-gray-400">등록된 게시글이 없습니다.</p>
+              ) : (
+                <ul className="divide-y divide-gray-100">
+                  {filteredPosts.map((p) => (
+                    <li
+                      key={p.id}
+                      onClick={() => openDetail(p)}
+                      className="px-4 py-3 cursor-pointer hover:bg-gray-50 flex items-center justify-between gap-3"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          {p.is_pinned && (
+                            <span className="shrink-0 text-xs px-1.5 py-0.5 rounded bg-yellow-100 text-yellow-800">
+                              고정
+                            </span>
+                          )}
+                          <span className="shrink-0 text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">
+                            {CATEGORY_LABEL[p.category] || p.category}
+                          </span>
+                          <span className="text-sm font-medium text-gray-900 truncate">{p.title}</span>
+                        </div>
+                        <p className="mt-1 text-xs text-gray-500">
+                          {authorLabel(p)} · {new Date(p.created_at).toLocaleString('ko-KR')}
+                        </p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
               )}
             </div>
-          </div>
+          )}
 
-          <div className="text-sm text-gray-800 whitespace-pre-line border-t pt-4">{selectedPost.content}</div>
+          {view === 'write' && (
+            <div className="bg-white border border-gray-200 rounded-md p-4 space-y-4">
+              <h2 className="text-sm font-medium text-gray-900">{editingPost ? '글 수정' : '새 글쓰기'}</h2>
 
-          {selectedPost.allow_reactions ? (
-            <div className="border-t pt-4">
-              <ReactionBar noticeId={selectedPost.id} entityType="post" />
-            </div>
-          ) : (
-            <div className="border-t pt-4">
-              <p className="text-xs text-gray-400">이 글은 리액션이 비활성화되어 있습니다.</p>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">카테고리</label>
+                <select
+                  value={draft.category}
+                  onChange={(e) => setDraft({ ...draft, category: e.target.value as Category })}
+                  className="w-full rounded-md border-gray-300 text-xs"
+                >
+                  {WRITABLE_CATEGORIES.map((c) => (
+                    <option key={c} value={c}>
+                      {CATEGORY_LABEL[c]}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">제목</label>
+                <input
+                  type="text"
+                  value={draft.title}
+                  onChange={(e) => setDraft({ ...draft, title: e.target.value })}
+                  className="w-full rounded-md border-gray-300 text-xs"
+                  placeholder="제목을 입력하세요"
+                />
+              </div>
+
+              {draft.category === 'letter' && (
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="board-anonymous-checkbox"
+                    checked={draft.is_anonymous}
+                    onChange={(e) => setDraft({ ...draft, is_anonymous: e.target.checked })}
+                    className="h-4 w-4 text-blue-600 border-gray-300 rounded"
+                  />
+                  <label htmlFor="board-anonymous-checkbox" className="text-xs text-gray-600">
+                    익명으로 작성 (체크하지 않으면 실명으로 등록됩니다)
+                  </label>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">내용</label>
+                <textarea
+                  value={draft.content}
+                  onChange={(e) => setDraft({ ...draft, content: e.target.value })}
+                  rows={10}
+                  className="w-full rounded-md border-gray-300 text-xs"
+                  placeholder="내용을 입력하세요"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setView(editingPost ? 'detail' : 'list');
+                    setEditingPost(null);
+                  }}
+                  className="px-3 py-1.5 rounded-md bg-gray-100 text-gray-700 text-xs font-medium hover:bg-gray-200"
+                >
+                  취소
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSubmit}
+                  disabled={saving}
+                  className="px-3 py-1.5 rounded-md bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {editingPost ? '수정 완료' : '등록'}
+                </button>
+              </div>
             </div>
           )}
 
-          {selectedPost.allow_comments ? (
-            <div className="border-t pt-4">
-              <CommentThread noticeId={selectedPost.id} entityType="post" />
-            </div>
-          ) : (
-            <div className="border-t pt-4">
-              <p className="text-xs text-gray-400">이 글은 댓글이 비활성화되어 있습니다.</p>
+          {view === 'detail' && selectedPost && (
+            <div className="bg-white border border-gray-200 rounded-md p-4 space-y-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">
+                      {CATEGORY_LABEL[selectedPost.category] || selectedPost.category}
+                    </span>
+                    <h2 className="text-sm font-medium text-gray-900">{selectedPost.title}</h2>
+                  </div>
+                  <p className="mt-1 text-xs text-gray-500">
+                    {authorLabel(selectedPost)} · {new Date(selectedPost.created_at).toLocaleString('ko-KR')}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setView('list');
+                      setSelectedPost(null);
+                    }}
+                    className="px-2.5 py-1 text-xs rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  >
+                    목록으로
+                  </button>
+                  {(isMine(selectedPost) || isAdmin) && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => openEdit(selectedPost)}
+                        className="px-2.5 py-1 text-xs rounded-md border border-gray-300 hover:bg-gray-50"
+                      >
+                        수정
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(selectedPost)}
+                        className="px-2.5 py-1 text-xs rounded-md border border-red-300 text-red-600 hover:bg-red-50"
+                      >
+                        삭제
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              <div className="text-xs text-gray-800 whitespace-pre-line border-t border-gray-100 pt-4">{selectedPost.content}</div>
+
+              {selectedPost.allow_reactions ? (
+                <div className="border-t border-gray-100 pt-4">
+                  <ReactionBar noticeId={selectedPost.id} entityType="post" />
+                </div>
+              ) : (
+                <div className="border-t border-gray-100 pt-4">
+                  <p className="text-xs text-gray-400">이 글은 리액션이 비활성화되어 있습니다.</p>
+                </div>
+              )}
+
+              {selectedPost.allow_comments ? (
+                <div className="border-t border-gray-100 pt-4">
+                  <CommentThread noticeId={selectedPost.id} entityType="post" />
+                </div>
+              ) : (
+                <div className="border-t border-gray-100 pt-4">
+                  <p className="text-xs text-gray-400">이 글은 댓글이 비활성화되어 있습니다.</p>
+                </div>
+              )}
             </div>
           )}
         </div>
-      )}
+      </div>
     </div>
   );
 };
