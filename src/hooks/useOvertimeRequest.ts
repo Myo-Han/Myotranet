@@ -4,6 +4,7 @@
 import { useMemo, useState } from 'react';
 import { supabase } from '../supabaseClient';
 import { User } from '../types';
+import { localDateTimeInputToIso } from '../utils/attendanceLabels';
 
 export type OvertimeRequestFormState = {
   workDate: string;
@@ -57,13 +58,18 @@ export function useOvertimeRequest(user: User | null) {
     return true;
   }, [user, form]);
 
+  // ✅ 출퇴근 수정요청/기존 연장근무 신청과 동일하게 localDateTimeInputToIso를 통해 변환한다.
+  // 여기서 "HH:MM"을 직접 이어붙여 타임존 오프셋 없는 문자열(예: "2026-07-22T18:00:00")을
+  // 그대로 DB에 보내면, PostgREST가 이를 UTC로 해석해 실제 표시 시각이 9시간 밀리는
+  // 타임존 버그가 재발한다 (이미 한 번 고쳐졌던 문제). new Date(...)로 먼저 파싱해
+  // "브라우저 로컬시간"으로 해석한 뒤 .toISOString()으로 명시적 UTC 변환해야 안전하다.
   const buildIsoRange = () => {
     let endDateStr = form.workDate;
     if (form.endTime <= form.startTime) {
       endDateStr = shiftDateStr(form.workDate, 1);
     }
-    const startIso = `${form.workDate}T${form.startTime}:00`;
-    const endIso = `${endDateStr}T${form.endTime}:00`;
+    const startIso = localDateTimeInputToIso(`${form.workDate}T${form.startTime}`);
+    const endIso = localDateTimeInputToIso(`${endDateStr}T${form.endTime}`);
     return { startIso, endIso };
   };
 
@@ -88,6 +94,10 @@ export function useOvertimeRequest(user: User | null) {
     setSubmitting(true);
     try {
       const { startIso, endIso } = buildIsoRange();
+      if (!startIso || !endIso) {
+        setError('시간을 올바르게 입력해주세요');
+        return false;
+      }
 
       const { data: inserted, error: insertError } = await supabase
         .from('overtime_requests')
@@ -236,6 +246,10 @@ export function useOvertimeRequest(user: User | null) {
     setSubmitting(true);
     try {
       const { startIso, endIso } = buildIsoRange();
+      if (!startIso || !endIso) {
+        setError('시간을 올바르게 입력해주세요');
+        return false;
+      }
 
       const { error: rpcErr } = await supabase.rpc('update_overtime_request', {
         p_overtime_id: overtimeId,
