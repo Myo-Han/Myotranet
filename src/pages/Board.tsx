@@ -247,6 +247,13 @@ const Board: React.FC = () => {
     return a?.name || '(이름 없음)';
   };
 
+  const selectSidebar = (key: SidebarKey) => {
+    setSidebarKey(key);
+    setView('list');
+    setSelectedPost(null);
+    setEditingPost(null);
+  };
+
   const sidebarLabel =
     sidebarKey === 'all'
       ? '전체'
@@ -264,7 +271,7 @@ const Board: React.FC = () => {
         <nav className="p-2 space-y-0.5">
           <button
             type="button"
-            onClick={() => setSidebarKey('all')}
+            onClick={() => selectSidebar('all')}
             className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition ${sidebarKey === 'all' ? 'bg-blue-50 text-blue-600 font-medium' : 'text-gray-600 hover:bg-gray-50'
               }`}
           >
@@ -273,7 +280,7 @@ const Board: React.FC = () => {
           </button>
           <button
             type="button"
-            onClick={() => setSidebarKey('letter')}
+            onClick={() => selectSidebar('letter')}
             className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition ${sidebarKey === 'letter' ? 'bg-blue-50 text-blue-600 font-medium' : 'text-gray-600 hover:bg-gray-50'
               }`}
           >
@@ -307,7 +314,7 @@ const Board: React.FC = () => {
                   <button
                     key={key}
                     type="button"
-                    onClick={() => setSidebarKey(key)}
+                    onClick={() => selectSidebar(key)}
                     className={`w-full flex items-center px-3 py-1.5 rounded-md text-sm transition ${sidebarKey === key ? 'bg-blue-50 text-blue-600 font-medium' : 'text-gray-600 hover:bg-gray-50'
                       }`}
                   >
