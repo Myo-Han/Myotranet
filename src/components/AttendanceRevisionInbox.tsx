@@ -283,7 +283,6 @@ const AttendanceRevisionInbox: React.FC = () => {
   }, [selectedId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const applyApprovalToAttendance = async (req: RevisionRequestRow) => {
-    if (!req.attendance_id) return;
     const nextCheckIn = req.requested_check_in_at;
     const nextCheckOut = req.requested_check_out_at;
 
@@ -296,6 +295,30 @@ const AttendanceRevisionInbox: React.FC = () => {
 
     if (patch.check_out) patch.status = 'off';
     else if (patch.check_in) patch.status = 'working';
+
+    // ✅ 출근 기록 자체가 없던 날(attendance_id가 null)에 대한 수정 요청이 승인되면,
+    // 기존 attendance 행을 update하는 대신 새로 insert한다.
+    if (!req.attendance_id) {
+      if (patch.check_in && patch.check_out) {
+        // 새로 만드는 행이라 휴게 이벤트가 있을 수 없으므로 단순 시간차로 계산
+        const workSeconds = Math.max(
+          0,
+          Math.floor((new Date(patch.check_out).getTime() - new Date(patch.check_in).getTime()) / 1000)
+        );
+        patch.total_work_seconds = workSeconds;
+      }
+
+      const { error: insErr } = await supabase.from('attendance').insert({
+        user_id: req.user_id,
+        date: req.requested_date,
+        check_in: patch.check_in ?? null,
+        check_out: patch.check_out ?? null,
+        status: patch.status ?? 'off',
+        total_work_seconds: patch.total_work_seconds ?? 0,
+      });
+      if (insErr) throw insErr;
+      return;
+    }
 
     if (patch.check_in && patch.check_out) {
       const workSeconds = await calcWorkSecondsWithPause(req.attendance_id, patch.check_in, patch.check_out);
@@ -536,7 +559,11 @@ const AttendanceRevisionInbox: React.FC = () => {
                       </div>
                     </div>
                   ) : (
-                    <div className="text-sm text-gray-500">attendance 레코드를 찾지 못했습니다.</div>
+                    <div className="text-sm text-gray-500">
+                      {selected && !selected.attendance_id
+                        ? '출근 기록이 없는 날입니다. 승인하면 요청한 시간으로 새 출퇴근 기록이 생성됩니다.'
+                        : 'attendance 레코드를 찾지 못했습니다.'}
+                    </div>
                   )}
                 </div>
               </div>

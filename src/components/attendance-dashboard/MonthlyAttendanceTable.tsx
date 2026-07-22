@@ -278,22 +278,33 @@ const MonthlyAttendanceTable: React.FC<MonthlyAttendanceTableProps> = ({
                     <td className="border border-gray-200 px-3 py-2">{formatHM(record?.check_in || null)}</td>
                     <td className="border border-gray-200 px-3 py-2">{formatHM(record?.check_out || null)}</td>
                     <td className="border border-gray-200 px-3 py-2">
-                      {record && onRequestRevision ? (
+                      {onRequestRevision ? (
                         <button
                           type="button"
-                          onClick={() => onRequestRevision(record)}
-                          title="클릭하여 출퇴근 수정 요청"
+                          onClick={() =>
+                            onRequestRevision(
+                              record || {
+                                id: '',
+                                date: dateKey,
+                                check_in: null,
+                                check_out: null,
+                                status: null,
+                                total_work_seconds: null,
+                              }
+                            )
+                          }
+                          title={record ? '클릭하여 출퇴근 수정 요청' : '클릭하여 출퇴근 기록 추가 요청(출근하지 않은 날)'}
                           className="w-full flex items-center gap-2 bg-transparent p-0 border-0 cursor-pointer group text-left"
                         >
                           <div className="flex-1 bg-gray-100 rounded h-3 relative group-hover:ring-2 group-hover:ring-blue-300 transition">
-                            {record.check_in && (
+                            {record?.check_in && (
                               <div
                                 className="absolute h-3 bg-blue-400 rounded"
                                 style={{ left: `${barLeftPct}%`, width: `${barWidthPct}%` }}
                               />
                             )}
                           </div>
-                          {revisionStatusByAttendanceId[record.id] && (() => {
+                          {record && revisionStatusByAttendanceId[record.id] && (() => {
                             const { label, colorClass } = getRevisionStatusLabel(revisionStatusByAttendanceId[record.id]);
                             return <span className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] ${colorClass}`}>{label}</span>;
                           })()}

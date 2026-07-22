@@ -545,7 +545,7 @@ const AttendanceStatusPanel: React.FC = () => {
       // 변환 없이 그대로 저장하면 DB가 UTC로 잘못 해석해서 9시간(KST 기준) 어긋난 시각으로
       // 저장되고, 이후 관리자가 그대로 승인만 해도 전혀 다른 시각으로 덮어써지는 버그가 있었음.
       const { error } = await supabase.from('attendance_revision_requests').insert({
-        attendance_id: selectedRecord.id,
+        attendance_id: selectedRecord.id || null,
         user_id: user.id,
         requested_date: selectedRecord.date,
         original_check_in: selectedRecord.check_in || null,
@@ -1105,7 +1105,13 @@ const AttendanceStatusPanel: React.FC = () => {
       {showRevisionModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <h3 className="text-xl font-semibold mb-4">출퇴근 수정 요청</h3>
+            <h3 className="text-xl font-semibold mb-1">출퇴근 수정 요청</h3>
+            {selectedRecord && (
+              <p className="text-xs text-gray-500 mb-3">
+                {selectedRecord.date}
+                {!selectedRecord.check_in && !selectedRecord.check_out && ' · 출근 기록이 없는 날입니다. 출퇴근 시간을 입력해 추가를 요청할 수 있습니다.'}
+              </p>
+            )}
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">출근 시간</label>
