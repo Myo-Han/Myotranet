@@ -68,31 +68,31 @@ const LeaveRequestForm: React.FC = () => {
   if (lr.loading || leavesLoading) return <Loading />;
 
   return (
-    <div className="max-w-3xl mx-auto p-6 space-y-4">
+    <div className="max-w-3xl mx-auto space-y-4">
       <div>
-        <h1 className="text-2xl font-bold">휴가 신청</h1>
-        <p className="text-sm text-gray-600 mt-1">휴가 유형과 기간을 선택하고 사유를 입력해 신청하세요.</p>
+        <h1 className="text-sm font-medium text-gray-900">휴가 신청</h1>
+        <p className="text-xs text-gray-500 mt-1">휴가 유형과 기간을 선택하고 사유를 입력해 신청하세요.</p>
       </div>
 
       {lr.error && <ErrorMessage message={lr.error} />}
       {lr.success && <SuccessMessage message={lr.success} />}
 
-      <div className="bg-white shadow rounded-lg p-6 space-y-4">
+      <div className="bg-white border border-gray-200 rounded-md p-4 space-y-4">
         {lr.balancePoolLabel && (
-          <div className="text-sm bg-blue-50 border border-blue-100 rounded-md px-3 py-2 text-blue-800">
+          <div className="text-xs bg-blue-50 border border-blue-100 rounded-md px-3 py-2 text-blue-800">
             현재 {lr.balancePoolLabel} 잔여일수: <span className="font-semibold">{lr.availableBalance}일</span>
           </div>
         )}
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">휴가 유형</label>
+          <label className="block text-xs font-medium text-gray-700 mb-1">휴가 유형</label>
           {lr.policies.length === 0 ? (
-            <p className="text-sm text-red-600">사용 가능한 휴가 정책이 없습니다. 관리자에게 문의하세요.</p>
+            <p className="text-xs text-red-600">사용 가능한 휴가 정책이 없습니다. 관리자에게 문의하세요.</p>
           ) : (
             <select
               value={lr.form.leaveType}
               onChange={(e) => lr.setForm({ ...lr.form, leaveType: e.target.value })}
-              className="w-full border border-gray-300 rounded-md px-3 py-2"
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-xs"
             >
               {lr.policies.map((policy) => (
                 <option key={policy.policy_code} value={policy.policy_code}>
@@ -102,12 +102,12 @@ const LeaveRequestForm: React.FC = () => {
             </select>
           )}
           {LEAVE_TYPE_HINT[lr.form.leaveType] && (
-            <p className="text-xs text-gray-500 mt-1">{LEAVE_TYPE_HINT[lr.form.leaveType]}</p>
+            <p className="text-xs text-gray-400 mt-1">{LEAVE_TYPE_HINT[lr.form.leaveType]}</p>
           )}
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-xs font-medium text-gray-700 mb-1">
             {lr.isAnnual ? '시작일' : '사용일'}
           </label>
           <input
@@ -115,30 +115,30 @@ const LeaveRequestForm: React.FC = () => {
             value={lr.form.startDate}
             onChange={(e) => lr.setForm({ ...lr.form, startDate: e.target.value })}
             min={todayKey()}
-            className="w-full border border-gray-300 rounded-md px-3 py-2"
+            className="w-full border border-gray-300 rounded-md px-3 py-2 text-xs"
           />
         </div>
 
         {lr.isAnnual && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">종료일</label>
+            <label className="block text-xs font-medium text-gray-700 mb-1">종료일</label>
             <input
               type="date"
               value={lr.form.endDate}
               onChange={(e) => lr.setForm({ ...lr.form, endDate: e.target.value })}
               min={lr.form.startDate || todayKey()}
-              className="w-full border border-gray-300 rounded-md px-3 py-2"
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-xs"
             />
           </div>
         )}
 
         {lr.isHalfDay && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">반차 구분</label>
+            <label className="block text-xs font-medium text-gray-700 mb-1">반차 구분</label>
             <select
               value={lr.form.halfDayPeriod}
               onChange={(e) => lr.setForm({ ...lr.form, halfDayPeriod: e.target.value as 'am' | 'pm' })}
-              className="w-full border border-gray-300 rounded-md px-3 py-2"
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-xs"
             >
               <option value="am">오전 반차</option>
               <option value="pm">오후 반차</option>
@@ -148,33 +148,33 @@ const LeaveRequestForm: React.FC = () => {
 
         {lr.isQuarterDay && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">시작 시각</label>
+            <label className="block text-xs font-medium text-gray-700 mb-1">시작 시각</label>
             <input
               type="time"
               value={lr.form.quarterStartTime}
               onChange={(e) => lr.setForm({ ...lr.form, quarterStartTime: e.target.value })}
-              className="w-full border border-gray-300 rounded-md px-3 py-2"
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-xs"
             />
           </div>
         )}
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">일수</label>
+          <label className="block text-xs font-medium text-gray-700 mb-1">일수</label>
           <input
             type="number"
             value={lr.daysRequested}
             readOnly
-            className="w-full border border-gray-300 rounded-md px-3 py-2 bg-gray-50"
+            className="w-full border border-gray-300 rounded-md px-3 py-2 bg-gray-50 text-xs"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">사유</label>
+          <label className="block text-xs font-medium text-gray-700 mb-1">사유</label>
           <textarea
             value={lr.form.reason}
             onChange={(e) => lr.setForm({ ...lr.form, reason: e.target.value })}
             rows={3}
-            className="w-full border border-gray-300 rounded-md px-3 py-2"
+            className="w-full border border-gray-300 rounded-md px-3 py-2 text-xs"
             placeholder="휴가 사유를 입력하세요"
           />
         </div>
@@ -183,37 +183,41 @@ const LeaveRequestForm: React.FC = () => {
           type="button"
           disabled={!lr.canSubmit || lr.submitting}
           onClick={handleSubmit}
-          className="w-full px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-40"
+          className="w-full px-4 py-2 text-xs font-medium bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-40"
         >
           {lr.submitting ? '제출 중...' : '신청'}
         </button>
       </div>
 
-      <div className="bg-white shadow rounded-lg p-6">
-        <h2 className="text-lg font-semibold mb-3">최근 신청 내역</h2>
+      <div className="bg-white border border-gray-200 rounded-md overflow-hidden">
+        <div className="px-4 py-3 border-b border-gray-100">
+          <h2 className="text-sm font-medium text-gray-900">최근 신청 내역</h2>
+        </div>
         {myLeaves.length === 0 ? (
-          <p className="text-sm text-gray-500">신청 내역이 없습니다.</p>
+          <p className="text-xs text-gray-400 text-center py-8">신청 내역이 없습니다.</p>
         ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-gray-500 border-b">
-                <th className="py-2">유형</th>
-                <th className="py-2">기간</th>
-                <th className="py-2">일수</th>
-                <th className="py-2">상태</th>
-              </tr>
-            </thead>
-            <tbody>
-              {myLeaves.map((l) => (
-                <tr key={l.id} className="border-b last:border-0">
-                  <td className="py-2">{lr.getPolicyName(l.type)}</td>
-                  <td className="py-2">{l.start_date} ~ {l.end_date}</td>
-                  <td className="py-2">{l.days_requested}</td>
-                  <td className="py-2">{STATUS_LABEL[l.status] || l.status}</td>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-100">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">유형</th>
+                  <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">기간</th>
+                  <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">일수</th>
+                  <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">상태</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {myLeaves.map((l) => (
+                  <tr key={l.id}>
+                    <td className="px-4 py-2.5 whitespace-nowrap text-xs text-gray-700">{lr.getPolicyName(l.type)}</td>
+                    <td className="px-4 py-2.5 whitespace-nowrap text-xs text-gray-700">{l.start_date} ~ {l.end_date}</td>
+                    <td className="px-4 py-2.5 whitespace-nowrap text-xs text-gray-700">{l.days_requested}</td>
+                    <td className="px-4 py-2.5 whitespace-nowrap text-xs text-gray-700">{STATUS_LABEL[l.status] || l.status}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>
