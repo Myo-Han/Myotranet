@@ -253,28 +253,28 @@ const LeaveBalanceAdjust: React.FC = () => {
   if (loading) return <Loading />;
 
   return (
-    <div className="bg-white shadow rounded-lg p-6 space-y-6">
+    <div className="bg-white border border-gray-200 rounded-md p-4 space-y-4">
       <div>
-        <h2 className="text-xl font-semibold">휴가 지급/차감</h2>
-        <p className="text-sm text-gray-500 mt-1">직원 선택 후 잔액을 조정하고 이력을 기록합니다.</p>
+        <h2 className="text-sm font-medium text-gray-900">휴가 지급/차감</h2>
+        <p className="text-xs text-gray-500 mt-1">직원 선택 후 잔액을 조정하고 이력을 기록합니다.</p>
       </div>
 
       {error && <ErrorMessage message={error} />}
       {success && <SuccessMessage message={success} />}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* left: form */}
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">대상 직원 검색</label>
+            <label className="block text-xs font-medium text-gray-700 mb-1">대상 직원 검색</label>
             <input
               value={userQuery}
               onChange={(e) => setUserQuery(e.target.value)}
               placeholder="이름/이메일/소속 검색"
-              className="w-full border rounded-md px-3 py-2 text-sm"
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-xs"
             />
 
-            <div className="mt-2 border rounded-md max-h-56 overflow-auto">
+            <div className="mt-2 border border-gray-200 rounded-md max-h-56 overflow-auto">
               {filteredCandidates.map(u => {
                 const aff = getAffiliationText(u);
                 return (
@@ -286,17 +286,17 @@ const LeaveBalanceAdjust: React.FC = () => {
                       setShowEmployeeHeader(true);
                       setShowAdjustForm(true);
                     }}
-                    className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 ${selectedUserId === u.id ? 'bg-indigo-50' : ''}`}
+                    className={`w-full text-left px-3 py-2 text-xs hover:bg-gray-50 ${selectedUserId === u.id ? 'bg-blue-50' : ''}`}
                   >
                     <div className="flex items-center gap-3">
                       {u.profile_picture ? (
                         <img
                           src={u.profile_picture}
                           alt="profile"
-                          className="h-8 w-8 rounded-full object-cover"
+                          className="h-7 w-7 rounded-full object-cover"
                         />
                       ) : (
-                        <div className="h-8 w-8 rounded-full bg-gray-300 flex items-center justify-center text-xs font-semibold text-gray-700">
+                        <div className="h-7 w-7 rounded-full bg-gray-300 flex items-center justify-center text-xs font-semibold text-gray-700">
                           {(u.name?.charAt(0) || '?').toUpperCase()}
                         </div>
                       )}
@@ -310,20 +310,20 @@ const LeaveBalanceAdjust: React.FC = () => {
                 );
               })}
               {filteredCandidates.length === 0 && (
-                <div className="px-3 py-6 text-sm text-gray-500 text-center">검색 결과가 없습니다.</div>
+                <div className="px-3 py-6 text-xs text-gray-400 text-center">검색 결과가 없습니다.</div>
               )}
             </div>
           </div>
 
           {selectedUser && showAdjustForm && (
-            <div className="mt-4 space-y-4 border border-gray-200 rounded-lg p-4">
+            <div className="mt-4 space-y-3 border border-gray-200 rounded-md p-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">대상 잔액</label>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">대상 잔액</label>
                   <select
                     value={balanceType}
                     onChange={(e) => setBalanceType(e.target.value as BalanceType)}
-                    className="w-full border rounded-md px-3 py-2 text-sm"
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-xs"
                   >
                     <option value="annual_leave">연차</option>
                     <option value="monthly_leave">월차</option>
@@ -331,11 +331,11 @@ const LeaveBalanceAdjust: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">동작</label>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">동작</label>
                   <select
                     value={actionType}
                     onChange={(e) => setActionType(e.target.value as ActionType)}
-                    className="w-full border rounded-md px-3 py-2 text-sm"
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-xs"
                   >
                     <option value="manual_add">지급</option>
                     <option value="manual_subtract">차감</option>
@@ -343,13 +343,13 @@ const LeaveBalanceAdjust: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">일수</label>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">일수</label>
                   <input
                     type="number"
                     min={1}
                     value={amount}
                     onChange={(e) => setAmount(Number(e.target.value))}
-                    className="w-full border rounded-md px-3 py-2 text-sm"
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-xs"
                   />
                 </div>
 
@@ -357,7 +357,7 @@ const LeaveBalanceAdjust: React.FC = () => {
                   <button
                     onClick={handleSubmit}
                     disabled={busy}
-                    className="w-full px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-sm disabled:opacity-50"
+                    className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-xs font-medium disabled:opacity-50"
                   >
                     {busy ? '처리 중...' : '적용'}
                   </button>
@@ -365,12 +365,12 @@ const LeaveBalanceAdjust: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">사유</label>
+                <label className="block text-xs font-medium text-gray-700 mb-1">사유</label>
                 <textarea
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
                   rows={3}
-                  className="w-full border rounded-md px-3 py-2 text-sm"
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-xs"
                   placeholder="지급/차감 사유를 입력하세요"
                 />
               </div>
@@ -378,18 +378,18 @@ const LeaveBalanceAdjust: React.FC = () => {
           )}
 
           {selectedUser && showEmployeeHeader && (
-            <div className="border border-gray-200 rounded-lg overflow-hidden">
+            <div className="border border-gray-200 rounded-md overflow-hidden">
               <button
                 type="button"
                 onClick={() => selectedUser && openProfileModal(selectedUser.id)}
                 className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-gray-50"
               >
                 <div>
-                  <div className="font-semibold text-gray-900">{selectedUser.name || '이름'}</div>
+                  <div className="text-sm font-medium text-gray-900">{selectedUser.name || '이름'}</div>
                   {getAffiliationText(selectedUser) && (
                     <div className="text-xs text-gray-500 mt-0.5">{getAffiliationText(selectedUser)}</div>
                   )}
-                  <div className="text-sm text-gray-600">
+                  <div className="text-xs text-gray-600 mt-0.5">
                     연차: {selectedUser.annual_leave_balance ?? 0}일 · 월차: {selectedUser.monthly_leave_balance ?? 0}일
                   </div>
                 </div>
@@ -401,54 +401,54 @@ const LeaveBalanceAdjust: React.FC = () => {
         {/* right: history */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <div className="font-semibold">최근 조정/변동 이력</div>
+            <div className="text-sm font-medium text-gray-900">최근 조정/변동 이력</div>
             <button
               onClick={() => selectedUserId && fetchHistory(selectedUserId)}
               disabled={!selectedUserId || histLoading}
-              className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded text-xs disabled:opacity-50"
+              className="px-2.5 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md text-xs disabled:opacity-50"
             >
               새로고침
             </button>
           </div>
 
-          <div className="border rounded-lg overflow-hidden">
+          <div className="border border-gray-200 rounded-md overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
+              <table className="min-w-full divide-y divide-gray-100">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">일자</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">유형</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">변동</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">변동량</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">변동 후</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">사유</th>
+                    <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">일자</th>
+                    <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">유형</th>
+                    <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">변동</th>
+                    <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">변동량</th>
+                    <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">변동 후</th>
+                    <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">사유</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-100">
                   {histLoading ? (
                     <tr>
-                      <td colSpan={6} className="px-4 py-10 text-center text-gray-500">로딩 중...</td>
+                      <td colSpan={6} className="px-4 py-8 text-center text-xs text-gray-400">로딩 중...</td>
                     </tr>
                   ) : history.length > 0 ? (
                     history.map(h => (
                       <tr key={h.id}>
-                        <td className="px-4 py-3 text-sm text-gray-900">
+                        <td className="px-4 py-2.5 whitespace-nowrap text-xs text-gray-700">
                           {new Date(h.created_at).toLocaleDateString('ko-KR')}
                         </td>
-                        <td className="px-4 py-3 text-sm text-gray-700">{h.policy_code}</td>
-                        <td className="px-4 py-3 text-sm text-gray-700">{h.change_type}</td>
-                        <td className="px-4 py-3 text-sm text-right font-semibold">
+                        <td className="px-4 py-2.5 whitespace-nowrap text-xs text-gray-700">{h.policy_code}</td>
+                        <td className="px-4 py-2.5 whitespace-nowrap text-xs text-gray-700">{h.change_type}</td>
+                        <td className="px-4 py-2.5 whitespace-nowrap text-xs text-right font-medium">
                           <span className={h.change_amount > 0 ? 'text-green-700' : 'text-red-700'}>
                             {h.change_amount > 0 ? '+' : ''}{h.change_amount}일
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-sm text-right text-gray-900">{h.balance_after ?? '-'}</td>
-                        <td className="px-4 py-3 text-sm text-gray-500">{h.reason || '-'}</td>
+                        <td className="px-4 py-2.5 whitespace-nowrap text-xs text-right text-gray-900">{h.balance_after ?? '-'}</td>
+                        <td className="px-4 py-2.5 text-xs text-gray-500">{h.reason || '-'}</td>
                       </tr>
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={6} className="px-4 py-10 text-center text-gray-500">
+                      <td colSpan={6} className="px-4 py-8 text-center text-xs text-gray-400">
                         {selectedUserId ? '이력이 없습니다.' : '직원을 선택해주세요.'}
                       </td>
                     </tr>
@@ -458,7 +458,7 @@ const LeaveBalanceAdjust: React.FC = () => {
             </div>
           </div>
 
-          <div className="text-xs text-gray-500">
+          <div className="text-xs text-gray-400">
             * 잔액 업데이트와 이력 기록은 순차 처리입니다. (완전 원자성 필요하면 RPC로 묶는 방식이 가장 안전합니다.)
           </div>
         </div>
