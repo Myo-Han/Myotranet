@@ -440,14 +440,42 @@ const Leave: React.FC = () => {
 
       setDetailApproval(approval as any);
 
-      const { data: steps, error: stepsErr } = await supabase
-        .from('approval_line_steps')
-        .select('*')
-        .eq('approval_line_id', (approval as any).approval_line_id)
-        .order('step_order', { ascending: true });
+      // ✅ 이 조직은 approval_lines 템플릿이 없어 approval_line_id가 null인 경우가 대부분이다.
+      // (Part A에서 확인된 사실) 템플릿이 없으면 사용자 지정 결재라인(leave_approval_custom_steps)을
+      // 대신 조회한다. approval_line_id가 null인 채로 approval_line_steps를 .eq()로 조회하면
+      // "invalid input syntax for type uuid: null" 에러가 발생하므로 분기 처리한다.
+      if ((approval as any).approval_line_id) {
+        const { data: steps, error: stepsErr } = await supabase
+          .from('approval_line_steps')
+          .select('*')
+          .eq('approval_line_id', (approval as any).approval_line_id)
+          .order('step_order', { ascending: true });
 
-      if (stepsErr) throw stepsErr;
-      setDetailSteps((steps || []) as any);
+        if (stepsErr) throw stepsErr;
+        setDetailSteps((steps || []) as any);
+      } else {
+        const { data: customSteps, error: customStepsErr } = await supabase
+          .from('leave_approval_custom_steps')
+          .select('*')
+          .eq('leave_approval_id', (approval as any).id)
+          .order('step_order', { ascending: true });
+
+        if (customStepsErr) throw customStepsErr;
+        setDetailSteps(
+          ((customSteps || []) as any[]).map((s) => ({
+            id: s.id,
+            approval_line_id: '',
+            step_order: s.step_order,
+            required: true,
+            assignee_user_id: s.approver_user_id,
+            assignee_role: null,
+            assignee_position: null,
+            assignee_project_code: null,
+            assignee_part_code: null,
+            assignee_department_code: null,
+          })) as any,
+        );
+      }
 
       const { data: actions, error: actionsErr } = await supabase
         .from('leave_approval_actions')
