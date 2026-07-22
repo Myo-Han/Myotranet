@@ -6,6 +6,12 @@ import LeavePolicyManager from '../components/LeavePolicyManager';
 import WorkMenuManager from '../components/WorkMenuManager';
 import OrganizationManager from '../components/OrganizationManager';
 import ReactionEmojiManager from '../components/ReactionEmojiManager';
+import UserManager from '../components/UserManager';
+import UserInviteManager from '../components/UserInviteManager';
+import LeaveEmployeeOverview from '../components/LeaveEmployeeOverview';
+import LeaveBalanceAdjust from '../components/LeaveBalanceAdjust';
+import AttendanceAdminEditor from '../components/AttendanceAdminEditor';
+import CompanyEventManager from '../components/CompanyEventManager';
 
 type AdminMenuItem = {
     id: string;
@@ -290,6 +296,31 @@ const Admin: React.FC = () => {
                     <h1 className="text-base font-semibold text-gray-900">{currentMenuLabel}</h1>
                 </div>
                 <div className="p-4">
+                    {/* 인사: 결재관리에서 이동한 6개 항목 */}
+                    {selectedMenu === 'attendance-admin-editor' && (
+                        <AttendanceAdminEditor />
+                    )}
+
+                    {selectedMenu === 'user-manage' && (
+                        <UserManager currentUserId={user?.id} />
+                    )}
+
+                    {selectedMenu === 'user-invite' && (
+                        <UserInviteManager />
+                    )}
+
+                    {selectedMenu === 'company-events' && (
+                        <CompanyEventManager />
+                    )}
+
+                    {selectedMenu === 'leave_overview' && (
+                        <LeaveEmployeeOverview />
+                    )}
+
+                    {selectedMenu === 'leave_adjust' && (
+                        <LeaveBalanceAdjust />
+                    )}
+
                     {/* 휴가 정책 */}
                     {selectedMenu === 'leave-policy' && (
                         <LeavePolicyManager canEdit={true} />

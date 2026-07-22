@@ -5,18 +5,12 @@ import Loading from '../components/Loading';
 import ErrorMessage from '../components/ErrorMessage';
 import SuccessMessage from '../components/SuccessMessage';
 import LeaveWorkQueue from '../components/LeaveWorkQueue';
-import UserManager from '../components/UserManager';
-import UserInviteManager from '../components/UserInviteManager';
 import NoticeManager from '../components/NoticeManager';
 import BuildPackaging from '../components/BuildPackaging';
 import TodoManager from '../components/TodoManager';
 import MemoManager from '../components/MemoManager';
-import LeaveEmployeeOverview from '../components/LeaveEmployeeOverview';
-import LeaveBalanceAdjust from '../components/LeaveBalanceAdjust';
-import LettersInbox from '../components/LettersInbox';
 import AttendanceRevisionInbox from '../components/AttendanceRevisionInbox';
 import OvertimeRequestInbox from '../components/OvertimeRequestInbox';
-import AttendanceAdminEditor from '../components/AttendanceAdminEditor';
 import AttendanceReportAdmin from '../components/attendance-reports/AttendanceReportAdmin';
 import EmploymentCertificate from '../components/documents/EmploymentCertificate';
 import WorkFactCertificate from '../components/documents/WorkFactCertificate';
@@ -24,7 +18,6 @@ import ResignationCertificate from '../components/documents/ResignationCertifica
 import PayslipManager from '../components/documents/PayslipManager';
 import WithholdingManager from '../components/documents/WithholdingManager';
 import LeaveRequestForm from '../components/documents/LeaveRequestForm';
-import CompanyEventManager from '../components/CompanyEventManager';
 import MyApprovals from '../components/MyApprovals';
 
 type WorkMenuItem = {
@@ -170,27 +163,22 @@ const Work: React.FC = () => {
     const dateStr = sixtyDaysAgo.toISOString();
 
     try {
-      // 1. 공지, 편지를 한 번에 쿼리
+      // 1. 공지 쿼리
       // (예전엔 여기서 '가입 시도자' 여부도 확인했지만, 초대 전용 로그인으로 바뀌면서
       //  더 이상 승인 대기 중인 가입 시도자 개념이 없어 제거함. 초대 대기 현황은
       //  관리자 > 직원 초대 탭에서 확인)
+      // ✅ 마음의 편지는 자유게시판의 카테고리로 이동해서, 결재관리 쪽 배지 대상에서는 제외했다.
       const [
         { data: notices }, { data: noticeLogs },
-        { data: letters }, { data: letterLogs },
       ] = await Promise.all([
         supabase.from('notices').select('id').gte('created_at', dateStr),
         supabase.from('user_read_logs').select('target_id').eq('user_id', user.id).eq('target_type', 'notice'),
-        supabase.from('letters').select('id').gte('created_at', dateStr),
-        supabase.from('user_read_logs').select('target_id').eq('user_id', user.id).eq('target_type', 'letter'),
       ]);
 
       const newBadges: Record<string, boolean> = {};
 
       // 공지사항 체크
       if (notices?.some(n => !noticeLogs?.some(l => l.target_id === String(n.id)))) newBadges['notice'] = true;
-
-      // 마음의 편지 체크
-      if (letters?.some(l => !letterLogs?.some(log => log.target_id === String(l.id)))) newBadges['letters-inbox'] = true;
 
       setBadges(newBadges);
     } catch (e) {
@@ -575,14 +563,6 @@ const Work: React.FC = () => {
             <LeaveWorkQueue />
           )}
 
-          {selectedMenu === 'user-manage' && (
-            <UserManager currentUserId={user?.id} />
-          )}
-
-          {selectedMenu === 'user-invite' && (
-            <UserInviteManager />
-          )}
-
           {selectedMenu === 'notice-manager' && (
             <NoticeManager />
           )}
@@ -598,28 +578,12 @@ const Work: React.FC = () => {
             <BuildPackaging />
           )}
 
-          {selectedMenu === 'leave_adjust' && (
-            <LeaveBalanceAdjust />
-          )}
-
-          {selectedMenu === 'leave_overview' && (
-            <LeaveEmployeeOverview />
-          )}
-
-          {selectedMenu === 'letters-inbox' && (
-            <LettersInbox />
-          )}
-
           {selectedMenu === 'attendance-revision-inbox' && (
             <AttendanceRevisionInbox />
           )}
 
           {selectedMenu === 'overtime-approval' && (
             <OvertimeRequestInbox />
-          )}
-
-          {selectedMenu === 'attendance-admin-editor' && (
-            <AttendanceAdminEditor />
           )}
 
           {selectedMenu === 'document-issue' && (
@@ -644,10 +608,6 @@ const Work: React.FC = () => {
 
           {selectedMenu === 'doc-withholding' && (
             <WithholdingManager />
-          )}
-
-          {selectedMenu === 'company-events' && (
-            <CompanyEventManager />
           )}
 
           {submitting && (
