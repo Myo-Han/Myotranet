@@ -340,7 +340,7 @@ const LeaveRequestPage: React.FC = () => {
       ? await lr.updateExisting(leaveId, customApprovals)
       : await lr.submit(customApprovals);
     if (ok) {
-      navigate('/leave');
+      navigate('/attendance', { state: { category: 'leave' } });
     } else {
       setSubmitError(lr.error || (isEditMode ? '수정에 실패했습니다' : '신청에 실패했습니다'));
     }
@@ -355,7 +355,7 @@ const LeaveRequestPage: React.FC = () => {
     const result = await deleteLeaveRequest(leaveId);
     setDeleting(false);
     if (result.ok) {
-      navigate('/leave');
+      navigate('/attendance', { state: { category: 'leave' } });
     } else {
       setSubmitError(result.error || '삭제에 실패했습니다');
     }
@@ -375,7 +375,7 @@ const LeaveRequestPage: React.FC = () => {
         <ErrorMessage message={editBlockedError} />
         <button
           type="button"
-          onClick={() => navigate('/leave')}
+          onClick={() => navigate('/attendance', { state: { category: 'leave' } })}
           className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
         >
           돌아가기
@@ -390,7 +390,7 @@ const LeaveRequestPage: React.FC = () => {
         <h1 className="text-2xl font-bold text-gray-900">{isEditMode ? '연차 신청 수정' : '연차 신청'}</h1>
         <button
           type="button"
-          onClick={() => navigate('/leave')}
+          onClick={() => navigate('/attendance', { state: { category: 'leave' } })}
           className="text-sm text-gray-500 hover:text-gray-700"
         >
           취소하고 돌아가기
@@ -579,7 +579,7 @@ const LeaveRequestPage: React.FC = () => {
         )}
         <button
           type="button"
-          onClick={() => navigate('/leave')}
+          onClick={() => navigate('/attendance', { state: { category: 'leave' } })}
           className="flex-1 px-4 py-2.5 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
         >
           취소
