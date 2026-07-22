@@ -144,7 +144,7 @@ const OvertimePanel: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {error && <ErrorMessage message={error} />}
       {success && <SuccessMessage message={success} />}
 
@@ -152,53 +152,53 @@ const OvertimePanel: React.FC = () => {
         <button
           type="button"
           onClick={() => setShowOvertimeModal(true)}
-          className="px-4 py-2 bg-amber-600 text-white text-sm rounded-lg hover:bg-amber-700"
+          className="px-3 py-1.5 bg-amber-600 text-white text-xs font-medium rounded-md hover:bg-amber-700"
         >
           연장근무 신청
         </button>
       </div>
 
       {/* 나의 연장근무 신청 내역 */}
-      <div className="bg-white shadow rounded-lg overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-xl font-semibold">나의 연장근무 신청 내역</h2>
+      <div className="bg-white border border-gray-200 rounded-md overflow-hidden">
+        <div className="px-4 py-3 border-b border-gray-100">
+          <h2 className="text-sm font-medium text-gray-900">나의 연장근무 신청 내역</h2>
         </div>
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
+          <table className="min-w-full divide-y divide-gray-100">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">근무 일자</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">시작~종료</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">사유</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">상태</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">근무 일자</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">시작~종료</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">사유</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">상태</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white divide-y divide-gray-100">
               {!overtimeLoading && myOvertime.map((ot) => {
                 const { label, colorClass } = getRevisionStatusLabel(ot.status);
                 return (
                   <tr key={ot.id}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-4 py-2.5 whitespace-nowrap text-xs text-gray-700">
                       {new Date(`${ot.work_date}T00:00:00`).toLocaleDateString('ko-KR')}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-4 py-2.5 whitespace-nowrap text-xs text-gray-700">
                       {formatDateTimeShort(ot.requested_start_at)} ~ {formatDateTimeShort(ot.requested_end_at)}
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">{ot.reason || '-'}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 text-xs rounded-full ${colorClass}`}>{label}</span>
+                    <td className="px-4 py-2.5 text-xs text-gray-500">{ot.reason || '-'}</td>
+                    <td className="px-4 py-2.5 whitespace-nowrap">
+                      <span className={`px-1.5 py-0.5 text-xs rounded ${colorClass}`}>{label}</span>
                     </td>
                   </tr>
                 );
               })}
               {overtimeLoading && (
                 <tr>
-                  <td colSpan={4} className="px-6 py-8 text-center text-gray-500">불러오는 중...</td>
+                  <td colSpan={4} className="px-4 py-6 text-center text-xs text-gray-400">불러오는 중...</td>
                 </tr>
               )}
               {!overtimeLoading && myOvertime.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-6 py-8 text-center text-gray-500">신청 내역이 없습니다</td>
+                  <td colSpan={4} className="px-4 py-6 text-center text-xs text-gray-400">신청 내역이 없습니다</td>
                 </tr>
               )}
             </tbody>
@@ -207,47 +207,47 @@ const OvertimePanel: React.FC = () => {
       </div>
 
       {/* 팀원 연장근무 신청 현황 */}
-      <div className="bg-white shadow rounded-lg overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-xl font-semibold">팀원 연장근무 신청 현황</h2>
-          <p className="text-xs text-gray-400 mt-1">같은 프로젝트 소속 팀원들의 연장근무 신청 내역입니다.</p>
+      <div className="bg-white border border-gray-200 rounded-md overflow-hidden">
+        <div className="px-4 py-3 border-b border-gray-100">
+          <h2 className="text-sm font-medium text-gray-900">팀원 연장근무 신청 현황</h2>
+          <p className="text-xs text-gray-400 mt-0.5">같은 프로젝트 소속 팀원들의 연장근무 신청 내역입니다.</p>
         </div>
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
+          <table className="min-w-full divide-y divide-gray-100">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">신청자</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">근무 일자</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">시작~종료</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">상태</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">신청자</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">근무 일자</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">시작~종료</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">상태</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white divide-y divide-gray-100">
               {!overtimeLoading && teamOvertime.map((ot) => {
                 const { label, colorClass } = getRevisionStatusLabel(ot.status);
                 return (
                   <tr key={ot.id}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{ot.requester?.name || '-'}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-4 py-2.5 whitespace-nowrap text-xs text-gray-700">{ot.requester?.name || '-'}</td>
+                    <td className="px-4 py-2.5 whitespace-nowrap text-xs text-gray-700">
                       {new Date(`${ot.work_date}T00:00:00`).toLocaleDateString('ko-KR')}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-4 py-2.5 whitespace-nowrap text-xs text-gray-700">
                       {formatDateTimeShort(ot.requested_start_at)} ~ {formatDateTimeShort(ot.requested_end_at)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 text-xs rounded-full ${colorClass}`}>{label}</span>
+                    <td className="px-4 py-2.5 whitespace-nowrap">
+                      <span className={`px-1.5 py-0.5 text-xs rounded ${colorClass}`}>{label}</span>
                     </td>
                   </tr>
                 );
               })}
               {overtimeLoading && (
                 <tr>
-                  <td colSpan={4} className="px-6 py-8 text-center text-gray-500">불러오는 중...</td>
+                  <td colSpan={4} className="px-4 py-6 text-center text-xs text-gray-400">불러오는 중...</td>
                 </tr>
               )}
               {!overtimeLoading && teamOvertime.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan={4} className="px-4 py-6 text-center text-xs text-gray-400">
                     같은 프로젝트 팀원의 연장근무 신청 내역이 없습니다
                   </td>
                 </tr>

@@ -1,9 +1,7 @@
 // 연차 신청 패널 (근태관리 탭의 "연차 신청" 카테고리).
-// 기존 pages/Leave.tsx의 "연차" 탭 내용을 그대로 옮겨왔다. 근태관리 페이지가 좌측
-// 사이드바로 카테고리(근태현황/연차 신청/연장근무 신청)를 나누는 구조로 바뀌면서,
-// 페이지 내부의 탭 전환 UI는 제거하고 이 컴포넌트 자체가 "연차 신청" 카테고리의 내용이 됐다.
+// 미니멀/컴팩트 스타일로 재정리했고, "연차 신청"/"수정" 버튼을 누르면 페이지 이동 없이
+// 같은 영역 안에서 목록 <-> 폼(LeaveRequestFormBody)으로 바로 전환된다.
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../supabaseClient';
 import { Leave as LeaveType, LeaveBalanceHistory } from '../../types';
@@ -12,10 +10,10 @@ import ErrorMessage from '../ErrorMessage';
 import SuccessMessage from '../SuccessMessage';
 import { useLeaveRequest, deleteLeaveRequest, isLeaveEditable } from '../../hooks/useLeaveRequest';
 import { getRevisionStatusLabel } from '../../utils/attendanceLabels';
+import LeaveRequestFormBody from './LeaveRequestFormBody';
 
 // ✅ leave_balance_history.policy_code는 "휴가 신청 유형"(annual/half_day/quarter_day)이 아니라
 // 실제로 증감된 "잔액 풀"(annual_leave=연차 잔액 / monthly_leave=월차 잔액)을 가리킨다.
-// (leave_policies에는 애초에 'annual_leave'/'monthly_leave'라는 policy_code가 존재하지 않음)
 const POOL_LABEL: Record<string, string> = {
   annual_leave: '연차(잔액)',
   monthly_leave: '월차(잔액)',
@@ -26,10 +24,20 @@ type TeamLeaveRow = LeaveType & {
   requester?: { name: string } | null;
 };
 
+const CardHeading: React.FC<{ children: React.ReactNode; sub?: string }> = ({ children, sub }) => (
+  <div className="px-4 py-3 border-b border-gray-100">
+    <h2 className="text-sm font-medium text-gray-900">{children}</h2>
+    {sub && <p className="text-xs text-gray-400 mt-0.5">{sub}</p>}
+  </div>
+);
+
 const LeaveAnnualPanel: React.FC = () => {
   const { user } = useAuth();
-  const navigate = useNavigate();
   const lr = useLeaveRequest(user);
+
+  // ✅ 목록 화면 <-> 신청/수정 폼 화면 전환 (페이지 이동 없이 같은 영역 안에서 바뀜)
+  const [viewMode, setViewMode] = useState<'list' | 'form'>('list');
+  const [editLeaveId, setEditLeaveId] = useState<string | null>(null);
 
   const [leaves, setLeaves] = useState<LeaveType[]>([]);
   const [teamLeaves, setTeamLeaves] = useState<TeamLeaveRow[]>([]);
@@ -182,7 +190,6 @@ const LeaveAnnualPanel: React.FC = () => {
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
-      // 기간 필터
       if (historyFilter.period !== 'all') {
         const now = new Date();
         let startDate = new Date();
@@ -205,12 +212,10 @@ const LeaveAnnualPanel: React.FC = () => {
         query = query.gte('created_at', startDate.toISOString());
       }
 
-      // 정책 필터
       if (historyFilter.policyCode !== 'all') {
         query = query.eq('policy_code', historyFilter.policyCode);
       }
 
-      // 변동 유형 필터
       if (historyFilter.changeType !== 'all') {
         query = query.eq('change_type', historyFilter.changeType);
       }
@@ -264,9 +269,22 @@ const LeaveAnnualPanel: React.FC = () => {
     return { totalAccrual, totalUsed, totalExpired };
   };
 
+  const openNewForm = () => {
+    setEditLeaveId(null);
+    setViewMode('form');
+  };
+
   const handleEditLeave = (leave: LeaveType) => {
     setDetailOpen(false);
-    navigate(`/leave/edit/${leave.id}`);
+    setEditLeaveId(leave.id);
+    setViewMode('form');
+  };
+
+  const closeForm = () => {
+    setViewMode('list');
+    setEditLeaveId(null);
+    fetchLeaves();
+    fetchBalanceHistory();
   };
 
   const handleDeleteLeave = async (leave: LeaveType) => {
@@ -313,8 +331,6 @@ const LeaveAnnualPanel: React.FC = () => {
 
       // ✅ 이 조직은 approval_lines 템플릿이 없어 approval_line_id가 null인 경우가 대부분이다.
       // 템플릿이 없으면 사용자 지정 결재라인(leave_approval_custom_steps)을 대신 조회한다.
-      // approval_line_id가 null인 채로 approval_line_steps를 .eq()로 조회하면
-      // "invalid input syntax for type uuid: null" 에러가 발생하므로 분기 처리한다.
       if ((approval as any).approval_line_id) {
         const { data: steps, error: stepsErr } = await supabase
           .from('approval_line_steps')
@@ -369,144 +385,154 @@ const LeaveAnnualPanel: React.FC = () => {
 
   if (loading) return <Loading />;
 
+  // ✅ 폼 화면: 신청/수정 모두 같은 영역 안에서 처리
+  if (viewMode === 'form') {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-medium text-gray-900">{editLeaveId ? '연차 신청 수정' : '새 연차 신청'}</h2>
+          <button
+            type="button"
+            onClick={closeForm}
+            className="text-xs text-gray-500 hover:text-gray-700"
+          >
+            목록으로
+          </button>
+        </div>
+        <LeaveRequestFormBody leaveId={editLeaveId ?? undefined} onDone={closeForm} />
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {error && <ErrorMessage message={error} />}
       {success && <SuccessMessage message={success} />}
 
       <div className="flex justify-end">
         <button
           type="button"
-          onClick={() => navigate('/leave/new')}
-          className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700"
+          onClick={openNewForm}
+          className="px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-md hover:bg-blue-700"
         >
           연차 신청
         </button>
       </div>
 
-      {/* 잔여 연차 카드 (연차+월차 통합, 본인만 확인 가능) */}
-      <div className="bg-white shadow rounded-lg p-6">
-        <div className="flex items-center justify-between mb-2">
-          <h2 className="text-lg font-semibold text-gray-700">잔여 연차</h2>
-          <div className="text-3xl font-bold text-blue-600">{totalLeaveBalance}일</div>
+      {/* 잔여 연차 + 올해 휴가 통계를 한 줄의 컴팩트한 지표로 통합 */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="bg-gray-50 border border-gray-200 rounded-md px-3 py-2.5">
+          <div className="text-xs text-gray-500 mb-1">잔여 연차</div>
+          <div className="text-lg font-medium text-blue-600">{totalLeaveBalance}일</div>
         </div>
-        <p className="text-sm text-gray-500">연차·월차 잔여일수를 합산한 값입니다. 본인만 확인할 수 있어요.</p>
-      </div>
-
-      {/* 올해 통계 요약 */}
-      <div className="bg-white shadow rounded-lg p-6">
-        <h2 className="text-xl font-semibold mb-4">올해 휴가 통계</h2>
-        <div className="grid grid-cols-3 gap-4">
-          <div className="text-center">
-            <div className="text-2xl font-bold text-green-600">{stats.totalAccrual}일</div>
-            <div className="text-sm text-gray-500">총 발생</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-orange-600">{stats.totalUsed}일</div>
-            <div className="text-sm text-gray-500">총 사용</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-red-600">{stats.totalExpired}일</div>
-            <div className="text-sm text-gray-500">총 소멸</div>
-          </div>
+        <div className="bg-gray-50 border border-gray-200 rounded-md px-3 py-2.5">
+          <div className="text-xs text-gray-500 mb-1">총 발생</div>
+          <div className="text-lg font-medium text-green-600">{stats.totalAccrual}일</div>
+        </div>
+        <div className="bg-gray-50 border border-gray-200 rounded-md px-3 py-2.5">
+          <div className="text-xs text-gray-500 mb-1">총 사용</div>
+          <div className="text-lg font-medium text-orange-600">{stats.totalUsed}일</div>
+        </div>
+        <div className="bg-gray-50 border border-gray-200 rounded-md px-3 py-2.5">
+          <div className="text-xs text-gray-500 mb-1">총 소멸</div>
+          <div className="text-lg font-medium text-red-600">{stats.totalExpired}일</div>
         </div>
       </div>
+      <p className="text-xs text-gray-400 -mt-2">연차·월차 잔여일수를 합산한 값입니다. 본인만 확인할 수 있어요.</p>
 
       {/* 휴가 증감 이력 */}
-      <div className="bg-white shadow rounded-lg overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <div className="flex justify-between items-center">
-            <h2 className="text-xl font-semibold">휴가 증감 이력</h2>
-            <div className="flex gap-2">
-              <select
-                value={historyFilter.period}
-                onChange={(e) => setHistoryFilter({ ...historyFilter, period: e.target.value })}
-                className="text-sm border border-gray-300 rounded-md px-2 py-1"
-              >
-                <option value="1month">최근 1개월</option>
-                <option value="3months">최근 3개월</option>
-                <option value="6months">최근 6개월</option>
-                <option value="1year">최근 1년</option>
-                <option value="all">전체</option>
-              </select>
+      <div className="bg-white border border-gray-200 rounded-md overflow-hidden">
+        <div className="px-4 py-3 border-b border-gray-100 flex justify-between items-center flex-wrap gap-2">
+          <h2 className="text-sm font-medium text-gray-900">휴가 증감 이력</h2>
+          <div className="flex gap-1.5">
+            <select
+              value={historyFilter.period}
+              onChange={(e) => setHistoryFilter({ ...historyFilter, period: e.target.value })}
+              className="text-xs border border-gray-300 rounded px-1.5 py-1"
+            >
+              <option value="1month">최근 1개월</option>
+              <option value="3months">최근 3개월</option>
+              <option value="6months">최근 6개월</option>
+              <option value="1year">최근 1년</option>
+              <option value="all">전체</option>
+            </select>
 
-              <select
-                value={historyFilter.policyCode}
-                onChange={(e) => setHistoryFilter({ ...historyFilter, policyCode: e.target.value })}
-                className="text-sm border border-gray-300 rounded-md px-2 py-1"
-              >
-                <option value="all">전체 휴가</option>
-                <option value="annual_leave">{POOL_LABEL.annual_leave}</option>
-                <option value="monthly_leave">{POOL_LABEL.monthly_leave}</option>
-              </select>
+            <select
+              value={historyFilter.policyCode}
+              onChange={(e) => setHistoryFilter({ ...historyFilter, policyCode: e.target.value })}
+              className="text-xs border border-gray-300 rounded px-1.5 py-1"
+            >
+              <option value="all">전체 휴가</option>
+              <option value="annual_leave">{POOL_LABEL.annual_leave}</option>
+              <option value="monthly_leave">{POOL_LABEL.monthly_leave}</option>
+            </select>
 
-              <select
-                value={historyFilter.changeType}
-                onChange={(e) => setHistoryFilter({ ...historyFilter, changeType: e.target.value })}
-                className="text-sm border border-gray-300 rounded-md px-2 py-1"
-              >
-                <option value="all">전체 유형</option>
-                <option value="accrual">발생만</option>
-                <option value="used">사용만</option>
-                <option value="expired">소멸만</option>
-                <option value="manual_add">수동지급</option>
-              </select>
-            </div>
+            <select
+              value={historyFilter.changeType}
+              onChange={(e) => setHistoryFilter({ ...historyFilter, changeType: e.target.value })}
+              className="text-xs border border-gray-300 rounded px-1.5 py-1"
+            >
+              <option value="all">전체 유형</option>
+              <option value="accrual">발생만</option>
+              <option value="used">사용만</option>
+              <option value="expired">소멸만</option>
+              <option value="manual_add">수동지급</option>
+            </select>
           </div>
         </div>
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
+          <table className="min-w-full divide-y divide-gray-100">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">날짜</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">휴가 종류</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">변동 유형</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">변동량</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">변동 후 잔액</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">사유</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">날짜</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">휴가 종류</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">변동 유형</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">변동량</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">변동 후 잔액</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">사유</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white divide-y divide-gray-100">
               {balanceHistory.map((history) => (
                 <tr key={history.id}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="px-4 py-2.5 whitespace-nowrap text-xs text-gray-700">
                     {new Date(history.created_at).toLocaleDateString('ko-KR')}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="px-4 py-2.5 whitespace-nowrap text-xs text-gray-700">
                     {getPoolLabel(history.policy_code)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-4 py-2.5 whitespace-nowrap">
                     <span
-                      className={`px-2 py-1 text-xs rounded-full ${history.change_type === 'accrual' || history.change_type === 'manual_add'
-                        ? 'bg-green-100 text-green-800'
+                      className={`px-1.5 py-0.5 text-xs rounded ${history.change_type === 'accrual' || history.change_type === 'manual_add'
+                        ? 'bg-green-50 text-green-700'
                         : history.change_type === 'used'
-                          ? 'bg-orange-100 text-orange-800'
-                          : 'bg-red-100 text-red-800'
+                          ? 'bg-orange-50 text-orange-700'
+                          : 'bg-red-50 text-red-700'
                         }`}
                     >
                       {getChangeTypeLabel(history.change_type)}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                  <td className="px-4 py-2.5 whitespace-nowrap text-xs">
                     <span
-                      className={`font-semibold ${history.change_amount > 0 ? 'text-green-600' : 'text-red-600'
+                      className={`font-medium ${history.change_amount > 0 ? 'text-green-600' : 'text-red-600'
                         }`}
                     >
                       {history.change_amount > 0 ? '+' : ''}
                       {history.change_amount}일
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="px-4 py-2.5 whitespace-nowrap text-xs text-gray-700">
                     {['annual_leave', 'monthly_leave'].includes(history.policy_code)
                       ? `${history.balance_after}일`
                       : '-'}
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-500">{history.reason || '-'}</td>
+                  <td className="px-4 py-2.5 text-xs text-gray-500">{history.reason || '-'}</td>
                 </tr>
               ))}
               {balanceHistory.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan={6} className="px-4 py-6 text-center text-xs text-gray-400">
                     증감 이력이 없습니다
                   </td>
                 </tr>
@@ -517,66 +543,60 @@ const LeaveAnnualPanel: React.FC = () => {
       </div>
 
       {/* 나의 휴가 신청 내역 */}
-      <div className="bg-white shadow rounded-lg overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-xl font-semibold">나의 휴가 신청 내역</h2>
-        </div>
+      <div className="bg-white border border-gray-200 rounded-md overflow-hidden">
+        <CardHeading>나의 휴가 신청 내역</CardHeading>
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
+          <table className="min-w-full divide-y divide-gray-100">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">신청일자</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">시작일</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">종료일</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">유형</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">일수</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">사유</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">상태</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">신청일자</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">시작일</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">종료일</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">유형</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">일수</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">사유</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">상태</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white divide-y divide-gray-100">
               {leaves.map((leave) => (
                 <tr
                   key={leave.id}
                   onClick={() => openApprovalDetail(leave)}
                   className="cursor-pointer hover:bg-gray-50"
                 >
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="px-4 py-2.5 whitespace-nowrap text-xs text-gray-700">
                     {new Date(((leave as any).created_at || leave.start_date) as string).toLocaleDateString('ko-KR')}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="px-4 py-2.5 whitespace-nowrap text-xs text-gray-700">
                     {new Date(leave.start_date).toLocaleDateString('ko-KR')}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="px-4 py-2.5 whitespace-nowrap text-xs text-gray-700">
                     {new Date(leave.end_date).toLocaleDateString('ko-KR')}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="px-4 py-2.5 whitespace-nowrap text-xs text-gray-700">
                     {lr.getPolicyName(leave.type)}
                     {leave.type === 'half_day' && leave.half_day_period && (
-                      <span className="text-xs text-gray-500 ml-1">
-                        ({leave.half_day_period === 'am' ? '오전' : '오후'})
-                      </span>
+                      <span className="text-gray-400 ml-1">({leave.half_day_period === 'am' ? '오전' : '오후'})</span>
                     )}
                     {leave.type === 'quarter_day' && leave.quarter_start_time && (
-                      <span className="text-xs text-gray-500 ml-1">
-                        ({leave.quarter_start_time.slice(0, 5)}~)
-                      </span>
+                      <span className="text-gray-400 ml-1">({leave.quarter_start_time.slice(0, 5)}~)</span>
                     )}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="px-4 py-2.5 whitespace-nowrap text-xs text-gray-700">
                     {leave.days_requested}일
                     {leave.paid_days > 0 && (
                       <span className="text-xs text-green-600 ml-1">(유급 {leave.paid_days}일)</span>
                     )}
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-900">{leave.reason}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-4 py-2.5 text-xs text-gray-700">{leave.reason}</td>
+                  <td className="px-4 py-2.5 whitespace-nowrap">
                     <span
-                      className={`px-2 py-1 text-xs rounded-full ${leave.status === 'approved'
-                        ? 'bg-green-100 text-green-800'
+                      className={`px-1.5 py-0.5 text-xs rounded ${leave.status === 'approved'
+                        ? 'bg-green-50 text-green-700'
                         : leave.status === 'rejected'
-                          ? 'bg-red-100 text-red-800'
-                          : 'bg-yellow-100 text-yellow-800'
+                          ? 'bg-red-50 text-red-700'
+                          : 'bg-yellow-50 text-yellow-700'
                         }`}
                     >
                       {leave.status === 'approved' ? '승인' : leave.status === 'rejected' ? '반려' : '대기'}
@@ -586,7 +606,7 @@ const LeaveAnnualPanel: React.FC = () => {
               ))}
               {leaves.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan={7} className="px-4 py-6 text-center text-xs text-gray-400">
                     신청 내역이 없습니다
                   </td>
                 </tr>
@@ -597,42 +617,41 @@ const LeaveAnnualPanel: React.FC = () => {
       </div>
 
       {/* 팀원 휴가 신청 현황 */}
-      <div className="bg-white shadow rounded-lg overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-xl font-semibold">팀원 휴가 신청 현황</h2>
-          <p className="text-xs text-gray-400 mt-1">같은 프로젝트 소속 팀원들의 휴가 신청 내역입니다. (잔여 연차는 본인만 볼 수 있어요)</p>
-        </div>
+      <div className="bg-white border border-gray-200 rounded-md overflow-hidden">
+        <CardHeading sub="같은 프로젝트 소속 팀원들의 휴가 신청 내역입니다. (잔여 연차는 본인만 볼 수 있어요)">
+          팀원 휴가 신청 현황
+        </CardHeading>
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
+          <table className="min-w-full divide-y divide-gray-100">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">신청자</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">기간</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">유형</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">사유</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">상태</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">신청자</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">기간</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">유형</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">사유</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">상태</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white divide-y divide-gray-100">
               {teamLeaves.map((leave) => {
                 const { label, colorClass } = getRevisionStatusLabel(leave.status);
                 return (
                   <tr key={leave.id}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{leave.requester?.name || '-'}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-4 py-2.5 whitespace-nowrap text-xs text-gray-700">{leave.requester?.name || '-'}</td>
+                    <td className="px-4 py-2.5 whitespace-nowrap text-xs text-gray-700">
                       {new Date(leave.start_date).toLocaleDateString('ko-KR')} ~ {new Date(leave.end_date).toLocaleDateString('ko-KR')}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{lr.getPolicyName(leave.type)}</td>
-                    <td className="px-6 py-4 text-sm text-gray-500">{leave.reason || '-'}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 text-xs rounded-full ${colorClass}`}>{label}</span>
+                    <td className="px-4 py-2.5 whitespace-nowrap text-xs text-gray-700">{lr.getPolicyName(leave.type)}</td>
+                    <td className="px-4 py-2.5 text-xs text-gray-500">{leave.reason || '-'}</td>
+                    <td className="px-4 py-2.5 whitespace-nowrap">
+                      <span className={`px-1.5 py-0.5 text-xs rounded ${colorClass}`}>{label}</span>
                     </td>
                   </tr>
                 );
               })}
               {teamLeaves.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan={5} className="px-4 py-6 text-center text-xs text-gray-400">
                     같은 프로젝트 팀원의 휴가 신청 내역이 없습니다
                   </td>
                 </tr>
@@ -653,21 +672,21 @@ const LeaveAnnualPanel: React.FC = () => {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-semibold">결재 진행 현황</h3>
+              <h3 className="text-lg font-medium">결재 진행 현황</h3>
               <div className="flex items-center gap-2">
                 {detailLeave && isLeaveEditable(detailLeave.start_date) && (
                   <>
                     <button
                       onClick={() => handleEditLeave(detailLeave)}
                       disabled={deletingLeave}
-                      className="px-3 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded hover:bg-blue-100 disabled:opacity-50"
+                      className="px-3 py-1 text-sm bg-blue-50 text-blue-700 border border-blue-200 rounded hover:bg-blue-100 disabled:opacity-50"
                     >
                       수정
                     </button>
                     <button
                       onClick={() => handleDeleteLeave(detailLeave)}
                       disabled={deletingLeave}
-                      className="px-3 py-1 bg-red-50 text-red-600 border border-red-200 rounded hover:bg-red-100 disabled:opacity-50"
+                      className="px-3 py-1 text-sm bg-red-50 text-red-600 border border-red-200 rounded hover:bg-red-100 disabled:opacity-50"
                     >
                       {deletingLeave ? '삭제 중...' : '삭제'}
                     </button>
@@ -675,7 +694,7 @@ const LeaveAnnualPanel: React.FC = () => {
                 )}
                 <button
                   onClick={() => setDetailOpen(false)}
-                  className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300"
+                  className="px-3 py-1 text-sm bg-gray-200 rounded hover:bg-gray-300"
                 >
                   닫기
                 </button>
@@ -687,7 +706,7 @@ const LeaveAnnualPanel: React.FC = () => {
             )}
 
             {detailLoading && (
-              <div className="py-6 text-center text-gray-600">로딩중</div>
+              <div className="py-6 text-center text-sm text-gray-600">로딩중</div>
             )}
 
             {!detailLoading && detailError && (
@@ -695,7 +714,7 @@ const LeaveAnnualPanel: React.FC = () => {
             )}
 
             {!detailLoading && !detailError && !detailApproval && (
-              <div className="py-6 text-center text-gray-600">결재 인스턴스가 없습니다</div>
+              <div className="py-6 text-center text-sm text-gray-600">결재 인스턴스가 없습니다</div>
             )}
 
             {!detailLoading && !detailError && detailApproval && (
@@ -709,14 +728,14 @@ const LeaveAnnualPanel: React.FC = () => {
                     <>
                       {detailApproval.status === 'rejected' && lastRejected?.notes && (
                         <div className="mb-4 p-3 rounded bg-red-50 text-sm text-red-700">
-                          <div className="font-semibold">반려 사유</div>
+                          <div className="font-medium">반려 사유</div>
                           <div className="mt-1">{lastRejected.notes}</div>
                         </div>
                       )}
 
-                      <div className="border rounded overflow-hidden">
-                        <div className="bg-gray-50 px-4 py-2 text-sm font-semibold">단계</div>
-                        <div className="divide-y">
+                      <div className="border border-gray-200 rounded-md overflow-hidden">
+                        <div className="bg-gray-50 px-4 py-2 text-xs font-medium text-gray-600">단계</div>
+                        <div className="divide-y divide-gray-100">
                           {detailSteps.map((s) => {
                             const stepActions = detailActions.filter((a) => a.step_order === s.step_order);
                             const last = stepActions.length ? stepActions[stepActions.length - 1] : null;
@@ -743,12 +762,12 @@ const LeaveAnnualPanel: React.FC = () => {
                             return (
                               <div key={s.id} className="px-4 py-3 flex items-start justify-between gap-4">
                                 <div className="text-sm text-gray-800">
-                                  <div className="font-semibold">{s.step_order}단계</div>
-                                  {processedAt && <div className="text-gray-500 mt-1">{processedAt}</div>}
+                                  <div className="font-medium">{s.step_order}단계</div>
+                                  {processedAt && <div className="text-xs text-gray-500 mt-1">{processedAt}</div>}
                                 </div>
 
                                 <span
-                                  className={`px-2 py-1 text-xs rounded-full ${stateLabel === '완료'
+                                  className={`px-2 py-0.5 text-xs rounded-full ${stateLabel === '완료'
                                     ? 'bg-green-100 text-green-800'
                                     : stateLabel === '반려'
                                       ? 'bg-red-100 text-red-800'
