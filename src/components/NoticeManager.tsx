@@ -99,7 +99,7 @@ const NoticeManager: React.FC = () => {
         <div className="space-y-4">
             <div className="flex items-center justify-between">
                 <div>
-                    <h2 className="text-sm font-semibold text-gray-700">공지 관리</h2>
+                    <h2 className="text-sm font-medium text-gray-900">공지 관리</h2>
                     <p className="text-xs text-gray-500 mt-1">
                         공지를 생성, 수정, 삭제하고 상단 고정을 설정할 수 있습니다.
                     </p>
@@ -107,7 +107,7 @@ const NoticeManager: React.FC = () => {
                 <button
                     type="button"
                     onClick={handleNewNotice}
-                    className="px-4 py-2 rounded-md bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700"
+                    className="px-3 py-1.5 rounded-md bg-blue-600 text-white text-xs font-medium hover:bg-blue-700"
                 >
                     새 공지
                 </button>
@@ -126,7 +126,7 @@ const NoticeManager: React.FC = () => {
                                     key={notice.id}
                                     onClick={() => setEditingNotice(notice)}
                                     className={`border rounded-md px-4 py-3 cursor-pointer transition ${editingNotice?.id === notice.id
-                                        ? 'bg-indigo-50 border-indigo-300'
+                                        ? 'bg-blue-50 border-blue-300'
                                         : 'bg-white hover:bg-gray-50'
                                         }`}
                                 >
@@ -172,7 +172,7 @@ const NoticeManager: React.FC = () => {
                         {editingNotice?.id ? '공지 수정' : '새 공지 작성'}
                     </h3>
                     {editingNotice ? (
-                        <div className="border rounded-lg p-4 space-y-4">
+                        <div className="border border-gray-200 rounded-md p-4 space-y-4">
                             <div>
                                 <label className="block text-xs font-medium text-gray-600 mb-1">
                                     제목
@@ -211,7 +211,7 @@ const NoticeManager: React.FC = () => {
                                             is_pinned: e.target.checked,
                                         })
                                     }
-                                    className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
+                                    className="h-4 w-4 text-blue-600 border-gray-300 rounded"
                                 />
                                 <label className="text-xs text-gray-600">상단 고정</label>
                             </div>
@@ -226,7 +226,7 @@ const NoticeManager: React.FC = () => {
                                 <button
                                     type="button"
                                     onClick={handleSaveNotice}
-                                    className="px-3 py-1.5 rounded-md bg-indigo-600 text-white text-xs font-medium"
+                                    className="px-3 py-1.5 rounded-md bg-blue-600 text-white text-xs font-medium"
                                 >
                                     저장
                                 </button>

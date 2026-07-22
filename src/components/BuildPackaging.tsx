@@ -105,24 +105,24 @@ const BuildPackaging: React.FC = () => {
   return (
     <div className="space-y-4">
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded">
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2.5 rounded-md text-xs">
           {error}
         </div>
       )}
       {success && (
-        <div className="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded">
+        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-2.5 rounded-md text-xs">
           {success}
         </div>
       )}
 
-      <div className="bg-white shadow rounded-lg p-6">
-        <h2 className="text-xl font-bold mb-2">패키징(빌드)</h2>
-        <p className="text-sm text-gray-600 mb-4">
+      <div className="bg-white border border-gray-200 rounded-md p-4">
+        <h2 className="text-sm font-medium text-gray-900 mb-1">패키징(빌드)</h2>
+        <p className="text-xs text-gray-500 mb-4">
           Jenkins 빌드를 트리거합니다. 관리자/매니저만 실행 가능합니다.
         </p>
 
         {!canBuild && (
-          <p className="text-sm text-gray-500">빌드 실행 권한이 없습니다.</p>
+          <p className="text-xs text-gray-400">빌드 실행 권한이 없습니다.</p>
         )}
 
         {canBuild && (
@@ -130,12 +130,12 @@ const BuildPackaging: React.FC = () => {
             <button
               type="button"
               onClick={openBuildModal}
-              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 text-xs font-medium bg-blue-600 text-white rounded-md hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={submitting}
             >
               빌드 시작
             </button>
-            <span className="text-xs text-gray-500">Jenkins 빌드 트리거</span>
+            <span className="text-xs text-gray-400">Jenkins 빌드 트리거</span>
           </div>
         )}
       </div>
@@ -143,22 +143,22 @@ const BuildPackaging: React.FC = () => {
       {/* 빌드 모달 */}
       {showBuildModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40">
-          <div className="bg-white rounded-lg p-6 max-w-sm w-full mx-4">
-            <h2 className="text-xl font-semibold mb-4">빌드 정보 입력</h2>
-            <p className="text-sm text-gray-600 mb-3">
+          <div className="bg-white rounded-md p-5 max-w-sm w-full mx-4">
+            <h2 className="text-sm font-medium text-gray-900 mb-3">빌드 정보 입력</h2>
+            <p className="text-xs text-gray-500 mb-3">
               브랜치와 버전을 확인하고, 메모와 비밀번호를 입력한 뒤 빌드를
               실행하세요.
             </p>
 
             {/* 브랜치 선택 */}
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-xs font-medium text-gray-700 mb-1">
               브랜치
             </label>
             <select
               value={selectedBranch}
               onChange={(e) => setSelectedBranch(e.target.value)}
               disabled={loadingBuildInfo || submitting}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 mb-3"
+              className="w-full border border-gray-300 rounded-md px-3 py-2 mb-3 text-xs"
             >
               {branches.map((b) => (
                 <option key={b} value={b}>
@@ -168,7 +168,7 @@ const BuildPackaging: React.FC = () => {
             </select>
 
             {/* 버전 입력 */}
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-xs font-medium text-gray-700 mb-1">
               버전
             </label>
             <input
@@ -176,32 +176,32 @@ const BuildPackaging: React.FC = () => {
               value={version}
               onChange={(e) => setVersion(e.target.value)}
               disabled={loadingBuildInfo || submitting}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 mb-3"
+              className="w-full border border-gray-300 rounded-md px-3 py-2 mb-3 text-xs"
               placeholder="예: 1.4.3"
             />
 
             {/* 메모 입력 */}
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-xs font-medium text-gray-700 mb-1">
               메모
             </label>
             <textarea
               value={memo}
               onChange={(e) => setMemo(e.target.value)}
               disabled={submitting}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 mb-3"
+              className="w-full border border-gray-300 rounded-md px-3 py-2 mb-3 text-xs"
               placeholder="이번 빌드 용도 / 변경 내용 메모"
               rows={3}
             />
 
             {/* 비밀번호 입력 */}
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-xs font-medium text-gray-700 mb-1">
               빌드 비밀번호
             </label>
             <input
               type="password"
               value={buildPassword}
               onChange={(e) => setBuildPassword(e.target.value)}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 mb-4"
+              className="w-full border border-gray-300 rounded-md px-3 py-2 mb-4 text-xs"
               placeholder="빌드 비밀번호"
               disabled={submitting}
             />
@@ -210,7 +210,7 @@ const BuildPackaging: React.FC = () => {
               <button
                 type="button"
                 onClick={handleBuild}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 px-4 py-2 text-xs font-medium bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 disabled={submitting || loadingBuildInfo}
               >
                 {submitting ? '빌드 시작 중...' : '확인'}
@@ -218,7 +218,7 @@ const BuildPackaging: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setShowBuildModal(false)}
-                className="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+                className="flex-1 px-4 py-2 text-xs font-medium bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200"
                 disabled={submitting}
               >
                 취소
