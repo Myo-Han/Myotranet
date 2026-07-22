@@ -143,47 +143,47 @@ const LettersInbox: React.FC = () => {
   }, []);
 
   return (
-    <div className="bg-white shadow rounded-lg overflow-hidden">
-      <div className="px-6 py-4 border-b flex items-center justify-between">
+    <div className="bg-white border border-gray-200 rounded-md overflow-hidden">
+      <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold text-gray-900">마음의 편지 열람</h2>
-          <p className="text-sm text-gray-500 mt-1">제목/내용/작성자로 검색 가능합니다.</p>
+          <h2 className="text-sm font-medium text-gray-900">마음의 편지 열람</h2>
+          <p className="text-xs text-gray-500 mt-1">제목/내용/작성자로 검색 가능합니다.</p>
         </div>
 
         <button
           type="button"
           onClick={fetchLetters}
-          className="px-4 py-2 bg-gray-800 text-white rounded hover:bg-gray-700"
+          className="px-3 py-1.5 text-xs bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200"
         >
           새로고침
         </button>
       </div>
 
       {error && (
-        <div className="p-6">
+        <div className="p-4">
           <ErrorMessage message={error} />
         </div>
       )}
 
-      <div className="px-6 py-4 border-b">
+      <div className="px-4 py-3 border-b border-gray-100">
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          className="w-full border border-gray-300 rounded-md px-3 py-2"
+          className="w-full border border-gray-300 rounded-md px-3 py-2 text-xs"
           placeholder="검색어 입력 (제목/내용/작성자)"
         />
       </div>
 
       {loading ? (
-        <div className="p-6">
+        <div className="p-4">
           <Loading />
         </div>
       ) : (
         <div className="flex flex-col lg:flex-row min-h-[520px]">
           {/* 리스트 */}
-          <div className="border-r lg:w-[30%]">
+          <div className="border-r border-gray-100 lg:w-[30%]">
             {filtered.length === 0 ? (
-              <div className="p-6 text-sm text-gray-500">표시할 편지가 없습니다.</div>
+              <div className="p-4 text-xs text-gray-400">표시할 편지가 없습니다.</div>
             ) : (
               <div className="max-h-[520px] overflow-y-auto">
                 {filtered.map((l) => {
@@ -194,14 +194,14 @@ const LettersInbox: React.FC = () => {
                       type="button"
                       onClick={async () => {
                         setSelected(l);
-                        
+
                         // 안 읽은 편지라면 즉시 DB에 읽음 처리 기록
                         if (user?.id && !readLetterIds.has(String(l.id))) {
                           await markAsRead(user.id, 'letter', String(l.id));
                           setReadLetterIds(prev => new Set(prev).add(String(l.id))); // UI 즉시 반영
                         }
                       }}
-                      className={`w-full text-left px-6 py-4 border-b hover:bg-gray-50 ${isActive ? 'bg-blue-50' : ''}`}
+                      className={`w-full text-left px-4 py-3 border-b border-gray-100 hover:bg-gray-50 ${isActive ? 'bg-blue-50' : ''}`}
                     >
                       <div className="flex items-center justify-between gap-3">
                         <div className="min-w-0 flex-1 flex items-center gap-2">
@@ -209,7 +209,7 @@ const LettersInbox: React.FC = () => {
                           {!readLetterIds.has(String(l.id)) && (
                             <span className="w-2 h-2 bg-red-600 rounded-full shrink-0 animate-[pulse_0.7s_infinite] shadow-[0_0_5px_rgba(220,38,38,0.8)]"></span>
                           )}
-                          <div className={`truncate ${!readLetterIds.has(String(l.id)) ? 'font-bold text-gray-900' : 'text-gray-600'}`}>
+                          <div className={`truncate text-xs ${!readLetterIds.has(String(l.id)) ? 'font-semibold text-gray-900' : 'text-gray-600'}`}>
                             {l.title}
                           </div>
                         </div>
@@ -233,11 +233,11 @@ const LettersInbox: React.FC = () => {
                             {l.from_profile_picture ? (
                               <img
                                 src={l.from_profile_picture}
-                                className="h-6 w-6 rounded-full object-cover"
+                                className="h-5 w-5 rounded-full object-cover"
                                 alt="profile"
                               />
                             ) : (
-                              <div className="h-6 w-6 rounded-full bg-gray-300 flex items-center justify-center text-[10px] font-semibold text-gray-600">
+                              <div className="h-5 w-5 rounded-full bg-gray-300 flex items-center justify-center text-[10px] font-semibold text-gray-600">
                                 {l.from_name?.charAt(0).toUpperCase() || '?'}
                               </div>
                             )}
@@ -245,7 +245,7 @@ const LettersInbox: React.FC = () => {
                           </button>
                         )}
                       </div>
-                      <div className="mt-2 text-sm text-gray-600 line-clamp-1">{l.body}</div>
+                      <div className="mt-2 text-xs text-gray-500 line-clamp-1">{l.body}</div>
                     </button>
                   );
                 })}
@@ -254,19 +254,19 @@ const LettersInbox: React.FC = () => {
           </div>
 
           {/* 상세 */}
-          <div className="p-6 lg:w-[70%]">
+          <div className="p-4 lg:w-[70%]">
             {!selected ? (
-              <div className="text-sm text-gray-500">왼쪽에서 편지를 선택하세요.</div>
+              <div className="text-xs text-gray-400">왼쪽에서 편지를 선택하세요.</div>
             ) : (
               <div className="space-y-3">
                 <div className="flex items-start justify-between gap-3">
-                  <h3 className="text-lg font-bold text-gray-900">{selected.title}</h3>
+                  <h3 className="text-sm font-medium text-gray-900">{selected.title}</h3>
                   <div className="text-xs text-gray-400 shrink-0">
                     {new Date(selected.created_at).toLocaleString('ko-KR')}
                   </div>
                 </div>
 
-                <div className="text-sm text-gray-600 flex items-center gap-2">
+                <div className="text-xs text-gray-600 flex items-center gap-2">
                   <span className="font-medium text-gray-800">From:</span>
                   {selected.is_anonymous ? (
                     <span>익명</span>
@@ -281,11 +281,11 @@ const LettersInbox: React.FC = () => {
                       {selected.from_profile_picture ? (
                         <img
                           src={selected.from_profile_picture}
-                          className="h-7 w-7 rounded-full object-cover"
+                          className="h-6 w-6 rounded-full object-cover"
                           alt="profile"
                         />
                       ) : (
-                        <div className="h-7 w-7 rounded-full bg-gray-300 flex items-center justify-center text-xs font-semibold text-gray-600">
+                        <div className="h-6 w-6 rounded-full bg-gray-300 flex items-center justify-center text-xs font-semibold text-gray-600">
                           {selected.from_name?.charAt(0).toUpperCase() || '?'}
                         </div>
                       )}
@@ -294,8 +294,8 @@ const LettersInbox: React.FC = () => {
                   )}
                 </div>
 
-                <div className="border rounded-lg p-4 bg-gray-50">
-                  <p className="text-sm text-gray-800 whitespace-pre-line">{selected.body}</p>
+                <div className="border border-gray-200 rounded-md p-4 bg-gray-50">
+                  <p className="text-xs text-gray-800 whitespace-pre-line">{selected.body}</p>
                 </div>
               </div>
             )}
