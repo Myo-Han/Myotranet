@@ -1,6 +1,4 @@
 // 월간 근태 상세 테이블
-// "야간근무시간(실제)"는 출퇴근 기록 기준으로 22:00~06:00 구간과 겹치는 시간을 계산한 값입니다.
-// (사전 신청 기능은 별도로 없어 "실제" 값만 표시합니다.)
 import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../supabaseClient';
@@ -72,28 +70,6 @@ const overlapHours = (aStart: number, aEnd: number, bStart: number, bEnd: number
   const start = Math.max(aStart, bStart);
   const end = Math.min(aEnd, bEnd);
   return end > start ? (end - start) / (1000 * 60 * 60) : 0;
-};
-
-// 야간(22:00~다음날 06:00) 근무시간 계산
-const calcNightHours = (checkIn: string | null, checkOut: string | null) => {
-  if (!checkIn || !checkOut) return 0;
-  const start = new Date(checkIn).getTime();
-  const end = new Date(checkOut).getTime();
-  if (end <= start) return 0;
-
-  let total = 0;
-  const dayMs = 24 * 60 * 60 * 1000;
-  // 근무 시작일 기준 전날 22시 ~ 당일 06시, 당일 22시 ~ 다음날 06시 두 구간을 모두 체크
-  const startDay = new Date(checkIn);
-  startDay.setHours(0, 0, 0, 0);
-
-  for (let offset = -1; offset <= 1; offset++) {
-    const nightStart = new Date(startDay.getTime() + offset * dayMs);
-    nightStart.setHours(22, 0, 0, 0);
-    const nightEnd = new Date(nightStart.getTime() + 8 * 60 * 60 * 1000); // 22:00 + 8h = 06:00
-    total += overlapHours(start, end, nightStart.getTime(), nightEnd.getTime());
-  }
-  return total;
 };
 
 type MonthlyAttendanceTableProps = {
@@ -237,18 +213,16 @@ const MonthlyAttendanceTable: React.FC<MonthlyAttendanceTableProps> = ({
         <p className="text-sm text-gray-400 text-center py-6">불러오는 중...</p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="min-w-full text-sm">
+          <table className="min-w-full text-sm border-collapse">
             <thead className="bg-gray-50">
               <tr className="text-gray-500">
-                <th className="px-3 py-2 text-left">일자</th>
-                <th className="px-3 py-2 text-left">구분</th>
-                <th className="px-3 py-2 text-left">총근무시간</th>
-                <th className="px-3 py-2 text-left">신청한 근태</th>
-                <th className="px-3 py-2 text-left">출근시간</th>
-                <th className="px-3 py-2 text-left">퇴근시간</th>
-                <th className="px-3 py-2 text-left w-1/3">근무시간 상세</th>
-                <th className="px-3 py-2 text-left">연장근무</th>
-                <th className="px-3 py-2 text-left">야간근무(실제)</th>
+                <th className="border border-gray-200 px-3 py-2 text-left">일자</th>
+                <th className="border border-gray-200 px-3 py-2 text-left">구분</th>
+                <th className="border border-gray-200 px-3 py-2 text-left">총근무시간</th>
+                <th className="border border-gray-200 px-3 py-2 text-left">출근시간</th>
+                <th className="border border-gray-200 px-3 py-2 text-left">퇴근시간</th>
+                <th className="border border-gray-200 px-3 py-2 text-left w-1/3">근무시간 상세</th>
+                <th className="border border-gray-200 px-3 py-2 text-left">연장근무</th>
               </tr>
             </thead>
             <tbody>
@@ -270,7 +244,6 @@ const MonthlyAttendanceTable: React.FC<MonthlyAttendanceTableProps> = ({
                     return sum + overlapHours(workStart, workEnd, otStart, otEnd);
                   }, 0);
                 })();
-                const nightHours = calcNightHours(record?.check_in || null, record?.check_out || null);
 
                 // 근무시간 상세 bar: 06:00~24:00 범위를 기준으로 출퇴근 구간 비율 표시
                 let barLeftPct = 0;
@@ -289,21 +262,22 @@ const MonthlyAttendanceTable: React.FC<MonthlyAttendanceTableProps> = ({
 
                 return (
                   <tr key={dateKey} className={isWeekend ? 'bg-red-50/40' : ''}>
-                    <td className={`px-3 py-2 whitespace-nowrap ${isWeekend ? 'text-red-500' : 'text-gray-700'}`}>
+                    <td className={`border border-gray-200 px-3 py-2 whitespace-nowrap ${isWeekend ? 'text-red-500' : 'text-gray-700'}`}>
                       {dateKey.slice(5).replace('-', '-')}({dow})
                     </td>
-                    <td className="px-3 py-2 text-gray-400">{isWeekend ? '휴일' : ''}</td>
-                    <td className="px-3 py-2">{record ? formatDurationHM(workedHours) : '-'}</td>
-                    <td className="px-3 py-2">
+                    <td className="border border-gray-200 px-3 py-2 text-gray-400">
                       {leave ? (
-                        <span className="px-2 py-0.5 rounded-full bg-pink-100 text-pink-700 text-xs">
+                        <span className="px-1.5 py-0.5 rounded bg-pink-100 text-pink-700 text-xs">
                           {LEAVE_TYPE_LABEL[leave.type] || leave.type}
                         </span>
+                      ) : isWeekend ? (
+                        '휴일'
                       ) : ''}
                     </td>
-                    <td className="px-3 py-2">{formatHM(record?.check_in || null)}</td>
-                    <td className="px-3 py-2">{formatHM(record?.check_out || null)}</td>
-                    <td className="px-3 py-2">
+                    <td className="border border-gray-200 px-3 py-2">{record ? formatDurationHM(workedHours) : '-'}</td>
+                    <td className="border border-gray-200 px-3 py-2">{formatHM(record?.check_in || null)}</td>
+                    <td className="border border-gray-200 px-3 py-2">{formatHM(record?.check_out || null)}</td>
+                    <td className="border border-gray-200 px-3 py-2">
                       {record && onRequestRevision ? (
                         <button
                           type="button"
@@ -328,8 +302,7 @@ const MonthlyAttendanceTable: React.FC<MonthlyAttendanceTableProps> = ({
                         <div className="w-full bg-gray-100 rounded h-3" />
                       )}
                     </td>
-                    <td className="px-3 py-2">{overtimeHours > 0 ? formatDurationHM(overtimeHours) : '00:00'}</td>
-                    <td className="px-3 py-2">{nightHours > 0 ? formatDurationHM(nightHours) : '00:00'}</td>
+                    <td className="border border-gray-200 px-3 py-2">{overtimeHours > 0 ? formatDurationHM(overtimeHours) : '00:00'}</td>
                   </tr>
                 );
               })}
