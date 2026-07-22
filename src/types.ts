@@ -20,6 +20,9 @@ export interface User {
   employee_number?: string | null;
   weekly_required_hours?: number;
   weekly_max_hours?: number;
+  // ✅ 설정 페이지: 자동 로그인(비활성 자동로그아웃 끄기) / 라이트·다크 테마 저장(현재는 저장만, 실제 적용은 추후)
+  auto_login_enabled?: boolean;
+  theme_preference?: 'light' | 'dark';
   created_at?: string;
   updated_at?: string;
 }

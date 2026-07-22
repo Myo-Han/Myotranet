@@ -3,7 +3,7 @@ import { User } from '../types';
 import axios from 'axios';
 import { supabase } from "../supabaseClient";
 
-const INACTIVITY_TIMEOUT = 15 * 60 * 1000;
+const INACTIVITY_TIMEOUT = 60 * 60 * 1000;
 const WARNING_TIME = 5 * 60 * 1000;
 
 interface AuthContextType {
@@ -47,7 +47,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (data?.user) {
         const { data: existing, error: dbError } = await supabase
           .from("users")
-          .select("id, name, profile_picture, role, is_active, created_at, weekly_required_hours, weekly_max_hours, annual_leave_balance, monthly_leave_balance, hire_date")
+          .select("id, name, profile_picture, role, is_active, created_at, weekly_required_hours, weekly_max_hours, annual_leave_balance, monthly_leave_balance, hire_date, auto_login_enabled, theme_preference")
           .eq("id", data.user.id)
           .maybeSingle();
 
@@ -104,6 +104,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           annual_leave_balance: (existing as any)?.annual_leave_balance ?? 0,
           monthly_leave_balance: (existing as any)?.monthly_leave_balance ?? 0,
           hire_date: (existing as any)?.hire_date ?? null,
+          auto_login_enabled: (existing as any)?.auto_login_enabled ?? false,
+          theme_preference: ((existing as any)?.theme_preference as 'light' | 'dark') ?? 'light',
         });
       } else {
         setUser(null);
@@ -138,6 +140,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     if (!user) return;
+    // ✅ 설정 > 시스템 설정에서 "자동 로그인"을 켠 사용자는 비활성 자동로그아웃 자체를 적용하지 않는다.
+    if (user.auto_login_enabled) {
+      setShowWarning(false);
+      setTimeRemaining(INACTIVITY_TIMEOUT);
+      return;
+    }
     const interval = setInterval(() => {
       const elapsed = Date.now() - lastActivity;
       const remaining = INACTIVITY_TIMEOUT - elapsed;

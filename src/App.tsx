@@ -10,6 +10,7 @@ import Admin from './pages/Admin';
 import Works from './pages/Works';
 import Board from './pages/Board';
 import Members from './pages/Members';
+import Settings from './pages/Settings';
 
 function App() {
   return (
@@ -36,6 +37,7 @@ function App() {
             <Route path="leave/new" element={<LeaveRequestPage />} />
             <Route path="leave/edit/:leaveId" element={<LeaveRequestPage />} />
             <Route path="members" element={<Members />} />
+            <Route path="settings" element={<Settings />} />
             <Route
               path="admin/*"
               element={
