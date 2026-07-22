@@ -135,15 +135,15 @@ const MemoManager: React.FC = () => {
         <div className="space-y-4">
             <div className="flex items-center justify-between">
                 <div>
-                    <h2 className="text-lg font-semibold text-gray-800">메모</h2>
-                    <p className="text-sm text-gray-500 mt-1">
+                    <h2 className="text-sm font-medium text-gray-900">메모</h2>
+                    <p className="text-xs text-gray-500 mt-1">
                         간단한 메모를 작성하고 관리하세요
                     </p>
                 </div>
                 <button
                     type="button"
                     onClick={handleNewMemo}
-                    className="px-4 py-2 rounded-md bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700"
+                    className="px-3 py-1.5 rounded-md bg-blue-600 text-white text-xs font-medium hover:bg-blue-700"
                 >
                     + 새 메모
                 </button>
@@ -152,7 +152,7 @@ const MemoManager: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {memos.length === 0 ? (
                     <div className="col-span-full text-center py-12">
-                        <p className="text-gray-400 text-sm">작성된 메모가 없습니다</p>
+                        <p className="text-gray-400 text-xs">작성된 메모가 없습니다</p>
                     </div>
                 ) : (
                     memos.map(memo => (
@@ -276,7 +276,7 @@ const MemoManager: React.FC = () => {
                             <button
                                 type="button"
                                 onClick={handleSaveMemo}
-                                className="px-4 py-2 rounded-md bg-indigo-600 text-white text-sm font-medium"
+                                className="px-4 py-2 rounded-md bg-blue-600 text-white text-sm font-medium"
                             >
                                 저장
                             </button>

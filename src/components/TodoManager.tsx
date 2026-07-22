@@ -185,27 +185,27 @@ const TodoManager: React.FC = () => {
         <div className="space-y-4">
             <div className="flex items-center justify-between">
                 <div>
-                    <h2 className="text-lg font-semibold text-gray-800">할 일 목록</h2>
-                    <p className="text-sm text-gray-500 mt-1">
+                    <h2 className="text-sm font-medium text-gray-900">할 일 목록</h2>
+                    <p className="text-xs text-gray-500 mt-1">
                         할 일을 추가하고 완료 상태를 관리하세요
                     </p>
                 </div>
                 <button
                     type="button"
                     onClick={handleNewTodo}
-                    className="px-4 py-2 rounded-md bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700"
+                    className="px-3 py-1.5 rounded-md bg-blue-600 text-white text-xs font-medium hover:bg-blue-700"
                 >
                     + 새 할 일
                 </button>
             </div>
 
             {/* 필터 탭 */}
-            <div className="flex items-center space-x-2 border-b">
+            <div className="flex items-center space-x-2 border-b border-gray-200">
                 <button
                     type="button"
                     onClick={() => setFilter('all')}
-                    className={`px-4 py-2 text-sm font-medium border-b-2 transition ${filter === 'all'
-                        ? 'border-indigo-600 text-indigo-600'
+                    className={`px-3 py-2 text-xs font-medium border-b-2 transition ${filter === 'all'
+                        ? 'border-blue-600 text-blue-600'
                         : 'border-transparent text-gray-500 hover:text-gray-700'
                         }`}
                 >
@@ -214,8 +214,8 @@ const TodoManager: React.FC = () => {
                 <button
                     type="button"
                     onClick={() => setFilter('active')}
-                    className={`px-4 py-2 text-sm font-medium border-b-2 transition ${filter === 'active'
-                        ? 'border-indigo-600 text-indigo-600'
+                    className={`px-3 py-2 text-xs font-medium border-b-2 transition ${filter === 'active'
+                        ? 'border-blue-600 text-blue-600'
                         : 'border-transparent text-gray-500 hover:text-gray-700'
                         }`}
                 >
@@ -224,8 +224,8 @@ const TodoManager: React.FC = () => {
                 <button
                     type="button"
                     onClick={() => setFilter('completed')}
-                    className={`px-4 py-2 text-sm font-medium border-b-2 transition ${filter === 'completed'
-                        ? 'border-indigo-600 text-indigo-600'
+                    className={`px-3 py-2 text-xs font-medium border-b-2 transition ${filter === 'completed'
+                        ? 'border-blue-600 text-blue-600'
                         : 'border-transparent text-gray-500 hover:text-gray-700'
                         }`}
                 >
@@ -236,7 +236,7 @@ const TodoManager: React.FC = () => {
             <div className="space-y-2">
                 {filteredTodos.length === 0 ? (
                     <div className="text-center py-12">
-                        <p className="text-gray-400 text-sm">
+                        <p className="text-gray-400 text-xs">
                             {filter === 'all' && '할 일이 없습니다'}
                             {filter === 'active' && '진행 중인 할 일이 없습니다'}
                             {filter === 'completed' && '완료된 할 일이 없습니다'}
@@ -246,7 +246,7 @@ const TodoManager: React.FC = () => {
                     filteredTodos.map(todo => (
                         <div
                             key={todo.id}
-                            className={`bg-white border rounded-lg p-4 hover:shadow-md transition ${todo.is_completed ? 'opacity-60' : ''
+                            className={`bg-white border border-gray-200 rounded-md p-3.5 hover:shadow-sm transition ${todo.is_completed ? 'opacity-60' : ''
                                 }`}
                         >
                             <div className="flex items-start space-x-3">
@@ -254,13 +254,13 @@ const TodoManager: React.FC = () => {
                                     type="checkbox"
                                     checked={todo.is_completed}
                                     onChange={() => handleToggleComplete(todo)}
-                                    className="mt-1 h-5 w-5 text-indigo-600 border-gray-300 rounded"
+                                    className="mt-1 h-4 w-4 text-blue-600 border-gray-300 rounded"
                                 />
                                 <div className="flex-1 min-w-0">
                                     <div className="flex items-start justify-between">
                                         <div className="flex-1">
                                             <h3
-                                                className={`text-base font-semibold ${todo.is_completed
+                                                className={`text-sm font-medium ${todo.is_completed
                                                     ? 'line-through text-gray-400'
                                                     : 'text-gray-800'
                                                     }`}
@@ -268,13 +268,13 @@ const TodoManager: React.FC = () => {
                                                 {todo.title}
                                             </h3>
                                             {todo.description && (
-                                                <p className="text-sm text-gray-600 mt-1 whitespace-pre-wrap">
+                                                <p className="text-xs text-gray-600 mt-1 whitespace-pre-wrap">
                                                     {todo.description}
                                                 </p>
                                             )}
                                             <div className="flex items-center gap-2 mt-2">
                                                 <span
-                                                    className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${getPriorityColor(
+                                                    className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium border ${getPriorityColor(
                                                         todo.priority,
                                                     )}`}
                                                 >
@@ -291,9 +291,9 @@ const TodoManager: React.FC = () => {
                                             <button
                                                 type="button"
                                                 onClick={() => handleEditTodo(todo)}
-                                                className="text-gray-400 hover:text-indigo-600"
+                                                className="text-gray-400 hover:text-blue-600"
                                             >
-                                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                     <path
                                                         strokeLinecap="round"
                                                         strokeLinejoin="round"
@@ -307,7 +307,7 @@ const TodoManager: React.FC = () => {
                                                 onClick={() => handleDeleteTodo(todo.id)}
                                                 className="text-gray-400 hover:text-red-600"
                                             >
-                                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                     <path
                                                         strokeLinecap="round"
                                                         strokeLinejoin="round"
@@ -328,9 +328,9 @@ const TodoManager: React.FC = () => {
             {/* 할 일 편집 모달 */}
             {isModalOpen && editingTodo && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-                    <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4">
-                        <div className="px-6 py-4 border-b flex items-center justify-between">
-                            <h2 className="text-lg font-semibold text-gray-900">
+                    <div className="bg-white rounded-md shadow-xl max-w-2xl w-full mx-4">
+                        <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+                            <h2 className="text-sm font-medium text-gray-900">
                                 {editingTodo.id ? '할 일 수정' : '새 할 일'}
                             </h2>
                             <button
@@ -341,7 +341,7 @@ const TodoManager: React.FC = () => {
                                 }}
                                 className="text-gray-400 hover:text-gray-600"
                             >
-                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                 </svg>
                             </button>
@@ -413,21 +413,21 @@ const TodoManager: React.FC = () => {
                                 </div>
                             </div>
                         </div>
-                        <div className="px-6 py-3 border-t flex justify-end space-x-2">
+                        <div className="px-5 py-3 border-t border-gray-100 flex justify-end space-x-2">
                             <button
                                 type="button"
                                 onClick={() => {
                                     setIsModalOpen(false);
                                     setEditingTodo(null);
                                 }}
-                                className="px-4 py-2 rounded-md bg-gray-200 text-gray-700 text-sm font-medium"
+                                className="px-3 py-1.5 rounded-md bg-gray-100 text-gray-700 text-xs font-medium hover:bg-gray-200"
                             >
                                 취소
                             </button>
                             <button
                                 type="button"
                                 onClick={handleSaveTodo}
-                                className="px-4 py-2 rounded-md bg-indigo-600 text-white text-sm font-medium"
+                                className="px-3 py-1.5 rounded-md bg-blue-600 text-white text-xs font-medium hover:bg-blue-700"
                             >
                                 저장
                             </button>
