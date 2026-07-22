@@ -1,6 +1,6 @@
 // 근태관리 허브 페이지.
 // 결재관리(Works.tsx)/관리자(Admin.tsx)와 같은 좌측 사이드바 레이아웃으로 개편했다.
-// 카테고리: 근태현황(기본) / 연차 신청 / 연장근무 신청.
+// 카테고리: 근태 현황(기본) / 연차 신청 / 연장근무 신청.
 // 연차 신청·연장근무 신청 카테고리는 기존에 "근태신청" 버튼을 눌렀을 때 나오던
 // /leave 페이지(연차/연장근무 탭)의 내용을 그대로 가져와 나눈 것이다.
 import React, { useState } from 'react';
@@ -13,7 +13,7 @@ import OvertimePanel from '../components/attendance-dashboard/OvertimePanel';
 type CategoryKey = 'status' | 'leave' | 'overtime';
 
 const CATEGORIES: { key: CategoryKey; label: string }[] = [
-  { key: 'status', label: '근태현황' },
+  { key: 'status', label: '근태 현황' },
   { key: 'leave', label: '연차 신청' },
   { key: 'overtime', label: '연장근무 신청' },
 ];
@@ -56,9 +56,9 @@ const Attendance: React.FC = () => {
       {/* 왼쪽 메뉴 */}
       <div className="w-56 bg-white border-r border-gray-200">
         <div className="px-4 py-4 border-b border-gray-100">
-          <h1 className="text-sm font-semibold text-gray-900">근태관리</h1>
+          <h1 className="text-base font-semibold text-gray-900">근태관리</h1>
           {user && (
-            <p className="text-[11px] text-gray-400 mt-1 truncate">{user.email}</p>
+            <p className="text-xs text-gray-400 mt-1 truncate">{user.email}</p>
           )}
         </div>
         <nav className="p-2 space-y-0.5">
@@ -67,7 +67,7 @@ const Attendance: React.FC = () => {
               key={item.key}
               type="button"
               onClick={() => setSelectedCategory(item.key)}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition ${selectedCategory === item.key
+              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-base transition ${selectedCategory === item.key
                 ? 'bg-blue-50 text-blue-600 font-medium'
                 : 'text-gray-600 hover:bg-gray-50'
                 }`}

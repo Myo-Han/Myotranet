@@ -216,13 +216,13 @@ const MonthlyAttendanceTable: React.FC<MonthlyAttendanceTableProps> = ({
           <table className="min-w-full text-sm border-collapse">
             <thead className="bg-gray-50">
               <tr className="text-gray-500">
-                <th className="border border-gray-200 px-3 py-2 text-left">일자</th>
-                <th className="border border-gray-200 px-3 py-2 text-left">구분</th>
-                <th className="border border-gray-200 px-3 py-2 text-left">총근무시간</th>
-                <th className="border border-gray-200 px-3 py-2 text-left">출근시간</th>
-                <th className="border border-gray-200 px-3 py-2 text-left">퇴근시간</th>
-                <th className="border border-gray-200 px-3 py-2 text-left w-1/3">근무시간 상세</th>
-                <th className="border border-gray-200 px-3 py-2 text-left">연장근무</th>
+                <th className="border border-gray-200 px-3 py-2 text-center">일자</th>
+                <th className="border border-gray-200 px-3 py-2 text-center">구분</th>
+                <th className="border border-gray-200 px-3 py-2 text-center">총근무시간</th>
+                <th className="border border-gray-200 px-3 py-2 text-center">출근시간</th>
+                <th className="border border-gray-200 px-3 py-2 text-center">퇴근시간</th>
+                <th className="border border-gray-200 px-3 py-2 text-center w-1/3">근무시간 상세</th>
+                <th className="border border-gray-200 px-3 py-2 text-center">연장근무</th>
               </tr>
             </thead>
             <tbody>
