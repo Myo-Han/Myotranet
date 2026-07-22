@@ -11,6 +11,7 @@ import SuccessMessage from '../SuccessMessage';
 import { useLeaveRequest, deleteLeaveRequest, isLeaveEditable } from '../../hooks/useLeaveRequest';
 import { getRevisionStatusLabel } from '../../utils/attendanceLabels';
 import LeaveRequestFormBody from './LeaveRequestFormBody';
+import Pagination, { paginate } from './Pagination';
 
 // ✅ leave_balance_history.policy_code는 "휴가 신청 유형"(annual/half_day/quarter_day)이 아니라
 // 실제로 증감된 "잔액 풀"(annual_leave=연차 잔액 / monthly_leave=월차 잔액)을 가리킨다.
@@ -96,6 +97,11 @@ const LeaveAnnualPanel: React.FC = () => {
     policyCode: 'all',
     changeType: 'all',
   });
+
+  // ✅ 테이블 페이지네이션 (5개씩 + 이전/다음/번호)
+  const [historyPage, setHistoryPage] = useState(1);
+  const [myLeavePage, setMyLeavePage] = useState(1);
+  const [teamLeavePage, setTeamLeavePage] = useState(1);
 
   useEffect(() => {
     fetchData();
@@ -232,6 +238,7 @@ const LeaveAnnualPanel: React.FC = () => {
   useEffect(() => {
     if (user) {
       fetchBalanceHistory();
+      setHistoryPage(1);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [historyFilter, user]);
@@ -285,6 +292,8 @@ const LeaveAnnualPanel: React.FC = () => {
     setEditLeaveId(null);
     fetchLeaves();
     fetchBalanceHistory();
+    setMyLeavePage(1);
+    setHistoryPage(1);
   };
 
   const handleDeleteLeave = async (leave: LeaveType) => {
@@ -484,16 +493,16 @@ const LeaveAnnualPanel: React.FC = () => {
           <table className="min-w-full divide-y divide-gray-100">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">날짜</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">휴가 종류</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">변동 유형</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">변동량</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">변동 후 잔액</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">사유</th>
+                <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">날짜</th>
+                <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">휴가 종류</th>
+                <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">변동 유형</th>
+                <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">변동량</th>
+                <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">변동 후 잔액</th>
+                <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">사유</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-100">
-              {balanceHistory.map((history) => (
+              {paginate(balanceHistory, historyPage).map((history) => (
                 <tr key={history.id}>
                   <td className="px-4 py-2.5 whitespace-nowrap text-xs text-gray-700">
                     {new Date(history.created_at).toLocaleDateString('ko-KR')}
@@ -540,6 +549,7 @@ const LeaveAnnualPanel: React.FC = () => {
             </tbody>
           </table>
         </div>
+        <Pagination page={historyPage} totalCount={balanceHistory.length} onChange={setHistoryPage} />
       </div>
 
       {/* 나의 휴가 신청 내역 */}
@@ -549,17 +559,17 @@ const LeaveAnnualPanel: React.FC = () => {
           <table className="min-w-full divide-y divide-gray-100">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">신청일자</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">시작일</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">종료일</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">유형</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">일수</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">사유</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">상태</th>
+                <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">신청일자</th>
+                <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">시작일</th>
+                <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">종료일</th>
+                <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">유형</th>
+                <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">일수</th>
+                <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">사유</th>
+                <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">상태</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-100">
-              {leaves.map((leave) => (
+              {paginate(leaves, myLeavePage).map((leave) => (
                 <tr
                   key={leave.id}
                   onClick={() => openApprovalDetail(leave)}
@@ -614,6 +624,7 @@ const LeaveAnnualPanel: React.FC = () => {
             </tbody>
           </table>
         </div>
+        <Pagination page={myLeavePage} totalCount={leaves.length} onChange={setMyLeavePage} />
       </div>
 
       {/* 팀원 휴가 신청 현황 */}
@@ -625,15 +636,15 @@ const LeaveAnnualPanel: React.FC = () => {
           <table className="min-w-full divide-y divide-gray-100">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">신청자</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">기간</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">유형</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">사유</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">상태</th>
+                <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">신청자</th>
+                <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">기간</th>
+                <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">유형</th>
+                <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">사유</th>
+                <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">상태</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-100">
-              {teamLeaves.map((leave) => {
+              {paginate(teamLeaves, teamLeavePage).map((leave) => {
                 const { label, colorClass } = getRevisionStatusLabel(leave.status);
                 return (
                   <tr key={leave.id}>
@@ -659,6 +670,7 @@ const LeaveAnnualPanel: React.FC = () => {
             </tbody>
           </table>
         </div>
+        <Pagination page={teamLeavePage} totalCount={teamLeaves.length} onChange={setTeamLeavePage} />
       </div>
 
       {/* ✅ 결재 진행 현황 모달 */}
