@@ -81,6 +81,12 @@ const Attendance: React.FC = () => {
 
       {/* 오른쪽 컨텐츠 */}
       <div className="flex-1 overflow-auto">
+        {/* ✅ 왼쪽 사이드바 헤더(px-4 py-4 border-b)와 높이를 맞춘 콘텐츠 헤더 */}
+        <div className="px-4 py-4 border-b border-gray-100 bg-white">
+          <h1 className="text-base font-semibold text-gray-900">
+            {CATEGORIES.find((c) => c.key === selectedCategory)?.label}
+          </h1>
+        </div>
         <div className="p-4">
           {selectedCategory === 'status' && <AttendanceStatusPanel />}
           {selectedCategory === 'leave' && <LeaveAnnualPanel />}

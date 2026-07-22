@@ -94,7 +94,7 @@ const StatusBadge: React.FC<{ status: ApprovalStatus | null }> = ({ status }) =>
           ? '반려됨'
           : status;
   return (
-    <span className={`shrink-0 px-2 py-0.5 rounded-full text-xs ${colorClass}`}>{displayLabel}</span>
+    <span className={`shrink-0 px-1.5 py-0.5 rounded text-xs ${colorClass}`}>{displayLabel}</span>
   );
 };
 
@@ -102,17 +102,17 @@ const SectionCard: React.FC<{ title: string; count: number; children: React.Reac
   const [expanded, setExpanded] = useState(true);
 
   return (
-    <div className="bg-white shadow rounded-lg overflow-hidden">
+    <div className="bg-white border border-gray-200 rounded-md overflow-hidden">
       <button
         type="button"
         onClick={() => setExpanded((prev) => !prev)}
-        className="w-full px-6 py-4 border-b flex items-center justify-between text-left"
+        className="w-full px-4 py-3 border-b border-gray-100 flex items-center justify-between text-left"
       >
-        <h3 className="font-bold text-gray-900">{title}</h3>
+        <h3 className="text-sm font-medium text-gray-900">{title}</h3>
         <div className="flex items-center gap-3">
-          <span className="text-sm text-gray-400">{count}건</span>
+          <span className="text-xs text-gray-400">{count}건</span>
           <svg
-            className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}
+            className={`h-3.5 w-3.5 text-gray-400 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -123,9 +123,9 @@ const SectionCard: React.FC<{ title: string; count: number; children: React.Reac
       </button>
       {expanded && (
         count === 0 ? (
-          <p className="text-sm text-gray-400 text-center py-6">신청 내역이 없습니다.</p>
+          <p className="text-xs text-gray-400 text-center py-6">신청 내역이 없습니다.</p>
         ) : (
-          <div className="divide-y">{children}</div>
+          <div className="divide-y divide-gray-100">{children}</div>
         )
       )}
     </div>
@@ -212,36 +212,36 @@ const MyApprovals: React.FC = () => {
     overtimes.filter((o) => (o.status || 'pending') === 'pending').length;
 
   if (loading) {
-    return <p className="text-sm text-gray-400 text-center py-6">불러오는 중...</p>;
+    return <p className="text-xs text-gray-400 text-center py-6">불러오는 중...</p>;
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold text-gray-900">나의 결재</h2>
-          <p className="text-sm text-gray-500 mt-1">내가 신청한 결재 내역입니다. 총 {totalCount}건</p>
+          <h2 className="text-sm font-medium text-gray-900">나의 결재</h2>
+          <p className="text-xs text-gray-500 mt-1">내가 신청한 결재 내역입니다. 총 {totalCount}건</p>
         </div>
-        <span className="px-3 py-1.5 rounded-full text-sm font-medium bg-blue-50 text-blue-600">
+        <span className="px-2.5 py-1 rounded text-xs font-medium bg-blue-50 text-blue-600">
           진행 중 {pendingCount}건
         </span>
       </div>
 
       <SectionCard title="휴가 신청" count={leaves.length}>
         {leaveActionError && (
-          <div className="px-6 py-2 text-sm text-red-600 bg-red-50">{leaveActionError}</div>
+          <div className="px-4 py-2 text-xs text-red-600 bg-red-50">{leaveActionError}</div>
         )}
         {leaves.map((l) => (
-          <div key={l.id} className="px-6 py-4 flex items-start justify-between gap-4">
+          <div key={l.id} className="px-4 py-3 flex items-start justify-between gap-4">
             <div>
-              <div className="font-medium text-gray-800">
+              <div className="text-sm font-medium text-gray-800">
                 {LEAVE_TYPE_LABEL[l.type] || l.type}
                 {l.days_requested ? ` · ${l.days_requested}일` : ''}
               </div>
-              <div className="text-sm text-gray-500 mt-0.5">
+              <div className="text-xs text-gray-500 mt-0.5">
                 {formatDate(l.start_date)} ~ {formatDate(l.end_date)}
               </div>
-              {l.reason && <div className="text-sm text-gray-400 mt-1">사유: {l.reason}</div>}
+              {l.reason && <div className="text-xs text-gray-400 mt-1">사유: {l.reason}</div>}
             </div>
             <div className="flex flex-col items-end gap-2 shrink-0">
               <StatusBadge status={l.status} />
@@ -272,13 +272,13 @@ const MyApprovals: React.FC = () => {
 
       <SectionCard title="출퇴근 수정 요청" count={revisions.length}>
         {revisions.map((r) => (
-          <div key={r.id} className="px-6 py-4 flex items-start justify-between gap-4">
+          <div key={r.id} className="px-4 py-3 flex items-start justify-between gap-4">
             <div>
-              <div className="font-medium text-gray-800">{formatDate(r.requested_date)}</div>
-              <div className="text-sm text-gray-500 mt-0.5">
+              <div className="text-sm font-medium text-gray-800">{formatDate(r.requested_date)}</div>
+              <div className="text-xs text-gray-500 mt-0.5">
                 요청 출근: {formatDateTime(r.requested_check_in_at)} · 요청 퇴근: {formatDateTime(r.requested_check_out_at)}
               </div>
-              {r.reason && <div className="text-sm text-gray-400 mt-1">사유: {r.reason}</div>}
+              {r.reason && <div className="text-xs text-gray-400 mt-1">사유: {r.reason}</div>}
             </div>
             <StatusBadge status={r.status} />
           </div>
@@ -287,13 +287,13 @@ const MyApprovals: React.FC = () => {
 
       <SectionCard title="연장근무 신청" count={overtimes.length}>
         {overtimes.map((o) => (
-          <div key={o.id} className="px-6 py-4 flex items-start justify-between gap-4">
+          <div key={o.id} className="px-4 py-3 flex items-start justify-between gap-4">
             <div>
-              <div className="font-medium text-gray-800">{formatDate(o.work_date)}</div>
-              <div className="text-sm text-gray-500 mt-0.5">
+              <div className="text-sm font-medium text-gray-800">{formatDate(o.work_date)}</div>
+              <div className="text-xs text-gray-500 mt-0.5">
                 {formatDateTime(o.requested_start_at)} ~ {formatDateTime(o.requested_end_at)}
               </div>
-              {o.reason && <div className="text-sm text-gray-400 mt-1">사유: {o.reason}</div>}
+              {o.reason && <div className="text-xs text-gray-400 mt-1">사유: {o.reason}</div>}
             </div>
             <StatusBadge status={o.status} />
           </div>
