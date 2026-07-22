@@ -157,18 +157,20 @@ const Members: React.FC = () => {
     );
   };
 
+  const currentViewLabel = view === 'all' ? '전체' : '팀';
+
   return (
     <div className="flex h-screen bg-gray-50">
       {/* 왼쪽 메뉴 */}
-      <div className="w-64 bg-white shadow-lg">
-        <div className="p-6 border-b">
-          <h1 className="text-2xl font-bold text-gray-900">구성원</h1>
+      <div className="w-56 bg-white border-r border-gray-200">
+        <div className="px-4 py-4 border-b border-gray-100">
+          <h1 className="text-base font-semibold text-gray-900">구성원</h1>
         </div>
-        <nav className="p-4 space-y-1">
+        <nav className="p-2 space-y-0.5">
           <button
             type="button"
             onClick={() => setView('all')}
-            className={`w-full flex items-center px-4 py-2.5 rounded-lg text-sm transition ${view === 'all' ? 'bg-blue-50 text-blue-600 font-medium' : 'text-gray-600 hover:bg-gray-50'
+            className={`w-full flex items-center px-3 py-2 rounded-md text-sm transition ${view === 'all' ? 'bg-blue-50 text-blue-600 font-medium' : 'text-gray-600 hover:bg-gray-50'
               }`}
           >
             전체
@@ -176,7 +178,7 @@ const Members: React.FC = () => {
           <button
             type="button"
             onClick={() => setView('team')}
-            className={`w-full flex items-center px-4 py-2.5 rounded-lg text-sm transition ${view === 'team' ? 'bg-blue-50 text-blue-600 font-medium' : 'text-gray-600 hover:bg-gray-50'
+            className={`w-full flex items-center px-3 py-2 rounded-md text-sm transition ${view === 'team' ? 'bg-blue-50 text-blue-600 font-medium' : 'text-gray-600 hover:bg-gray-50'
               }`}
           >
             팀
@@ -186,30 +188,31 @@ const Members: React.FC = () => {
 
       {/* 오른쪽 컨텐츠 */}
       <div className="flex-1 overflow-auto">
-        <div className="p-6 space-y-6">
+        {/* ✅ 왼쪽 사이드바 헤더와 높이를 맞춘 콘텐츠 헤더 */}
+        <div className="px-4 py-4 border-b border-gray-100 bg-white">
+          <h1 className="text-base font-semibold text-gray-900">{currentViewLabel}</h1>
+        </div>
+        <div className="p-4 space-y-4">
           <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-bold text-gray-900">구성원</h2>
-              <p className="text-sm text-gray-500 mt-1">전체 {members.length}명</p>
-            </div>
+            <p className="text-xs text-gray-500">전체 {members.length}명</p>
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="이름 검색"
-              className="w-64 rounded-md border border-gray-300 px-3 py-2 text-sm"
+              className="w-56 rounded-md border border-gray-300 px-3 py-1.5 text-xs"
             />
           </div>
 
           {loading ? (
-            <p className="text-sm text-gray-400">불러오는 중...</p>
+            <p className="text-xs text-gray-400">불러오는 중...</p>
           ) : view === 'all' ? (
             filteredMembers.length === 0 ? (
-              <div className="bg-white rounded-lg shadow p-6">
-                <p className="text-sm text-gray-400 text-center py-6">검색 결과가 없습니다.</p>
+              <div className="bg-white border border-gray-200 rounded-md p-4">
+                <p className="text-xs text-gray-400 text-center py-6">검색 결과가 없습니다.</p>
               </div>
             ) : (
-              <div className="bg-white rounded-lg shadow p-6">
+              <div className="bg-white border border-gray-200 rounded-md p-4">
                 <div className="flex flex-wrap gap-5">
                   {filteredMembers.map((m) => (
                     <MemberCard key={m.id} member={m} />
@@ -218,14 +221,14 @@ const Members: React.FC = () => {
               </div>
             )
           ) : (
-            <div className="space-y-6">
+            <div className="space-y-4">
               {groupedByProject.map((group) => (
-                <div key={group.key} className="bg-white rounded-lg shadow p-6">
-                  <h3 className="mb-4 text-sm font-semibold text-gray-700">
+                <div key={group.key} className="bg-white border border-gray-200 rounded-md p-4">
+                  <h3 className="mb-3 text-sm font-medium text-gray-900">
                     {group.label} <span className="text-gray-400 font-normal">({group.members.length})</span>
                   </h3>
                   {group.members.length === 0 ? (
-                    <p className="text-sm text-gray-400">구성원이 없습니다.</p>
+                    <p className="text-xs text-gray-400">구성원이 없습니다.</p>
                   ) : (
                     <div className="flex flex-wrap gap-5">
                       {group.members.map((m) => (
