@@ -177,13 +177,14 @@ const LeaveWorkQueue: React.FC = () => {
 
       // ✅ 이 승인이 최종 승인이었다면(모든 결재 단계 완료), 회사 구글 캘린더에 자동으로
       // 휴가 일정을 등록한다. 캘린더 등록이 실패해도 승인 자체는 이미 완료된 상태라
-      // 사용자에게는 성공으로 안내하고, 캘린더 실패만 조용히 콘솔에 남긴다
-      // (서비스 계정에 캘린더 쓰기 권한이 아직 공유되지 않았을 수 있음).
+      // 승인은 성공으로 안내하되, 캘린더 실패는 화면에도 함께 노출한다.
+      // (기존에는 console.warn만 남겨서 서비스 계정 권한이 빠져 있어도 아무도 알 수 없었다)
       if ((rpcData as any)?.final) {
+        let calendarError = '';
         try {
           const { data: sessionData } = await supabase.auth.getSession();
           const token = sessionData?.session?.access_token;
-          await fetch('/api/calendar/create-leave-event', {
+          const calRes = await fetch('/api/calendar/create-leave-event', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -191,8 +192,23 @@ const LeaveWorkQueue: React.FC = () => {
             },
             body: JSON.stringify({ leaveId: r.leave_id }),
           });
-        } catch (calErr) {
-          console.warn('캘린더 자동 등록 실패 (승인 처리 자체는 완료됨):', calErr);
+          if (!calRes.ok) {
+            calendarError = `HTTP ${calRes.status}`;
+            try {
+              const body = await calRes.json();
+              if (body?.error) calendarError = String(body.error);
+            } catch {
+              /* JSON이 아니면 상태코드만 사용 */
+            }
+          }
+        } catch (calErr: any) {
+          calendarError = calErr?.message ?? '요청 실패';
+        }
+
+        if (calendarError) {
+          console.warn('캘린더 자동 등록 실패 (승인 처리 자체는 완료됨):', calendarError);
+          // setError는 자동으로 사라지지 않아서 원인을 확인할 시간이 충분하다
+          setError(`휴가는 승인되었지만 구글 캘린더 등록에 실패했습니다 — ${calendarError}`);
         }
       }
 

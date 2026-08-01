@@ -30,16 +30,22 @@ function getServiceAccountFromEnv() {
 function toFullCalendarEvent(item: GCalItem) {
   const title = item.summary ?? '(제목 없음)';
 
-  const start = item.start?.dateTime ?? item.start?.date;
-  const end = item.end?.dateTime ?? item.end?.date;
-
   const allDay = !!item.start?.date && !item.start?.dateTime;
 
   if (allDay) {
-    return { id: item.id, title, date: item.start?.date, allDay: true };
+    // start/end를 함께 넘겨야 여러 날에 걸친 일정(연차 등)이 그 기간 내내 표시된다.
+    // 구글과 FullCalendar 모두 종일 이벤트의 end를 배타적으로 해석하므로 값을 그대로 전달한다.
+    // (기존에는 date 하나만 넘겨서 시작일 하루만 보였다)
+    return { id: item.id, title, start: item.start?.date, end: item.end?.date, allDay: true };
   }
 
-  return { id: item.id, title, start, end, allDay: false };
+  return {
+    id: item.id,
+    title,
+    start: item.start?.dateTime,
+    end: item.end?.dateTime,
+    allDay: false,
+  };
 }
 
 export default async function handler(req: any, res: any) {
