@@ -9,13 +9,13 @@ const SessionTimer: React.FC = () => {
 
   const isWarning = timeRemaining <= 5 * 60 * 1000; // Last 5 minutes
 
+  // 남은 시간이 넉넉할 때까지 카운트다운을 계속 띄워두면 시각적 노이즈만 된다.
+  // 실제로 조치가 필요한 마지막 5분에만 노출한다.
+  if (!isWarning) return null;
+
   return (
     <div className="flex items-center space-x-3">
-      <div
-        className={`text-sm font-medium ${
-          isWarning ? 'text-red-600' : 'text-gray-600'
-        }`}
-      >
+      <div className="text-sm font-medium text-red-600">
         <span className="font-bold">
           {minutes}:{seconds.toString().padStart(2, '0')}
         </span>{' '}

@@ -1,6 +1,6 @@
-// 메인 홈 - 생일/경조사 탭 카드
-// 생일: 이번 달 생일인 직원의 프로필 사진 + 이름만 노출
-// 경조사: 관리자가 등록한 결혼/부고 등 소식. 프로필 사진 없이 날짜/이름/부서만 노출
+// 메인 홈 - 구성원 소식(생일/경조사) 카드
+// 좌측 좁은 컬럼에 놓이므로 얼굴 나열 대신 목록 형태로 보여준다.
+// 생일은 "이번 달"이 아니라 "다가오는 순"이라 월말에 다음 달 생일을 놓치지 않는다.
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../supabaseClient';
 
@@ -10,6 +10,8 @@ type BirthdayUser = {
   profile_picture: string | null;
   birth_date: string;
 };
+
+type UpcomingBirthday = BirthdayUser & { daysLeft: number };
 
 type CompanyEvent = {
   id: string;
@@ -30,9 +32,36 @@ const EVENT_TYPE_LABEL: Record<string, string> = {
   other: '기타',
 };
 
+// 한 번에 보여줄 다가오는 생일 수
+const BIRTHDAY_LIMIT = 5;
+
+/** 오늘 기준으로 다음 생일까지 남은 일수 (오늘이면 0) */
+function daysUntilBirthday(birthDate: string, today: Date): number {
+  const b = new Date(birthDate);
+  if (Number.isNaN(b.getTime())) return Number.MAX_SAFE_INTEGER;
+
+  const base = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  let next = new Date(base.getFullYear(), b.getMonth(), b.getDate());
+  if (next < base) next = new Date(base.getFullYear() + 1, b.getMonth(), b.getDate());
+
+  return Math.round((next.getTime() - base.getTime()) / 86400000);
+}
+
+function ddayLabel(daysLeft: number): string {
+  if (daysLeft === 0) return '오늘';
+  if (daysLeft === 1) return '내일';
+  return `D-${daysLeft}`;
+}
+
+function ddayClass(daysLeft: number): string {
+  if (daysLeft === 0) return 'bg-red-100 text-red-700';
+  if (daysLeft <= 7) return 'bg-amber-100 text-amber-700';
+  return 'bg-gray-100 text-gray-500';
+}
+
 const TeamEventsCard: React.FC = () => {
   const [tab, setTab] = useState<'birthday' | 'events'>('birthday');
-  const [birthdayUsers, setBirthdayUsers] = useState<BirthdayUser[]>([]);
+  const [birthdays, setBirthdays] = useState<UpcomingBirthday[]>([]);
   const [events, setEvents] = useState<CompanyEvent[]>([]);
   const [orgConfig, setOrgConfig] = useState<OrgConfig | null>(null);
   const [loading, setLoading] = useState(true);
@@ -58,12 +87,14 @@ const TeamEventsCard: React.FC = () => {
           supabase.from('org_settings').select('config').single(),
         ]);
 
-        const thisMonth = new Date().getMonth() + 1;
-        const filtered = ((userRows || []) as any[])
-          .filter((u) => u.birth_date && new Date(u.birth_date).getMonth() + 1 === thisMonth)
-          .sort((a, b) => new Date(a.birth_date).getDate() - new Date(b.birth_date).getDate());
+        const now = new Date();
+        const upcoming = ((userRows || []) as BirthdayUser[])
+          .filter((u) => !!u.birth_date)
+          .map((u) => ({ ...u, daysLeft: daysUntilBirthday(u.birth_date, now) }))
+          .sort((a, b) => a.daysLeft - b.daysLeft)
+          .slice(0, BIRTHDAY_LIMIT);
 
-        setBirthdayUsers(filtered as BirthdayUser[]);
+        setBirthdays(upcoming);
         setEvents((eventRows || []) as CompanyEvent[]);
         setOrgConfig((orgRow?.config || {}) as OrgConfig);
       } catch {
@@ -75,75 +106,78 @@ const TeamEventsCard: React.FC = () => {
     load();
   }, []);
 
+  const tabClass = (active: boolean) =>
+    `flex-1 px-4 py-2.5 text-sm font-semibold transition ${
+      active ? 'text-gray-900 border-b-2 border-blue-600' : 'text-gray-400 hover:text-gray-600'
+    }`;
+
   return (
-    <div className="bg-white shadow rounded-lg overflow-hidden">
+    <div className="bg-white shadow rounded-lg overflow-hidden flex flex-col">
+      {/* 다른 카드(프로필·게시판·캘린더)와 같은 헤더 형식 */}
+      <div className="bg-gradient-to-r from-[#6D6F72] to-[#4A4D50] px-6 py-4 flex items-baseline justify-between">
+        <h2 className="text-xl font-semibold text-white">구성원 소식</h2>
+        {tab === 'birthday' && <span className="text-xs text-white/60">다가오는 순</span>}
+      </div>
+
       <div className="flex border-b border-gray-200">
-        <button
-          type="button"
-          onClick={() => setTab('birthday')}
-          className={`flex-1 px-4 py-3 text-sm font-semibold transition ${tab === 'birthday'
-            ? 'text-indigo-600 border-b-2 border-indigo-600'
-            : 'text-gray-500 hover:text-gray-700'
-            }`}
-        >
+        <button type="button" onClick={() => setTab('birthday')} className={tabClass(tab === 'birthday')}>
           🎂 생일
         </button>
-        <button
-          type="button"
-          onClick={() => setTab('events')}
-          className={`flex-1 px-4 py-3 text-sm font-semibold transition ${tab === 'events'
-            ? 'text-indigo-600 border-b-2 border-indigo-600'
-            : 'text-gray-500 hover:text-gray-700'
-            }`}
-        >
+        <button type="button" onClick={() => setTab('events')} className={tabClass(tab === 'events')}>
           💐 경조사
         </button>
       </div>
 
-      <div className="p-6 min-h-[140px]">
+      <div className="px-5 py-3 min-h-[120px]">
         {loading ? (
-          <p className="text-sm text-gray-400">불러오는 중...</p>
+          <p className="py-2 text-sm text-gray-400">불러오는 중...</p>
         ) : tab === 'birthday' ? (
-          birthdayUsers.length === 0 ? (
-            <p className="text-sm text-gray-500">이번 달 생일인 직원이 없습니다.</p>
+          birthdays.length === 0 ? (
+            <p className="py-2 text-sm text-gray-400">등록된 생일 정보가 없습니다.</p>
           ) : (
-            <div className="flex flex-wrap gap-4">
-              {birthdayUsers.map((u) => (
-                <div key={u.id} className="flex w-20 flex-col items-center gap-1.5">
-                  <div className="h-14 w-14 overflow-hidden rounded-full border border-gray-200 bg-gray-100">
+            <ul>
+              {birthdays.map((u) => (
+                <li key={u.id} className="flex items-center gap-3 border-b border-gray-50 py-2 last:border-0">
+                  <div className="h-9 w-9 shrink-0 overflow-hidden rounded-full border border-gray-200 bg-gray-100">
                     {u.profile_picture ? (
                       <img src={u.profile_picture} alt={u.name || ''} className="h-full w-full object-cover" />
                     ) : (
-                      <div className="flex h-full w-full items-center justify-center text-lg font-semibold text-gray-400">
+                      <div className="flex h-full w-full items-center justify-center text-sm font-semibold text-gray-400">
                         {u.name?.charAt(0)}
                       </div>
                     )}
                   </div>
-                  <p className="w-full truncate text-center text-xs text-gray-700">{u.name}</p>
-                  <p className="text-[11px] text-gray-400">{new Date(u.birth_date).getMonth() + 1}월 {new Date(u.birth_date).getDate()}일</p>
-                </div>
+                  <span className="min-w-0 flex-1 truncate text-sm font-semibold text-gray-800">{u.name}</span>
+                  <span className="shrink-0 text-xs tabular-nums text-gray-400">
+                    {new Date(u.birth_date).getMonth() + 1}.{String(new Date(u.birth_date).getDate()).padStart(2, '0')}
+                  </span>
+                  <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${ddayClass(u.daysLeft)}`}>
+                    {ddayLabel(u.daysLeft)}
+                  </span>
+                </li>
               ))}
-            </div>
+            </ul>
           )
         ) : events.length === 0 ? (
-          <p className="text-sm text-gray-500">등록된 경조사 소식이 없습니다.</p>
+          <p className="py-2 text-sm text-gray-400">등록된 경조사 소식이 없습니다.</p>
         ) : (
-          <div className="space-y-2">
+          <ul>
             {events.map((e) => (
-              <div key={e.id} className="flex items-center justify-between border-b last:border-0 pb-2 last:pb-0">
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="shrink-0 text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
+              <li key={e.id} className="border-b border-gray-50 py-2 last:border-0">
+                <div className="flex items-center gap-2">
+                  <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-gray-600">
                     {EVENT_TYPE_LABEL[e.event_type] || e.event_type}
                   </span>
-                  <span className="text-sm text-gray-900 truncate">{e.title}</span>
+                  <span className="min-w-0 flex-1 truncate text-sm text-gray-900">{e.title}</span>
+                  <span className="shrink-0 text-xs tabular-nums text-gray-400">{e.event_date}</span>
                 </div>
-                <div className="shrink-0 text-xs text-gray-500 text-right ml-3">
-                  <div>{e.name_snapshot}{getDeptName(e.department_snapshot) ? ` · ${getDeptName(e.department_snapshot)}` : ''}</div>
-                  <div>{e.event_date}</div>
-                </div>
-              </div>
+                <p className="mt-0.5 pl-1 text-xs text-gray-400">
+                  {e.name_snapshot}
+                  {getDeptName(e.department_snapshot) ? ` · ${getDeptName(e.department_snapshot)}` : ''}
+                </p>
+              </li>
             ))}
-          </div>
+          </ul>
         )}
       </div>
     </div>
