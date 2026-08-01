@@ -267,7 +267,7 @@ const CalendarCard: React.FC<CalendarCardProps> = ({
       </div>
 
       {/* 선택한 날짜의 일정 */}
-      <div className="border-t border-gray-100 px-5 py-3">
+      <div className="flex min-h-0 flex-1 flex-col border-t border-gray-100 px-5 py-3">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold text-gray-800">{formatDateLabel(selectedDate)}</h3>
           {isAdmin && !formOpen && (
@@ -286,7 +286,13 @@ const CalendarCard: React.FC<CalendarCardProps> = ({
 
         {actionError && <p className="mt-2 text-xs text-red-600">{actionError}</p>}
 
-        {formOpen ? (
+        {/* 폼을 열면 카드가 그리드 셀 높이를 넘겨 아래(취소/등록 버튼)가 잘렸다.
+            이 영역만 스크롤시켜서 카드 높이는 그대로 두고 내용만 접근 가능하게 한다. */}
+        <div
+          className="mt-1 min-h-0 flex-1 overflow-y-auto pr-1"
+          style={{ maxHeight: 260 }}
+        >
+          {formOpen ? (
           <CalendarEventForm
             defaultDate={selectedDate}
             submitting={submitting}
@@ -296,7 +302,7 @@ const CalendarCard: React.FC<CalendarCardProps> = ({
         ) : selectedEvents.length === 0 ? (
           <p className="mt-2 text-xs text-gray-400">일정이 없습니다.</p>
         ) : (
-          <ul className="mt-2 max-h-40 space-y-1.5 overflow-y-auto pr-1">
+          <ul className="mt-2 space-y-1.5">
             {selectedEvents.map((e, i) => {
               const style = KIND_STYLE[e.kind];
               const time = timeLabel(e);
@@ -326,7 +332,8 @@ const CalendarCard: React.FC<CalendarCardProps> = ({
               );
             })}
           </ul>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );
