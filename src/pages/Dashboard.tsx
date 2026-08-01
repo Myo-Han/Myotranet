@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabaseClient';
 import CalendarCard from '../components/CalendarCard';
+import TodayStrip from '../components/TodayStrip';
 import TeamEventsCard from '../components/TeamEventsCard';
 import ProfileModal from '../components/ProfileModal';
 import { ReactionBar } from '../components/reactions';
@@ -130,6 +131,23 @@ const Dashboard: React.FC = () => {
     current_status: string | null;
   };
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+
+  // 상단 스트립의 "결재 대기" 지표.
+  // LeaveWorkQueue가 쓰는 RPC를 그대로 재사용한다 (건수만 필요해서 길이만 센다).
+  const [pendingApprovals, setPendingApprovals] = useState<number | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      if (!user?.id) return;
+      const { data, error } = await supabase.rpc('get_leave_work_queue', { p_actor_id: user.id });
+      if (!alive || error) return; // 실패해도 스트립의 나머지 지표는 살아야 하므로 조용히 무시
+      setPendingApprovals((data || []).length);
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [user?.id]);
 
   const getTodayDate = () => {
     const now = new Date();
@@ -586,17 +604,38 @@ const Dashboard: React.FC = () => {
         </form>
       </div>
 
-      {/* User Profile Card */}
-      {/* Profile + Notice Row */}
-      {/* 높이를 h-[620px]로 고정하면 6주짜리 달(8월 등)에서 캘린더 카드 하단의
-          일정 패널이 0으로 짓눌려 사라진다. min-h로 두어 필요한 달만 늘어나게 한다. */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch min-h-[620px]">
+      {/* 오늘 — 매일 쓰는 액션과 숫자를 최상단 한 줄로 */}
+      <TodayStrip
+        statusLabel={statusMeta.label}
+        busy={actionBusy !== null}
+        error={actionError}
+        remainingLeave={remainingLeave}
+        pendingApprovals={pendingApprovals}
+        onCheckIn={() =>
+          runStatusAction(
+            'checkin',
+            statusMeta.label === '퇴근' ? handleDashboardReCheckIn : handleDashboardCheckIn
+          )
+        }
+        onTogglePause={() =>
+          statusMeta.label === '근무중단'
+            ? runStatusAction('resume', handleDashboardResume)
+            : runStatusAction('pause', handleDashboardPauseConfirm)
+        }
+        onCheckOut={() => runStatusAction('checkout', () => handleDashboardCheckOut('퇴근', null))}
+        onGoApprovals={() => navigate('/works')}
+      />
+
+      {/* 좌측(프로필·공지·구성원 소식) + 캘린더 2칸.
+          높이를 고정하지 않아야 6주짜리 달에서 캘린더가 잘리지 않는다. */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+        <div className="flex flex-col gap-6">
         {/* User Profile Card */}
-        <div className="bg-white shadow rounded-lg overflow-hidden h-full flex flex-col">
+        <div className="bg-white shadow rounded-lg overflow-hidden flex flex-col">
           <div className="bg-gradient-to-r from-[#6D6F72] to-[#4A4D50] px-6 py-4">
             <h2 className="text-xl font-semibold text-white">프로필</h2>
           </div>
-          <div className="p-6 flex-1 overflow-y-auto">
+          <div className="p-6">
             <div className="flex items-start justify-between">
               <div className="flex items-center space-x-6">
                 {user?.profile_picture && (
@@ -674,101 +713,6 @@ const Dashboard: React.FC = () => {
               </button>
             </div>
 
-            <div className="mt-6 pt-6 border-t border-gray-200">
-              {/* ✅ 상태 표시 + 액션 아이콘 (출근하기 / 업무정지·재개 / 퇴근하기) */}
-              <div className={`flex items-center gap-3 rounded-xl border ${statusMeta.wrap} px-4 py-3`}>
-                <span className={`h-2.5 w-2.5 rounded-full ${statusMeta.dot}`} />
-                <div className="flex-1 min-w-0">
-                  <p className={`text-xs font-medium ${statusMeta.title}`}>현재 상태</p>
-                  <p className={`text-base font-semibold ${statusMeta.value}`}>{statusMeta.label}</p>
-                </div>
-
-                <div className="flex items-center gap-2 shrink-0">
-                  {(() => {
-                    const isPaused = statusMeta.label === '근무중단';
-                    const canCheckIn = statusMeta.label === '미출근' || statusMeta.label === '퇴근';
-                    const canToggle = statusMeta.label === '근무중' || isPaused;
-                    const canCheckOut = statusMeta.label === '근무중' || isPaused;
-                    const disabled = actionBusy !== null;
-
-                    const btnClass = (enabled: boolean, activeColor: string) =>
-                      `flex h-9 w-9 items-center justify-center rounded-full border transition ${
-                        enabled
-                          ? `${activeColor} cursor-pointer`
-                          : 'border-gray-200 bg-gray-50 text-gray-300 cursor-not-allowed'
-                      }`;
-
-                    return (
-                      <>
-                        <button
-                          type="button"
-                          title="출근하기"
-                          disabled={!canCheckIn || disabled}
-                          onClick={() =>
-                            runStatusAction(
-                              'checkin',
-                              statusMeta.label === '퇴근' ? handleDashboardReCheckIn : handleDashboardCheckIn
-                            )
-                          }
-                          className={btnClass(canCheckIn, 'border-indigo-200 bg-indigo-600 text-white hover:bg-indigo-700')}
-                        >
-                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                          </svg>
-                        </button>
-
-                        <button
-                          type="button"
-                          title={isPaused ? '업무재개' : '업무정지'}
-                          disabled={!canToggle || disabled}
-                          onClick={() =>
-                            runStatusAction(
-                              isPaused ? 'resume' : 'pause',
-                              isPaused ? handleDashboardResume : handleDashboardPauseConfirm
-                            )
-                          }
-                          className={btnClass(canToggle, 'border-amber-200 bg-amber-500 text-white hover:bg-amber-600')}
-                        >
-                          {isPaused ? (
-                            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                              <path d="M8 5v14l11-7z" />
-                            </svg>
-                          ) : (
-                            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                              <path d="M6 5h4v14H6zM14 5h4v14h-4z" />
-                            </svg>
-                          )}
-                        </button>
-
-                        <button
-                          type="button"
-                          title="퇴근하기"
-                          disabled={!canCheckOut || disabled}
-                          onClick={() => runStatusAction('checkout', () => handleDashboardCheckOut('퇴근', null))}
-                          className={btnClass(canCheckOut, 'border-gray-300 bg-gray-800 text-white hover:bg-gray-900')}
-                        >
-                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                          </svg>
-                        </button>
-                      </>
-                    );
-                  })()}
-                </div>
-              </div>
-
-              {actionError && (
-                <p className="mt-2 flex items-center gap-1 text-sm text-red-600">
-                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-red-500" />
-                  {actionError}
-                </p>
-              )}
-
-              {statusMeta.label === '휴가' && (
-                <p className="mt-2 text-center text-sm text-gray-400">오늘은 휴가일입니다.</p>
-              )}
-            </div>
-
             {/* ✅ 같은 프로젝트 팀원 상태 (프로젝트 미지정 시 표시 안 함) */}
             {projCode && (
               <div className="mt-6 pt-6 border-t border-gray-200">
@@ -818,7 +762,7 @@ const Dashboard: React.FC = () => {
         </div>
 
         {/* Notice Container */}
-        <div className="bg-white shadow rounded-lg overflow-hidden h-full flex flex-col">
+        <div className="bg-white shadow rounded-lg overflow-hidden flex flex-col">
           <div className="bg-gradient-to-r from-[#5C5E66] to-[#4B4E51] px-6 py-4 flex items-center justify-between">
             <h2 className="text-xl font-semibold text-white">게시판</h2>
             <div className="flex items-center gap-3">
@@ -836,7 +780,7 @@ const Dashboard: React.FC = () => {
               </button>
             </div>
           </div>
-          <div className="p-6 space-y-3 flex-1 overflow-y-auto">
+          <div className="p-6 space-y-3 max-h-80 overflow-y-auto">
             {notices.length === 0 ? (
               <p className="text-gray-500 text-sm">최근 공지가 없습니다.</p>
             ) : (
@@ -881,11 +825,14 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
 
-        <CalendarCard title="캘린더" />
-      </div>
+        {/* 생일 / 경조사 — 전폭이던 것을 좌측 컬럼으로 */}
+        <TeamEventsCard />
+        </div>
 
-      {/* 생일 / 경조사 */}
-      <TeamEventsCard />
+        <div className="lg:col-span-2">
+          <CalendarCard title="캘린더" />
+        </div>
+      </div>
 
       {/* Quick Actions */}
       {/* Notice Modal */}
