@@ -136,10 +136,16 @@ const CalendarCard: React.FC<CalendarCardProps> = ({
   return (
     <div className={`flex flex-col overflow-hidden rounded-lg bg-white shadow ${className}`}>
       <style>{`
-        /* 일요일/공휴일 빨강, 토요일 파랑 */
+        /* 일요일/공휴일 빨강, 토요일 파랑.
+           dayCellContent를 지정하면 기본 .fc-daygrid-day-number 요소가 생성되지 않을 수 있어,
+           항상 존재하는 .fc-daygrid-day-top에도 같은 규칙을 걸어 색이 사라지지 않게 한다. */
+        .fc-daygrid-day.fc-holiday .fc-daygrid-day-top,
         .fc-daygrid-day.fc-holiday .fc-daygrid-day-number,
+        .fc-day-sun .fc-daygrid-day-top,
         .fc-day-sun .fc-daygrid-day-number { color: #ef4444 !important; font-weight: 600; }
+        .fc-day-sat .fc-daygrid-day-top,
         .fc-day-sat .fc-daygrid-day-number { color: #2563eb !important; }
+        .fc-daygrid-day-top,
         .fc-daygrid-day-number { text-decoration: none !important; font-size: 12px; padding: 4px 6px !important; }
 
         /* 일정 칩: 폰트를 줄이지 않고 넘치면 말줄임 */
@@ -239,7 +245,7 @@ const CalendarCard: React.FC<CalendarCardProps> = ({
           dayCellContent={(arg) => String(arg.date.getDate())}
           headerToolbar={false}
           fixedWeekCount={false}
-          height="360px"
+          height="auto"
           eventDisplay="block"
           displayEventTime={false}
           dayMaxEvents={2}

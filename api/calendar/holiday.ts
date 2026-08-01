@@ -65,10 +65,12 @@ export default async function handler(req: any, res: any) {
     const calendar = google.calendar({ version: 'v3', auth });
 
     // 기본: 오늘~+180일 (원하면 쿼리로 바꿀 수 있게)
+    // req.query가 없는 호출 경로에서 TypeError로 500이 나던 문제가 있어 옵셔널 체이닝을 쓴다.
+    // (myohancalendar.ts는 원래 ?. 를 쓰고 있어 공휴일만 간헐적으로 죽는 원인이 됐다)
     const now = new Date();
-    const timeMin = (req.query.timeMin as string) || now.toISOString();
+    const timeMin = (req.query?.timeMin as string) || now.toISOString();
     const timeMax =
-      (req.query.timeMax as string) ||
+      (req.query?.timeMax as string) ||
       new Date(now.getTime() + 180 * 24 * 60 * 60 * 1000).toISOString();
 
     const r = await calendar.events.list({
