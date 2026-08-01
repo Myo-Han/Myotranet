@@ -569,39 +569,43 @@ const Dashboard: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         <div className="flex flex-col gap-6">
         {/* User Profile Card */}
-        <div className="bg-white shadow rounded-lg overflow-hidden flex flex-col">
-          <div className="bg-gradient-to-r from-[#6D6F72] to-[#4A4D50] px-6 py-4">
-            <h2 className="text-xl font-semibold text-white">프로필</h2>
+        <div className="overflow-hidden rounded-xl border border-[#e8ebef] bg-white shadow-sm">
+          <div className="flex items-center justify-between bg-gradient-to-r from-[#6D6F72] to-[#4A4D50] px-[18px] py-[13px]">
+            <h2 className="text-[15px] font-semibold text-white">프로필</h2>
+            <button
+              type="button"
+              onClick={() => setShowProfileModal(true)}
+              className="rounded-[7px] bg-white/[0.16] px-2.5 py-[5px] text-[13px] text-white transition hover:bg-white/25"
+            >
+              편집
+            </button>
           </div>
-          <div className="p-6">
+          <div className="p-[18px]">
             {/* 사번·이메일·연락처 등 상세 항목은 매일 볼 정보가 아니라서 프로필 모달로 옮겼다.
                 여기서는 누구인지 알아보는 데 필요한 것만 남긴다. */}
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-[14px]">
               {user?.profile_picture ? (
                 <img
                   src={user.profile_picture}
                   alt={user.name}
-                  className="h-14 w-14 shrink-0 rounded-full border border-gray-200 object-cover"
+                  className="h-14 w-14 shrink-0 rounded-full object-cover"
                 />
               ) : (
-                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-gray-100 text-lg font-semibold text-gray-400">
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[#cfd6de] text-lg font-semibold text-white">
                   {user?.name?.charAt(0)}
                 </div>
               )}
               <div className="min-w-0">
-                <div className="flex items-baseline gap-2">
-                  <h3 className="truncate text-lg font-bold text-gray-900">{user?.name}</h3>
-                  {posName && <span className="shrink-0 text-xs text-gray-500">{posName}</span>}
+                <div className="truncate text-[17px] font-bold text-[#1f2328]">{user?.name}</div>
+                <div className="mt-0.5 truncate text-[12px] text-[#8c95a1]">
+                  {[posName, affiliationText].filter(Boolean).join(' · ')}
                 </div>
-                {affiliationText && (
-                  <p className="mt-0.5 truncate text-xs text-gray-400">{affiliationText}</p>
-                )}
               </div>
             </div>
 
             <button
               onClick={() => setShowProfileModal(true)}
-              className="mt-4 w-full rounded-lg border border-gray-200 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-50"
+              className="mt-[14px] w-full rounded-[9px] border border-[#e8ebef] py-[9px] text-[13px] font-medium text-[#5b6470] transition hover:bg-gray-50"
             >
               내 프로필 보기
             </button>
@@ -655,13 +659,14 @@ const Dashboard: React.FC = () => {
         </div>
 
         {/* Notice Container */}
-        <div className="bg-white shadow rounded-lg overflow-hidden flex flex-col">
-          <div className="bg-gradient-to-r from-[#5C5E66] to-[#4B4E51] px-6 py-4 flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-white">게시판</h2>
-            <div className="flex items-center gap-3">
+        <div className="overflow-hidden rounded-xl border border-[#e8ebef] bg-white shadow-sm">
+          {/* 카드 헤더 그라데이션이 카드마다 미묘하게 달랐어서 한 값으로 통일 */}
+          <div className="flex items-center justify-between bg-gradient-to-r from-[#6D6F72] to-[#4A4D50] px-[18px] py-[13px]">
+            <h2 className="text-[15px] font-semibold text-white">게시판</h2>
+            <div className="flex items-center gap-2">
               {notices.length > 0 && (
-                <span className="text-xs text-yellow-100">
-                  최근 {notices.length}개 (7일 이내)
+                <span className="text-[11px] text-white/70">
+                  최근 {notices.length}개
                 </span>
               )}
               {/* ✅ 전체보기 버튼: 게시판 탭으로 바로 이동 */}
@@ -673,7 +678,7 @@ const Dashboard: React.FC = () => {
               </button>
             </div>
           </div>
-          <div className="p-6 space-y-3 max-h-80 overflow-y-auto">
+          <div className="max-h-80 space-y-3 overflow-y-auto p-[18px]">
             {notices.length === 0 ? (
               <p className="text-gray-500 text-sm">최근 공지가 없습니다.</p>
             ) : (

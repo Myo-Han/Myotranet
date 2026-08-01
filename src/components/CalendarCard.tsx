@@ -137,7 +137,7 @@ const CalendarCard: React.FC<CalendarCardProps> = ({
   }, []);
 
   return (
-    <div className={`flex flex-col overflow-hidden rounded-lg bg-white shadow ${className}`}>
+    <div className={`flex flex-col overflow-hidden rounded-xl border border-[#e8ebef] bg-white shadow-sm ${className}`}>
       <style>{`
         /* 일요일/공휴일 빨강, 토요일 파랑.
            dayCellContent를 지정하면 기본 .fc-daygrid-day-number 요소가 생성되지 않을 수 있어,
@@ -174,11 +174,11 @@ const CalendarCard: React.FC<CalendarCardProps> = ({
         .fc-col-header-cell-cushion { font-size: 11px; color: #64748b; font-weight: 600; padding: 6px 0 !important; }
       `}</style>
 
-      <div className="flex items-center justify-between bg-gradient-to-r from-[#6D6F72] to-[#4A4D50] px-5 py-3.5">
-        <div className="flex min-w-0 items-center gap-2">
-          <h2 className="shrink-0 text-lg font-semibold text-white">{title}</h2>
-          {viewTitle && <span className="truncate text-xs text-white/70">{viewTitle}</span>}
-          {loading && <span className="shrink-0 text-xs text-white/60">불러오는 중…</span>}
+      <div className="flex items-center justify-between bg-gradient-to-r from-[#6D6F72] to-[#4A4D50] px-[18px] py-[13px]">
+        <div className="flex min-w-0 items-baseline gap-2">
+          <h2 className="shrink-0 text-[15px] font-semibold text-white">{title}</h2>
+          {viewTitle && <span className="truncate text-[11px] text-white/70">{viewTitle}</span>}
+          {loading && <span className="shrink-0 text-[11px] text-white/60">불러오는 중…</span>}
         </div>
 
         <div className="flex items-center gap-1.5">
@@ -188,14 +188,14 @@ const CalendarCard: React.FC<CalendarCardProps> = ({
             disabled={loading}
             title="구글 캘린더에서 다시 불러오기"
             aria-label="새로고침"
-            className="rounded-md bg-white/15 px-2.5 py-1.5 text-sm text-white transition hover:bg-white/25 disabled:opacity-40"
+            className="rounded-[7px] bg-white/[0.16] px-2.5 py-[5px] text-[13px] text-white transition hover:bg-white/25 disabled:opacity-40"
           >
             ⟳
           </button>
           <button
             type="button"
             onClick={() => goto('today')}
-            className="rounded-md bg-white/15 px-3 py-1.5 text-sm text-white transition hover:bg-white/25"
+            className="rounded-[7px] bg-white/[0.16] px-2.5 py-[5px] text-[13px] text-white transition hover:bg-white/25"
           >
             오늘
           </button>
@@ -203,7 +203,7 @@ const CalendarCard: React.FC<CalendarCardProps> = ({
             type="button"
             onClick={() => goto('prev')}
             aria-label="이전 달"
-            className="rounded-md bg-white/15 px-2.5 py-1.5 text-sm text-white transition hover:bg-white/25"
+            className="rounded-[7px] bg-white/[0.16] px-2.5 py-[5px] text-[13px] text-white transition hover:bg-white/25"
           >
             ‹
           </button>
@@ -211,7 +211,7 @@ const CalendarCard: React.FC<CalendarCardProps> = ({
             type="button"
             onClick={() => goto('next')}
             aria-label="다음 달"
-            className="rounded-md bg-white/15 px-2.5 py-1.5 text-sm text-white transition hover:bg-white/25"
+            className="rounded-[7px] bg-white/[0.16] px-2.5 py-[5px] text-[13px] text-white transition hover:bg-white/25"
           >
             ›
           </button>

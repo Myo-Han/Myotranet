@@ -43,17 +43,17 @@ const TodayStrip: React.FC<TodayStripProps> = ({
   const canCheckOut = statusLabel === '근무중' || isPaused;
 
   const primary =
-    'rounded-lg bg-blue-600 px-6 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40';
+    'rounded-[10px] bg-blue-600 px-[26px] py-[11px] text-sm font-bold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40';
   const secondary =
-    'rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-600 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40';
+    'rounded-[10px] border border-[#e8ebef] bg-white px-4 py-[11px] text-sm font-semibold text-[#5b6470] transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40';
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white px-5 py-4 shadow-sm">
+    <div className="rounded-xl border border-[#e8ebef] bg-white px-5 py-4 shadow-sm">
       <div className="flex flex-wrap items-center gap-x-6 gap-y-4">
         <div className="flex min-w-[110px] items-center gap-2.5">
           <span className={`h-2.5 w-2.5 rounded-full ring-4 ${style.dot} ${style.ring}`} />
           <div>
-            <p className="text-[11px] text-gray-400">현재 상태</p>
+            <p className="text-[11px] text-[#8c95a1]">현재 상태</p>
             <p className={`text-base font-bold ${style.text}`}>{statusLabel}</p>
           </div>
         </div>
@@ -73,12 +73,12 @@ const TodayStrip: React.FC<TodayStripProps> = ({
 
         <div className="ml-auto flex items-center gap-8">
           <div className="text-right">
-            <p className="mb-0.5 text-[11px] text-gray-400">남은 연차</p>
+            <p className="mb-0.5 text-[11px] text-[#8c95a1]">남은 연차</p>
             <p className="text-base font-bold tabular-nums text-gray-800">{remainingLeave}일</p>
           </div>
 
           <div className="text-right">
-            <p className="mb-0.5 text-[11px] text-gray-400">결재 대기</p>
+            <p className="mb-0.5 text-[11px] text-[#8c95a1]">결재 대기</p>
             {pendingApprovals === null ? (
               <p className="text-base font-bold text-gray-300">—</p>
             ) : pendingApprovals === 0 ? (

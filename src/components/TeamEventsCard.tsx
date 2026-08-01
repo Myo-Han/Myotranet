@@ -53,10 +53,16 @@ function ddayLabel(daysLeft: number): string {
   return `D-${daysLeft}`;
 }
 
+/** 임박할수록 눈에 띄게 (오늘 빨강 / 일주일 이내 앰버 / 그 외 회색) */
 function ddayClass(daysLeft: number): string {
-  if (daysLeft === 0) return 'bg-red-100 text-red-700';
-  if (daysLeft <= 7) return 'bg-amber-100 text-amber-700';
-  return 'bg-gray-100 text-gray-500';
+  if (daysLeft === 0) return 'bg-[#fdeced] text-[#b91c1c]';
+  if (daysLeft <= 7) return 'bg-[#fef3c7] text-[#b45309]';
+  return 'bg-[#f1f4f7] text-[#5b6470]';
+}
+
+function monthDay(dateStr: string): string {
+  const d = new Date(dateStr);
+  return `${d.getMonth() + 1}.${String(d.getDate()).padStart(2, '0')}`;
 }
 
 const TeamEventsCard: React.FC = () => {
@@ -107,51 +113,60 @@ const TeamEventsCard: React.FC = () => {
   }, []);
 
   const tabClass = (active: boolean) =>
-    `flex-1 px-4 py-2.5 text-sm font-semibold transition ${
-      active ? 'text-gray-900 border-b-2 border-blue-600' : 'text-gray-400 hover:text-gray-600'
+    `flex-1 py-[11px] text-[13px] font-semibold transition ${
+      active
+        ? 'text-[#1f2328] shadow-[inset_0_-2px_0_#2563eb]'
+        : 'text-[#8c95a1] hover:text-[#5b6470]'
     }`;
 
   return (
-    <div className="bg-white shadow rounded-lg overflow-hidden flex flex-col">
+    <div className="overflow-hidden rounded-xl border border-[#e8ebef] bg-white shadow-sm">
       {/* 다른 카드(프로필·게시판·캘린더)와 같은 헤더 형식 */}
-      <div className="bg-gradient-to-r from-[#6D6F72] to-[#4A4D50] px-6 py-4 flex items-baseline justify-between">
-        <h2 className="text-xl font-semibold text-white">구성원 소식</h2>
-        {tab === 'birthday' && <span className="text-xs text-white/60">다가오는 순</span>}
+      <div className="flex items-center justify-between bg-gradient-to-r from-[#6D6F72] to-[#4A4D50] px-[18px] py-[13px]">
+        <h2 className="text-[15px] font-semibold text-white">구성원 소식</h2>
+        {tab === 'birthday' && <span className="text-[11px] text-white/70">다가오는 순</span>}
       </div>
 
-      <div className="flex border-b border-gray-200">
+      <div className="flex border-b border-[#e8ebef]">
         <button type="button" onClick={() => setTab('birthday')} className={tabClass(tab === 'birthday')}>
           🎂 생일
         </button>
         <button type="button" onClick={() => setTab('events')} className={tabClass(tab === 'events')}>
-          💐 경조사
+          🎗 경조사
         </button>
       </div>
 
-      <div className="px-5 py-3 min-h-[120px]">
+      <div className="min-h-[120px] px-[18px] pb-3.5 pt-2">
         {loading ? (
-          <p className="py-2 text-sm text-gray-400">불러오는 중...</p>
+          <p className="py-2 text-[13px] text-[#8c95a1]">불러오는 중...</p>
         ) : tab === 'birthday' ? (
           birthdays.length === 0 ? (
-            <p className="py-2 text-sm text-gray-400">등록된 생일 정보가 없습니다.</p>
+            <p className="py-2 text-[13px] text-[#8c95a1]">등록된 생일 정보가 없습니다.</p>
           ) : (
             <ul>
               {birthdays.map((u) => (
-                <li key={u.id} className="flex items-center gap-3 border-b border-gray-50 py-2 last:border-0">
-                  <div className="h-9 w-9 shrink-0 overflow-hidden rounded-full border border-gray-200 bg-gray-100">
+                <li
+                  key={u.id}
+                  className="flex items-center gap-[11px] border-b border-[#f3f5f8] py-2 last:border-0"
+                >
+                  <div className="h-[34px] w-[34px] shrink-0 overflow-hidden rounded-full bg-[#cfd6de]">
                     {u.profile_picture ? (
                       <img src={u.profile_picture} alt={u.name || ''} className="h-full w-full object-cover" />
                     ) : (
-                      <div className="flex h-full w-full items-center justify-center text-sm font-semibold text-gray-400">
+                      <div className="flex h-full w-full items-center justify-center text-[13px] font-semibold text-white">
                         {u.name?.charAt(0)}
                       </div>
                     )}
                   </div>
-                  <span className="min-w-0 flex-1 truncate text-sm font-semibold text-gray-800">{u.name}</span>
-                  <span className="shrink-0 text-xs tabular-nums text-gray-400">
-                    {new Date(u.birth_date).getMonth() + 1}.{String(new Date(u.birth_date).getDate()).padStart(2, '0')}
+                  <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-[#1f2328]">
+                    {u.name}
                   </span>
-                  <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${ddayClass(u.daysLeft)}`}>
+                  <span className="shrink-0 text-[12px] tabular-nums text-[#8c95a1]">
+                    {monthDay(u.birth_date)}
+                  </span>
+                  <span
+                    className={`shrink-0 rounded-full px-[7px] py-0.5 text-[10px] font-bold ${ddayClass(u.daysLeft)}`}
+                  >
                     {ddayLabel(u.daysLeft)}
                   </span>
                 </li>
@@ -159,19 +174,21 @@ const TeamEventsCard: React.FC = () => {
             </ul>
           )
         ) : events.length === 0 ? (
-          <p className="py-2 text-sm text-gray-400">등록된 경조사 소식이 없습니다.</p>
+          <p className="py-2 text-[13px] text-[#8c95a1]">등록된 경조사 소식이 없습니다.</p>
         ) : (
           <ul>
             {events.map((e) => (
-              <li key={e.id} className="border-b border-gray-50 py-2 last:border-0">
-                <div className="flex items-center gap-2">
-                  <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-gray-600">
+              <li key={e.id} className="border-b border-[#f3f5f8] py-2 last:border-0">
+                <div className="flex items-center gap-[11px]">
+                  <span className="shrink-0 rounded-full bg-[#f1f4f7] px-[7px] py-0.5 text-[10px] font-bold text-[#5b6470]">
                     {EVENT_TYPE_LABEL[e.event_type] || e.event_type}
                   </span>
-                  <span className="min-w-0 flex-1 truncate text-sm text-gray-900">{e.title}</span>
-                  <span className="shrink-0 text-xs tabular-nums text-gray-400">{e.event_date}</span>
+                  <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-[#1f2328]">
+                    {e.title}
+                  </span>
+                  <span className="shrink-0 text-[12px] tabular-nums text-[#8c95a1]">{e.event_date}</span>
                 </div>
-                <p className="mt-0.5 pl-1 text-xs text-gray-400">
+                <p className="mt-0.5 pl-[45px] text-[11px] text-[#8c95a1]">
                   {e.name_snapshot}
                   {getDeptName(e.department_snapshot) ? ` · ${getDeptName(e.department_snapshot)}` : ''}
                 </p>
