@@ -45,7 +45,9 @@ function calcNetWorkSeconds(events: any[], checkInIso: string, checkOutIso: stri
   return Math.max(0, totalDurationSeconds - pauseSeconds);
 }
 
-export default async function handler(req: any, res: any) {
+// req는 사용하지 않지만 Vercel 핸들러 시그니처상 자리를 지켜야 한다.
+// noUnusedParameters가 켜져 있어서 밑줄 접두사로 "의도적 미사용"을 표시한다.
+export default async function handler(_req: any, res: any) {
   try {
     const targetDate = getKstYesterday();
 

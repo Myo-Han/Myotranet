@@ -5,7 +5,7 @@ import { supabase } from '../supabaseClient';
 import Loading from './Loading';
 import ErrorMessage from './ErrorMessage';
 import ProfileModal from './ProfileModal';
-import { markAsRead } from '../../api/readLog';
+import { markAsRead } from '../utils/readLog';
 
 type LetterRow = {
   id: number | string;

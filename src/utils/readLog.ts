@@ -1,4 +1,4 @@
-import { supabase } from '../src/supabaseClient';
+import { supabase } from '../supabaseClient';
 
 /**
  * 특정 항목을 '읽음' 상태로 기록하는 공통 함수

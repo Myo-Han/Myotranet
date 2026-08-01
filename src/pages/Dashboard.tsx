@@ -9,7 +9,7 @@ import { ReactionBar } from '../components/reactions';
 import { CommentThread } from '../components/comments';
 import SearchModal from '../components/SearchModal';
 import { getStatusLabel } from '../utils/attendanceLabels';
-import { markAsRead } from '../../api/readLog';
+import { markAsRead } from '../utils/readLog';
 
 type Notice = {
   id: number;
