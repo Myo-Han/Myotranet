@@ -63,7 +63,10 @@ const CalendarCard: React.FC<CalendarCardProps> = ({
       events.map((e) => {
         const style = KIND_STYLE[e.kind];
         return {
-          id: e.id,
+          // 공휴일 API는 id를 내려주지 않는다. id 없이 FullCalendar에 넘기면
+          // 이벤트 소스가 갱신될 때(달 이동·재조회) 그 이벤트들이 화면에서 사라진다.
+          // 항상 고유한 id를 만들어 붙여야 안정적으로 유지된다.
+          id: e.id ?? `${e.kind}:${e.title}:${e.start}`,
           title: e.title,
           start: e.start,
           end: e.end,
