@@ -588,7 +588,9 @@ const Dashboard: React.FC = () => {
 
       {/* User Profile Card */}
       {/* Profile + Notice Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch h-[620px]">
+      {/* 높이를 h-[620px]로 고정하면 6주짜리 달(8월 등)에서 캘린더 카드 하단의
+          일정 패널이 0으로 짓눌려 사라진다. min-h로 두어 필요한 달만 늘어나게 한다. */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch min-h-[620px]">
         {/* User Profile Card */}
         <div className="bg-white shadow rounded-lg overflow-hidden h-full flex flex-col">
           <div className="bg-gradient-to-r from-[#6D6F72] to-[#4A4D50] px-6 py-4">
