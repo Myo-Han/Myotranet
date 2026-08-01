@@ -226,6 +226,8 @@ const CalendarCard: React.FC<CalendarCardProps> = ({
       )}
 
       <div className="px-3 pt-3">
+        {/* locale="ko"는 날짜를 "12일"로 렌더링하므로 dayCellContent로 숫자만 남긴다.
+            (요일 머리글과 "2026년 8월" 표기는 한국어 그대로 두기 위해 locale은 유지) */}
         <FullCalendar
           key="calendar-root-fixed"
           ref={(r) => {
@@ -234,6 +236,7 @@ const CalendarCard: React.FC<CalendarCardProps> = ({
           plugins={[dayGridPlugin, interactionPlugin]}
           initialView="dayGridMonth"
           locale="ko"
+          dayCellContent={(arg) => String(arg.date.getDate())}
           headerToolbar={false}
           fixedWeekCount={false}
           height="360px"
