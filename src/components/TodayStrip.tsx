@@ -2,11 +2,16 @@
 // 매일 쓰는 액션(출근/정지/퇴근)과 오늘 알아야 할 숫자를 한 줄에 모은다.
 // 상태 계산과 실제 처리 로직은 전부 Dashboard가 갖고 있고, 이 컴포넌트는 표현만 담당한다.
 import React from 'react';
+import { formatHM } from '../hooks/useWorkHours';
 
 type TodayStripProps = {
   statusLabel: string;
   busy: boolean;
   error?: string;
+  /** null이면 아직 조회 중 */
+  todaySeconds: number | null;
+  weekSeconds: number | null;
+  weeklyRequiredHours: number;
   remainingLeave: number;
   /** null이면 아직 조회 중 */
   pendingApprovals: number | null;
@@ -28,6 +33,9 @@ const TodayStrip: React.FC<TodayStripProps> = ({
   statusLabel,
   busy,
   error,
+  todaySeconds,
+  weekSeconds,
+  weeklyRequiredHours,
   remainingLeave,
   pendingApprovals,
   onCheckIn,
@@ -72,6 +80,21 @@ const TodayStrip: React.FC<TodayStripProps> = ({
         </div>
 
         <div className="ml-auto flex items-center gap-8">
+          <div className="text-right">
+            <p className="mb-0.5 text-[11px] text-[#8c95a1]">오늘 근무</p>
+            <p className="text-base font-bold tabular-nums text-gray-800">
+              {todaySeconds === null ? '—' : formatHM(todaySeconds)}
+            </p>
+          </div>
+
+          <div className="text-right">
+            <p className="mb-0.5 text-[11px] text-[#8c95a1]">이번 주</p>
+            <p className="text-base font-bold tabular-nums text-gray-800">
+              {weekSeconds === null ? '—' : formatHM(weekSeconds)}
+              <span className="ml-1 text-[11px] font-medium text-[#8c95a1]">/ {weeklyRequiredHours}</span>
+            </p>
+          </div>
+
           <div className="text-right">
             <p className="mb-0.5 text-[11px] text-[#8c95a1]">남은 연차</p>
             <p className="text-base font-bold tabular-nums text-gray-800">{remainingLeave}일</p>

@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabaseClient';
 import CalendarCard from '../components/CalendarCard';
 import TodayStrip from '../components/TodayStrip';
+import { useWorkHours } from '../hooks/useWorkHours';
 import TeamEventsCard from '../components/TeamEventsCard';
 import ProfileModal from '../components/ProfileModal';
 import { ReactionBar } from '../components/reactions';
@@ -103,6 +104,9 @@ const Dashboard: React.FC = () => {
   // 상단 스트립의 "결재 대기" 지표.
   // LeaveWorkQueue가 쓰는 RPC를 그대로 재사용한다 (건수만 필요해서 길이만 센다).
   const [pendingApprovals, setPendingApprovals] = useState<number | null>(null);
+
+  // 오늘/이번 주 근무시간 (진행 중인 세션 포함, 60초 주기 갱신)
+  const { todaySeconds, weekSeconds } = useWorkHours(user?.id);
 
   useEffect(() => {
     let alive = true;
@@ -547,6 +551,9 @@ const Dashboard: React.FC = () => {
         statusLabel={statusMeta.label}
         busy={actionBusy !== null}
         error={actionError}
+        todaySeconds={todaySeconds}
+        weekSeconds={weekSeconds}
+        weeklyRequiredHours={Number((user as any)?.weekly_required_hours ?? 40)}
         remainingLeave={remainingLeave}
         pendingApprovals={pendingApprovals}
         onCheckIn={() =>
