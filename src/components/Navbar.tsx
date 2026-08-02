@@ -1,16 +1,15 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import SessionTimer from './SessionTimer';
 import NotificationBell from './NotificationBell';
-import SearchModal from './SearchModal';
+import SearchBar from './SearchBar';
 
 const Navbar: React.FC = () => {
   const { user, logout } = useAuth();
   const location = useLocation();
   // 대시보드 상단에 맥락 없이 떠 있던 검색창을 네비로 옮겼다.
   // 여기 두면 어느 페이지에서든 같은 자리에서 검색할 수 있다.
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   const isActive = (path: string) => {
     return location.pathname === path || location.pathname.startsWith(path + '/');
@@ -97,17 +96,7 @@ const Navbar: React.FC = () => {
             <SessionTimer />
 
             <div className="flex items-center space-x-3">
-              <button
-                type="button"
-                onClick={() => setIsSearchOpen(true)}
-                aria-label="검색"
-                title="구성원 검색"
-                className="p-1.5 rounded-md text-gray-500 transition hover:bg-gray-100 hover:text-gray-700"
-              >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-              </button>
+              <SearchBar />
               {user?.profile_picture && (
                 <img
                   src={user.profile_picture}
@@ -141,8 +130,6 @@ const Navbar: React.FC = () => {
           </div>
         </div>
       </div>
-
-      <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
 
       {/* Mobile menu */}
       <div className="md:hidden px-2 pt-2 pb-3 space-y-1 sm:px-3">
