@@ -50,13 +50,15 @@ const TodayStrip: React.FC<TodayStripProps> = ({
   const canCheckIn = statusLabel === '미출근' || statusLabel === '퇴근';
 
   // 출근/퇴근은 동시에 가능한 적이 없어서 버튼 하나로 토글한다.
-  // 근무 중이면 퇴근, 아니면 출근. (휴가처럼 둘 다 안 되는 상태는 비활성)
+  // 미출근·퇴근 → "출근하기", 누르면 근무중이 되면서 "퇴근하기"로 바뀐다.
+  // (휴가처럼 둘 다 안 되는 상태는 비활성)
   const mainLabel = isWorking ? '퇴근하기' : '출근하기';
   const mainAction = isWorking ? onCheckOut : onCheckIn;
   const mainDisabled = busy || (!isWorking && !canCheckIn);
 
+  // 출근 전 파랑 / 근무 중 초록. 라벨을 읽기 전에도 지금 무엇을 누르는지 구분된다.
   const mainClass = isWorking
-    ? 'rounded-[10px] bg-[#374151] px-[26px] py-[11px] text-sm font-bold text-white shadow-sm transition hover:bg-[#1f2937] disabled:cursor-not-allowed disabled:opacity-40'
+    ? 'rounded-[10px] bg-green-600 px-[26px] py-[11px] text-sm font-bold text-white shadow-sm transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-40'
     : 'rounded-[10px] bg-blue-600 px-[26px] py-[11px] text-sm font-bold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40';
   const secondary =
     'rounded-[10px] border border-[#e8ebef] bg-white px-4 py-[11px] text-sm font-semibold text-[#5b6470] transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40';
