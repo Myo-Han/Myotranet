@@ -392,15 +392,6 @@ const Board: React.FC = () => {
               </div>
             )}
           </div>
-          <button
-            type="button"
-            onClick={() => selectSidebar('letter')}
-            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition ${sidebarKey === 'letter' ? 'bg-blue-50 text-blue-600 font-medium' : 'text-gray-600 hover:bg-gray-50'
-              }`}
-          >
-            {getIcon('letter')}
-            <span>마음의 편지</span>
-          </button>
 
           <div>
             <button
@@ -438,6 +429,16 @@ const Board: React.FC = () => {
               </div>
             )}
           </div>
+
+          <button
+            type="button"
+            onClick={() => selectSidebar('letter')}
+            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition ${sidebarKey === 'letter' ? 'bg-blue-50 text-blue-600 font-medium' : 'text-gray-600 hover:bg-gray-50'
+              }`}
+          >
+            {getIcon('letter')}
+            <span>마음의 편지</span>
+          </button>
         </nav>
       </div>
 
