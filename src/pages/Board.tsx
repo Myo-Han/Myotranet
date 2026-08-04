@@ -211,11 +211,13 @@ const Board: React.FC = () => {
   };
 
   const openDetail = (post: Post) => {
+    setSelectedNotice(null);
     setSelectedPost(post);
     setView('detail');
   };
 
   const openNoticeDetail = (notice: Notice) => {
+    setSelectedPost(null);
     setSelectedNotice(notice);
     setView('detail');
   };
@@ -316,6 +318,20 @@ const Board: React.FC = () => {
   const isAdmin = user?.role === 'Admin';
 
   const filteredPosts = posts.filter((p) => sidebarKey === 'all' || p.category === sidebarKey);
+
+  // '전체' 탭에서는 posts 테이블 글과 별도 notices 테이블(공지사항)을 합쳐서 하나의 목록으로 보여준다.
+  type FeedEntry = { kind: 'notice'; notice: Notice } | { kind: 'post'; post: Post };
+  const allFeed: FeedEntry[] = [
+    ...notices.map((n) => ({ kind: 'notice' as const, notice: n })),
+    ...posts.map((p) => ({ kind: 'post' as const, post: p })),
+  ].sort((a, b) => {
+    const aPinned = a.kind === 'notice' ? a.notice.is_pinned : a.post.is_pinned;
+    const bPinned = b.kind === 'notice' ? b.notice.is_pinned : b.post.is_pinned;
+    if (aPinned !== bPinned) return aPinned ? -1 : 1;
+    const aTime = new Date(a.kind === 'notice' ? a.notice.created_at : a.post.created_at).getTime();
+    const bTime = new Date(b.kind === 'notice' ? b.notice.created_at : b.post.created_at).getTime();
+    return bTime - aTime;
+  });
 
   const authorLabel = (post: Post) => {
     if (post.category === 'letter' && post.is_anonymous) return '익명';
@@ -492,7 +508,67 @@ const Board: React.FC = () => {
             </div>
           )}
 
-          {view === 'list' && sidebarKey !== 'notice' && (
+          {view === 'list' && sidebarKey === 'all' && (
+            <div className="bg-white border border-gray-200 rounded-md overflow-hidden">
+              {allFeed.length === 0 ? (
+                <p className="p-10 text-center text-xs text-gray-400">등록된 게시글이 없습니다.</p>
+              ) : (
+                <ul className="divide-y divide-gray-100">
+                  {allFeed.map((entry) =>
+                    entry.kind === 'notice' ? (
+                      <li
+                        key={`notice-${entry.notice.id}`}
+                        onClick={() => openNoticeDetail(entry.notice)}
+                        className="px-4 py-3 cursor-pointer hover:bg-gray-50 flex items-center justify-between gap-3"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            {entry.notice.is_pinned && (
+                              <span className="shrink-0 text-xs px-1.5 py-0.5 rounded bg-yellow-100 text-yellow-800">
+                                고정
+                              </span>
+                            )}
+                            <span className="shrink-0 text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">
+                              공지사항
+                            </span>
+                            <span className="text-sm font-medium text-gray-900 truncate">{entry.notice.title}</span>
+                          </div>
+                          <p className="mt-1 text-xs text-gray-500">
+                            {new Date(entry.notice.created_at).toLocaleString('ko-KR')}
+                          </p>
+                        </div>
+                      </li>
+                    ) : (
+                      <li
+                        key={`post-${entry.post.id}`}
+                        onClick={() => openDetail(entry.post)}
+                        className="px-4 py-3 cursor-pointer hover:bg-gray-50 flex items-center justify-between gap-3"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            {entry.post.is_pinned && (
+                              <span className="shrink-0 text-xs px-1.5 py-0.5 rounded bg-yellow-100 text-yellow-800">
+                                고정
+                              </span>
+                            )}
+                            <span className="shrink-0 text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">
+                              {CATEGORY_LABEL[entry.post.category] || entry.post.category}
+                            </span>
+                            <span className="text-sm font-medium text-gray-900 truncate">{entry.post.title}</span>
+                          </div>
+                          <p className="mt-1 text-xs text-gray-500">
+                            {authorLabel(entry.post)} · {new Date(entry.post.created_at).toLocaleString('ko-KR')}
+                          </p>
+                        </div>
+                      </li>
+                    )
+                  )}
+                </ul>
+              )}
+            </div>
+          )}
+
+          {view === 'list' && sidebarKey !== 'notice' && sidebarKey !== 'all' && (
             <div className="bg-white border border-gray-200 rounded-md overflow-hidden">
               {filteredPosts.length === 0 ? (
                 <p className="p-10 text-center text-xs text-gray-400">등록된 게시글이 없습니다.</p>
@@ -668,7 +744,7 @@ const Board: React.FC = () => {
             </div>
           )}
 
-          {view === 'detail' && sidebarKey === 'notice' && selectedNotice && (
+          {view === 'detail' && selectedNotice && (
             <div className="bg-white border border-gray-200 rounded-md p-4 space-y-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -706,7 +782,7 @@ const Board: React.FC = () => {
             </div>
           )}
 
-          {view === 'detail' && sidebarKey !== 'notice' && selectedPost && (
+          {view === 'detail' && selectedPost && (
             <div className="bg-white border border-gray-200 rounded-md p-4 space-y-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
