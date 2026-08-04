@@ -72,6 +72,12 @@ const emptyDraft = () => ({
   is_anonymous: false,
 });
 
+const emptyNoticeDraft = () => ({
+  title: '',
+  content: '',
+  is_pinned: false,
+});
+
 const getIcon = (key: SidebarKey | 'folder') => {
   if (key === 'all') {
     return (
@@ -91,27 +97,6 @@ const getIcon = (key: SidebarKey | 'folder') => {
     return (
       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-      </svg>
-    );
-  }
-  if (key === 'notice') {
-    return (
-      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
-      </svg>
-    );
-  }
-  if (key === 'free') {
-    return (
-      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-      </svg>
-    );
-  }
-  if (key === 'market') {
-    return (
-      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 11H4L5 9z" />
       </svg>
     );
   }
@@ -139,6 +124,7 @@ const Board: React.FC = () => {
   const [selectedNotice, setSelectedNotice] = useState<Notice | null>(null);
   const [editingPost, setEditingPost] = useState<Post | null>(null);
   const [draft, setDraft] = useState(emptyDraft());
+  const [noticeDraft, setNoticeDraft] = useState(emptyNoticeDraft());
   const [saving, setSaving] = useState(false);
 
   const fetchPosts = async () => {
@@ -200,6 +186,11 @@ const Board: React.FC = () => {
   }, []);
 
   const openWrite = () => {
+    if (sidebarKey === 'notice') {
+      setNoticeDraft(emptyNoticeDraft());
+      setView('write');
+      return;
+    }
     setEditingPost(null);
     const defaultCategory: Category = WRITABLE_CATEGORIES.includes(sidebarKey as Category)
       ? (sidebarKey as Category)
@@ -274,6 +265,34 @@ const Board: React.FC = () => {
       await fetchPosts();
     } catch (e: any) {
       setError(e?.message || '저장 실패');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // 공지사항 작성 (관리자 전용). notices 테이블은 posts와 스키마가 달라 별도 처리한다.
+  const handleNoticeSubmit = async () => {
+    if (!isAdmin) return;
+    if (!noticeDraft.title.trim() || !noticeDraft.content.trim()) {
+      setError('제목과 내용을 입력하세요');
+      return;
+    }
+
+    setSaving(true);
+    setError('');
+    try {
+      const { error: insErr } = await supabase.from('notices').insert({
+        title: noticeDraft.title.trim(),
+        content: noticeDraft.content.trim(),
+        is_pinned: noticeDraft.is_pinned,
+      });
+      if (insErr) throw insErr;
+
+      setView('list');
+      setNoticeDraft(emptyNoticeDraft());
+      await fetchNotices();
+    } catch (e: any) {
+      setError(e?.message || '공지 등록 실패');
     } finally {
       setSaving(false);
     }
@@ -364,11 +383,10 @@ const Board: React.FC = () => {
                     key={key}
                     type="button"
                     onClick={() => selectSidebar(key)}
-                    className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-md text-sm transition ${sidebarKey === key ? 'bg-blue-50 text-blue-600 font-medium' : 'text-gray-600 hover:bg-gray-50'
+                    className={`w-full flex items-center px-3 py-1.5 rounded-md text-sm transition ${sidebarKey === key ? 'bg-blue-50 text-blue-600 font-medium' : 'text-gray-600 hover:bg-gray-50'
                       }`}
                   >
-                    {getIcon(key)}
-                    <span>{CATEGORY_LABEL[key]}</span>
+                    {CATEGORY_LABEL[key]}
                   </button>
                 ))}
               </div>
@@ -427,7 +445,7 @@ const Board: React.FC = () => {
       <div className="flex-1 overflow-auto">
         <div className="px-4 py-4 border-b border-gray-100 bg-white flex items-center justify-between">
           <h1 className="text-base font-semibold text-gray-900">{sidebarLabel}</h1>
-          {view === 'list' && sidebarKey !== 'notice' && (
+          {view === 'list' && (sidebarKey !== 'notice' || isAdmin) && (
             <button
               type="button"
               onClick={openWrite}
@@ -508,7 +526,69 @@ const Board: React.FC = () => {
             </div>
           )}
 
-          {view === 'write' && (
+          {view === 'write' && sidebarKey === 'notice' && (
+            <div className="bg-white border border-gray-200 rounded-md p-4 space-y-4">
+              <h2 className="text-sm font-medium text-gray-900">새 공지 작성</h2>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">제목</label>
+                <input
+                  type="text"
+                  value={noticeDraft.title}
+                  onChange={(e) => setNoticeDraft({ ...noticeDraft, title: e.target.value })}
+                  className="w-full rounded-md border-gray-300 text-xs"
+                  placeholder="제목을 입력하세요"
+                />
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="board-notice-pinned-checkbox"
+                  checked={noticeDraft.is_pinned}
+                  onChange={(e) => setNoticeDraft({ ...noticeDraft, is_pinned: e.target.checked })}
+                  className="h-4 w-4 text-blue-600 border-gray-300 rounded"
+                />
+                <label htmlFor="board-notice-pinned-checkbox" className="text-xs text-gray-600">
+                  상단 고정
+                </label>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">내용</label>
+                <textarea
+                  value={noticeDraft.content}
+                  onChange={(e) => setNoticeDraft({ ...noticeDraft, content: e.target.value })}
+                  rows={10}
+                  className="w-full rounded-md border-gray-300 text-xs"
+                  placeholder="내용을 입력하세요"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setView('list');
+                    setNoticeDraft(emptyNoticeDraft());
+                  }}
+                  className="px-3 py-1.5 rounded-md bg-gray-100 text-gray-700 text-xs font-medium hover:bg-gray-200"
+                >
+                  취소
+                </button>
+                <button
+                  type="button"
+                  onClick={handleNoticeSubmit}
+                  disabled={saving}
+                  className="px-3 py-1.5 rounded-md bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 disabled:opacity-50"
+                >
+                  등록
+                </button>
+              </div>
+            </div>
+          )}
+
+          {view === 'write' && sidebarKey !== 'notice' && (
             <div className="bg-white border border-gray-200 rounded-md p-4 space-y-4">
               <h2 className="text-sm font-medium text-gray-900">{editingPost ? '글 수정' : '새 글쓰기'}</h2>
 
