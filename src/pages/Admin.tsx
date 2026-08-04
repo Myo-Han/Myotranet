@@ -3,7 +3,6 @@ import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabaseClient';
 import Loading from '../components/Loading';
 import LeavePolicyManager from '../components/LeavePolicyManager';
-import WorkMenuManager from '../components/WorkMenuManager';
 import OrganizationManager from '../components/OrganizationManager';
 import ReactionEmojiManager from '../components/ReactionEmojiManager';
 import UserManager from '../components/UserManager';
@@ -23,12 +22,11 @@ type AdminMenuItem = {
     is_folder: boolean;
 };
 
-// 서버에 admin_menu 설정이 아직 없을 때 사용할 기본값 (기존 4개 관리자 기능과 동일)
+// 서버에 admin_menu 설정이 아직 없을 때 사용할 기본값 (기존 3개 관리자 기능과 동일)
 const DEFAULT_ADMIN_MENU: AdminMenuItem[] = [
     { id: 'leave-policy', label: '휴가 정책', icon: 'calendar', path: 'leave-policy', order: 1, parent_id: null, is_folder: false },
-    { id: 'page-layout', label: '페이지 레이아웃', icon: 'folder', path: 'page-layout', order: 2, parent_id: null, is_folder: false },
-    { id: 'organization', label: '조직 관리', icon: 'users', path: 'organization', order: 3, parent_id: null, is_folder: false },
-    { id: 'emoji', label: '이모지 관리', icon: 'star', path: 'emoji', order: 4, parent_id: null, is_folder: false },
+    { id: 'organization', label: '조직 관리', icon: 'users', path: 'organization', order: 2, parent_id: null, is_folder: false },
+    { id: 'emoji', label: '이모지 관리', icon: 'star', path: 'emoji', order: 3, parent_id: null, is_folder: false },
 ];
 
 const Admin: React.FC = () => {
@@ -37,9 +35,6 @@ const Admin: React.FC = () => {
     const [selectedMenu, setSelectedMenu] = useState('');
     const [loadingMenu, setLoadingMenu] = useState(true);
     const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
-
-    // '페이지 레이아웃' 섹션 내부에서 결재관리(work_menu)/관리자(admin_menu) 중 어느 것을 편집할지
-    const [layoutTarget, setLayoutTarget] = useState<'work_menu' | 'admin_menu'>('work_menu');
 
     useEffect(() => {
         const fetchMenu = async () => {
@@ -73,7 +68,10 @@ const Admin: React.FC = () => {
                     localStorage.setItem(CACHE_KEY, JSON.stringify({ serverTs: serverUpdatedAt, data: menu }));
                 }
 
-                const sorted = [...menu].sort((a, b) => a.order - b.order);
+                // 페이지 레이아웃 기능은 제거됨. 과거에 저장된 서버/캐시 설정에 남아있을 수 있어 방어적으로 걸러낸다.
+                const sorted = [...menu]
+                    .filter((m) => m.path !== 'page-layout' && m.id !== 'page-layout')
+                    .sort((a, b) => a.order - b.order);
                 setMenuItems(sorted);
 
                 setSelectedMenu(prev => {
@@ -94,7 +92,6 @@ const Admin: React.FC = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // WorkMenuManager와 동일한 아이콘 세트 (관리자가 페이지 레이아웃에서 자유롭게 아이콘을 고를 수 있으므로 전체 세트 포함)
     const getIcon = (iconName: string) => {
         const iconMap: Record<string, JSX.Element> = {
             briefcase: (
@@ -326,38 +323,6 @@ const Admin: React.FC = () => {
                         <LeavePolicyManager canEdit={true} />
                     )}
 
-                    {/* 페이지 레이아웃 (결재관리 페이지 / 관리자 페이지) */}
-                    {selectedMenu === 'page-layout' && (
-                        <div className="space-y-4">
-                            <div className="flex gap-2 border-b border-gray-200">
-                                <button
-                                    type="button"
-                                    onClick={() => setLayoutTarget('work_menu')}
-                                    className={`px-4 py-2 text-sm font-medium ${layoutTarget === 'work_menu'
-                                        ? 'border-b-2 border-indigo-500 text-indigo-600'
-                                        : 'text-gray-500 hover:text-gray-700'
-                                        }`}
-                                >
-                                    결재관리 페이지
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setLayoutTarget('admin_menu')}
-                                    className={`px-4 py-2 text-sm font-medium ${layoutTarget === 'admin_menu'
-                                        ? 'border-b-2 border-indigo-500 text-indigo-600'
-                                        : 'text-gray-500 hover:text-gray-700'
-                                        }`}
-                                >
-                                    관리자 페이지
-                                </button>
-                            </div>
-                            <WorkMenuManager
-                                key={layoutTarget}
-                                menuKey={layoutTarget}
-                                title={layoutTarget === 'work_menu' ? '결재관리 페이지 메뉴 관리' : '관리자 페이지 메뉴 관리'}
-                            />
-                        </div>
-                    )}
 
                     {/* 조직 관리 */}
                     {selectedMenu === 'organization' && (
