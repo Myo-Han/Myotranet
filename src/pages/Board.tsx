@@ -11,25 +11,36 @@ import ErrorMessage from '../components/ErrorMessage';
 import ReactionBar from '../components/reactions/ReactionBar';
 import CommentThread from '../components/comments/CommentThread';
 
-// ✅ letter/suggestion_* 가 현재 쓰는 카테고리. notice/free/info/other는 과거 게시글 호환을 위한 라벨만 유지한다
-// (사이드바나 글쓰기 화면에는 더 이상 노출되지 않음).
-type Category = 'letter' | 'suggestion_bug' | 'suggestion_ux' | 'suggestion_feature' | 'notice' | 'free' | 'info' | 'other';
+// ✅ letter/suggestion_*/free/market이 현재 쓰는 카테고리.
+// notice는 posts 테이블이 아니라 별도 notices 테이블(대시보드 공지와 동일)을 읽어와 보여준다.
+// info/other는 과거 게시글 호환을 위한 라벨만 유지한다 (사이드바나 글쓰기 화면에는 노출되지 않음).
+type Category = 'letter' | 'suggestion_bug' | 'suggestion_ux' | 'suggestion_feature' | 'free' | 'market' | 'notice' | 'info' | 'other';
 
 const CATEGORY_LABEL: Record<Category, string> = {
   letter: '마음의 편지',
   suggestion_bug: '버그제보',
   suggestion_ux: '편의성개선',
   suggestion_feature: '신규기능제안',
-  notice: '공지',
-  free: '자유',
+  free: '자유게시판',
+  market: '장터',
+  notice: '공지사항',
   info: '정보공유',
   other: '기타',
 };
 
-// 글쓰기 화면에서 선택 가능한 카테고리 (신규 체계)
-const WRITABLE_CATEGORIES: Category[] = ['letter', 'suggestion_bug', 'suggestion_ux', 'suggestion_feature'];
+// 글쓰기 화면에서 선택 가능한 카테고리 (신규 체계). 공지사항은 별도 notices 테이블이라 글쓰기 대상에서 제외.
+const WRITABLE_CATEGORIES: Category[] = ['letter', 'suggestion_bug', 'suggestion_ux', 'suggestion_feature', 'free', 'market'];
 
-type SidebarKey = 'all' | 'letter' | 'suggestion_bug' | 'suggestion_ux' | 'suggestion_feature';
+type SidebarKey = 'all' | 'letter' | 'suggestion_bug' | 'suggestion_ux' | 'suggestion_feature' | 'notice' | 'free' | 'market';
+
+// 대시보드와 공유하는 공지사항(별도 notices 테이블)
+type Notice = {
+  id: number;
+  title: string;
+  content: string;
+  is_pinned: boolean;
+  created_at: string;
+};
 
 type Post = {
   id: number;
@@ -83,6 +94,27 @@ const getIcon = (key: SidebarKey | 'folder') => {
       </svg>
     );
   }
+  if (key === 'notice') {
+    return (
+      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
+      </svg>
+    );
+  }
+  if (key === 'free') {
+    return (
+      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+      </svg>
+    );
+  }
+  if (key === 'market') {
+    return (
+      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 11H4L5 9z" />
+      </svg>
+    );
+  }
   return (
     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -96,12 +128,14 @@ const Board: React.FC = () => {
   const [view, setView] = useState<ViewMode>('list');
   const [posts, setPosts] = useState<Post[]>([]);
   const [authors, setAuthors] = useState<Record<string, AuthorMini>>({});
+  const [notices, setNotices] = useState<Notice[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [sidebarKey, setSidebarKey] = useState<SidebarKey>('all');
   const [suggestionExpanded, setSuggestionExpanded] = useState(true);
 
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
+  const [selectedNotice, setSelectedNotice] = useState<Notice | null>(null);
   const [editingPost, setEditingPost] = useState<Post | null>(null);
   const [draft, setDraft] = useState(emptyDraft());
   const [saving, setSaving] = useState(false);
@@ -143,8 +177,25 @@ const Board: React.FC = () => {
     }
   };
 
+  // 대시보드와 동일한 notices 테이블을 읽어온다 (공지사항 관리는 관리자 페이지에서만).
+  const fetchNotices = async () => {
+    try {
+      const { data, error: nErr } = await supabase
+        .from('notices')
+        .select('id, title, content, is_pinned, created_at')
+        .order('is_pinned', { ascending: false })
+        .order('created_at', { ascending: false });
+
+      if (nErr) throw nErr;
+      setNotices((data || []) as Notice[]);
+    } catch (e: any) {
+      setError(e?.message || '공지사항 목록 로딩 실패');
+    }
+  };
+
   useEffect(() => {
     fetchPosts();
+    fetchNotices();
   }, []);
 
   const openWrite = () => {
@@ -169,6 +220,11 @@ const Board: React.FC = () => {
 
   const openDetail = (post: Post) => {
     setSelectedPost(post);
+    setView('detail');
+  };
+
+  const openNoticeDetail = (notice: Notice) => {
+    setSelectedNotice(notice);
     setView('detail');
   };
 
@@ -251,6 +307,7 @@ const Board: React.FC = () => {
     setSidebarKey(key);
     setView('list');
     setSelectedPost(null);
+    setSelectedNotice(null);
     setEditingPost(null);
   };
 
@@ -324,6 +381,34 @@ const Board: React.FC = () => {
               </div>
             )}
           </div>
+
+          <button
+            type="button"
+            onClick={() => selectSidebar('notice')}
+            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition ${sidebarKey === 'notice' ? 'bg-blue-50 text-blue-600 font-medium' : 'text-gray-600 hover:bg-gray-50'
+              }`}
+          >
+            {getIcon('notice')}
+            <span>공지사항</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => selectSidebar('free')}
+            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition ${sidebarKey === 'free' ? 'bg-blue-50 text-blue-600 font-medium' : 'text-gray-600 hover:bg-gray-50'
+              }`}
+          >
+            {getIcon('free')}
+            <span>자유게시판</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => selectSidebar('market')}
+            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition ${sidebarKey === 'market' ? 'bg-blue-50 text-blue-600 font-medium' : 'text-gray-600 hover:bg-gray-50'
+              }`}
+          >
+            {getIcon('market')}
+            <span>장터</span>
+          </button>
         </nav>
       </div>
 
@@ -331,7 +416,7 @@ const Board: React.FC = () => {
       <div className="flex-1 overflow-auto">
         <div className="px-4 py-4 border-b border-gray-100 bg-white flex items-center justify-between">
           <h1 className="text-base font-semibold text-gray-900">{sidebarLabel}</h1>
-          {view === 'list' && (
+          {view === 'list' && sidebarKey !== 'notice' && (
             <button
               type="button"
               onClick={openWrite}
@@ -345,7 +430,39 @@ const Board: React.FC = () => {
         <div className="p-4 space-y-4">
           {error && <ErrorMessage message={error} />}
 
-          {view === 'list' && (
+          {view === 'list' && sidebarKey === 'notice' && (
+            <div className="bg-white border border-gray-200 rounded-md overflow-hidden">
+              {notices.length === 0 ? (
+                <p className="p-10 text-center text-xs text-gray-400">등록된 공지사항이 없습니다.</p>
+              ) : (
+                <ul className="divide-y divide-gray-100">
+                  {notices.map((n) => (
+                    <li
+                      key={n.id}
+                      onClick={() => openNoticeDetail(n)}
+                      className="px-4 py-3 cursor-pointer hover:bg-gray-50 flex items-center justify-between gap-3"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          {n.is_pinned && (
+                            <span className="shrink-0 text-xs px-1.5 py-0.5 rounded bg-yellow-100 text-yellow-800">
+                              고정
+                            </span>
+                          )}
+                          <span className="text-sm font-medium text-gray-900 truncate">{n.title}</span>
+                        </div>
+                        <p className="mt-1 text-xs text-gray-500">
+                          {new Date(n.created_at).toLocaleString('ko-KR')}
+                        </p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+
+          {view === 'list' && sidebarKey !== 'notice' && (
             <div className="bg-white border border-gray-200 rounded-md overflow-hidden">
               {filteredPosts.length === 0 ? (
                 <p className="p-10 text-center text-xs text-gray-400">등록된 게시글이 없습니다.</p>
@@ -459,7 +576,45 @@ const Board: React.FC = () => {
             </div>
           )}
 
-          {view === 'detail' && selectedPost && (
+          {view === 'detail' && sidebarKey === 'notice' && selectedNotice && (
+            <div className="bg-white border border-gray-200 rounded-md p-4 space-y-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">공지사항</span>
+                    <h2 className="text-sm font-medium text-gray-900">{selectedNotice.title}</h2>
+                  </div>
+                  <p className="mt-1 text-xs text-gray-500">
+                    {new Date(selectedNotice.created_at).toLocaleString('ko-KR')}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setView('list');
+                      setSelectedNotice(null);
+                    }}
+                    className="px-2.5 py-1 text-xs rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  >
+                    목록으로
+                  </button>
+                </div>
+              </div>
+
+              <div className="text-xs text-gray-800 whitespace-pre-line border-t border-gray-100 pt-4">{selectedNotice.content}</div>
+
+              <div className="border-t border-gray-100 pt-4">
+                <ReactionBar noticeId={selectedNotice.id} entityType="notice" />
+              </div>
+
+              <div className="border-t border-gray-100 pt-4">
+                <CommentThread noticeId={selectedNotice.id} entityType="notice" />
+              </div>
+            </div>
+          )}
+
+          {view === 'detail' && sidebarKey !== 'notice' && selectedPost && (
             <div className="bg-white border border-gray-200 rounded-md p-4 space-y-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
