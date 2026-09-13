@@ -84,14 +84,27 @@ const NotificationBell: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
-  // ✅ Realtime 연결이 끊겼다 돌아오는 경우(절전/네트워크 전환)를 대비한 보정.
-  //    탭으로 복귀할 때 한 번 다시 조회한다.
+  // ✅ Realtime 백스톱: 30초 주기 폴링 + 탭 복귀 시 재조회.
+  //    Realtime 이 끊기거나(절전·네트워크 전환) 이벤트를 놓쳐도 최대 30초 안에 배지가 맞춰진다.
+  //    탭이 백그라운드일 때는 폴링하지 않는다.
   useEffect(() => {
+    if (!user?.id) return;
+
+    const tick = () => {
+      if (document.visibilityState === 'visible') fetchNotifications();
+    };
+
+    const timer = window.setInterval(tick, 30_000);
+
     const onVisible = () => {
       if (document.visibilityState === 'visible') fetchNotifications();
     };
     document.addEventListener('visibilitychange', onVisible);
-    return () => document.removeEventListener('visibilitychange', onVisible);
+
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
