@@ -1,4 +1,4 @@
-// 알림벨: 연차 신청 시 통보/참조로 지정된 사람에게 오는 알림을 보여준다.
+// 알림벨: notifications 테이블의 내 알림을 보여준다. (연차 통보/참조, 댓글·이모지 등)
 // (추후 다른 이벤트도 notifications 테이블을 재사용해서 확장 가능하도록 범용적으로 설계됨)
 import React, { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
@@ -46,6 +46,48 @@ const NotificationBell: React.FC = () => {
 
   useEffect(() => {
     fetchNotifications();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
+  // ✅ 실시간 구독: 알림 행이 생기거나 읽음 처리되면 새로고침 없이 배지에 즉시 반영된다.
+  //    (Supabase 대시보드에서 notifications 테이블의 Realtime이 켜져 있어야 동작한다)
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const channel = supabase
+      .channel(`notifications:${user.id}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },
+        (payload) => {
+          const row = payload.new as NotificationRow;
+          setItems((prev) => (prev.some((n) => n.id === row.id) ? prev : [row, ...prev].slice(0, 30)));
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },
+        (payload) => {
+          const row = payload.new as NotificationRow;
+          setItems((prev) => prev.map((n) => (n.id === row.id ? { ...n, ...row } : n)));
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
+  // ✅ Realtime 연결이 끊겼다 돌아오는 경우(절전/네트워크 전환)를 대비한 보정.
+  //    탭으로 복귀할 때 한 번 다시 조회한다.
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') fetchNotifications();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
