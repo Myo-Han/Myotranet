@@ -5,7 +5,6 @@
 // /leave 페이지(연차/연장근무 탭)의 내용을 그대로 가져와 나눈 것이다.
 import React, { useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
 import AttendanceStatusPanel from '../components/attendance-dashboard/AttendanceStatusPanel';
 import LeaveAnnualPanel from '../components/attendance-dashboard/LeaveAnnualPanel';
 import OvertimePanel from '../components/attendance-dashboard/OvertimePanel';
@@ -41,7 +40,6 @@ const getIcon = (key: CategoryKey) => {
 };
 
 const Attendance: React.FC = () => {
-  const { user } = useAuth();
   const location = useLocation();
 
   // ✅ LeaveRequestPage(연차 신청/수정/삭제 폼)에서 돌아올 때 navigate('/attendance', { state: { category: 'leave' } })
@@ -57,9 +55,6 @@ const Attendance: React.FC = () => {
       <div className="w-56 bg-white border-r border-gray-200">
         <div className="px-4 py-4 border-b border-gray-100">
           <h1 className="text-base font-semibold text-gray-900">근태관리</h1>
-          {user && (
-            <p className="text-xs text-gray-400 mt-1 truncate">{user.email}</p>
-          )}
         </div>
         <nav className="p-2 space-y-0.5">
           {CATEGORIES.map((item) => (
@@ -67,7 +62,7 @@ const Attendance: React.FC = () => {
               key={item.key}
               type="button"
               onClick={() => setSelectedCategory(item.key)}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-base transition ${selectedCategory === item.key
+              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition ${selectedCategory === item.key
                 ? 'bg-blue-50 text-blue-600 font-medium'
                 : 'text-gray-600 hover:bg-gray-50'
                 }`}
