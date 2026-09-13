@@ -200,6 +200,7 @@ const Board: React.FC = () => {
   };
 
   const openEdit = (post: Post) => {
+    if (!canEdit(post)) return;
     setEditingPost(post);
     setDraft({
       title: post.title,
@@ -301,6 +302,7 @@ const Board: React.FC = () => {
   };
 
   const handleDelete = async (post: Post) => {
+    if (!canDelete(post)) return;
     if (!window.confirm('삭제하시겠습니까?')) return;
     setError('');
     try {
@@ -316,6 +318,11 @@ const Board: React.FC = () => {
 
   const isMine = (post: Post) => !!user?.id && post.author_id === user.id;
   const isAdmin = user?.role === 'Admin';
+
+  // 게시글 권한: 수정은 작성자 본인만, 삭제는 작성자 또는 관리자.
+  // (UI 게이트일 뿐이므로 DB 쪽 RLS 정책이 같은 규칙으로 걸려 있어야 한다 — db/board_posts_rls.sql)
+  const canEdit = (post: Post) => isMine(post);
+  const canDelete = (post: Post) => isMine(post) || isAdmin;
 
   const filteredPosts = posts.filter((p) => sidebarKey === 'all' || p.category === sidebarKey);
 
@@ -807,23 +814,25 @@ const Board: React.FC = () => {
                   >
                     목록으로
                   </button>
-                  {(isMine(selectedPost) || isAdmin) && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => openEdit(selectedPost)}
-                        className="px-2.5 py-1 text-xs rounded-md border border-gray-300 hover:bg-gray-50"
-                      >
-                        수정
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDelete(selectedPost)}
-                        className="px-2.5 py-1 text-xs rounded-md border border-red-300 text-red-600 hover:bg-red-50"
-                      >
-                        삭제
-                      </button>
-                    </>
+                  {/* 수정은 작성자 본인만. 관리자도 남의 글 내용은 못 바꾼다(위조 방지). */}
+                  {canEdit(selectedPost) && (
+                    <button
+                      type="button"
+                      onClick={() => openEdit(selectedPost)}
+                      className="px-2.5 py-1 text-xs rounded-md border border-gray-300 hover:bg-gray-50"
+                    >
+                      수정
+                    </button>
+                  )}
+                  {/* 삭제는 본인 또는 관리자. 부적절한 게시글 대응용. */}
+                  {canDelete(selectedPost) && (
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(selectedPost)}
+                      className="px-2.5 py-1 text-xs rounded-md border border-red-300 text-red-600 hover:bg-red-50"
+                    >
+                      삭제
+                    </button>
                   )}
                 </div>
               </div>
