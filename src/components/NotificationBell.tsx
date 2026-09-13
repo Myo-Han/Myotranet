@@ -60,6 +60,7 @@ const NotificationBell: React.FC = () => {
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },
         (payload) => {
+          console.log('[notif] INSERT 수신', payload.new);
           const row = payload.new as NotificationRow;
           setItems((prev) => (prev.some((n) => n.id === row.id) ? prev : [row, ...prev].slice(0, 30)));
         }
@@ -72,7 +73,10 @@ const NotificationBell: React.FC = () => {
           setItems((prev) => prev.map((n) => (n.id === row.id ? { ...n, ...row } : n)));
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        // 진단용: SUBSCRIBED 가 안 찍히면 publication 미등록 또는 RLS SELECT 정책 문제다.
+        console.log('[notif] realtime status =', status, err ?? '');
+      });
 
     return () => {
       supabase.removeChannel(channel);
